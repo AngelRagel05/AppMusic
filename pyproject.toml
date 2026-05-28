@@ -30,20 +30,19 @@ dev = [
 ]
 
 [project.scripts]
-music-app = "music_app.app.main:main"
-scan-music = "music_app.app.scripts.scan_music_folder:main"
+music-app = "app.main:main"
 
 [tool.setuptools]
 package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["music_app*"]
+include = ["app*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["music_app", "tests"]
+src = ["app", "tests"]
 
 [tool.ruff.lint]
 select = [
@@ -60,4 +59,3 @@ select = [
 pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-q"
-
