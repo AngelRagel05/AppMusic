@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "music-app"
+version = "0.1.0"
+description = "Desktop app for local music management built with Python, PySide6 and SQLAlchemy."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Angel J Ragel" }]
+dependencies = [
+    "PySide6>=6.8,<7.0",
+    "SQLAlchemy>=2.0,<3.0",
+    "alembic>=1.14,<2.0",
+    "yt-dlp>=2025.1.0",
+    "ffmpeg-python>=0.2.0",
+    "mutagen>=1.47.0",
+    "Pillow>=11.0.0",
+    "httpx>=0.28.0",
+    "python-dotenv>=1.0.1",
+    "loguru>=0.7.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.11.0",
+    "ruff>=0.8.0",
+    "pytest>=8.3.0",
+]
+
+[project.scripts]
+music-app = "music_app.app.main:main"
+scan-music = "music_app.app.scripts.scan_music_folder:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["music_app*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["music_app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "N",
+    "RUF",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+
