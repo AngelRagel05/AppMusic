@@ -133,19 +133,14 @@ Los workers emiten senales o resultados. No actualizan widgets directamente desd
 
 Usar `snake_case` en:
 
-* archivos Python
-* funciones
-* variables
-* modulos
-* nombres de tests
+* nombres de tablas de base de datos
 
 Ejemplos:
 
 ```txt
-scan_music_folder.py
-edit_song_metadata.py
-download_song.py
-song_title
+youtube_playlist
+local_song
+playlist_comparison_result
 ```
 
 ### PascalCase
@@ -167,9 +162,60 @@ SongRepository
 
 ### camelCase
 
-No usar `camelCase` en Python salvo que una libreria externa obligue a ello.
+Usar `camelCase` en:
 
-Si se integra con formatos externos como JSON de terceros, mantener el nombre externo solo en la capa de adaptacion.
+* nombres de archivos
+* funciones
+* variables
+* carpetas
+
+Si una libreria externa obliga a otra nomenclatura, respetar el formato externo solo en la capa de adaptacion.
+
+Ejemplos:
+
+```txt
+scanMusicFolder.py
+editSongMetadata.py
+downloadSong
+songTitle
+```
+
+### PascalCase
+
+Usar `PascalCase` en:
+
+* clases
+* widgets
+* entidades
+* use cases
+
+Ejemplos:
+
+```txt
+MainWindow
+ScanMusicFolderUseCase
+SongRepository
+```
+
+### UPPER_SNAKE_CASE
+
+Usar `UPPER_SNAKE_CASE` para constantes.
+
+### Reglas adicionales de nomenclatura
+
+La IA debe mantener esta nomenclatura de forma consistente en:
+
+* nombres de tablas
+* nombres de tablas intermedias
+* nombres de columnas si se documentan
+* nombres de archivos
+* nombres de carpetas
+* nombres de funciones
+* nombres de variables
+* nombres de clases
+* nombres de DTOs
+* nombres de use cases
+* nombres documentados en `doc/bbdd/`
 
 ### kebab-case
 
@@ -181,10 +227,6 @@ Usar `kebab-case` solo cuando aplique fuera de Python, por ejemplo:
 * nombres de workflows o scripts del sistema si encaja mejor
 
 No usar `kebab-case` para modulos Python.
-
-### UPPER_SNAKE_CASE
-
-Usar `UPPER_SNAKE_CASE` para constantes.
 
 ---
 
@@ -319,6 +361,7 @@ Regla visual para el modelo entidad-relacion:
 * Debe mostrar entidades, relaciones y cardinalidades
 * Debe representarse como el ejemplo de referencia dado por el usuario
 * Las cardinalidades deben verse de forma explicita como `(0,1)`, `(1,1)`, `(0,n)` o `(1,n)` cuando aplique
+* Debe escribirse en Markdown usando bloques `mermaid`
 
 Regla visual para el modelo relacional:
 
@@ -326,5 +369,13 @@ Regla visual para el modelo relacional:
 * Debe incluir sus atributos
 * Debe marcar PK y FK
 * Debe reflejar claramente las relaciones entre tablas
+* Debe escribirse en Markdown usando bloques `mermaid`
+
+Regla de detalle por tabla:
+
+* Cuando se documente una tabla concreta dentro de `doc/bbdd/tables/`, el archivo debe ser `.md`
+* Debe incluir descripcion funcional de la tabla
+* Debe incluir columnas y restricciones relevantes
+* Si aplica, debe incluir un diagrama `mermaid` relacionado con sus dependencias
 
 Antes de crear migraciones o modelos ORM nuevos, la IA debe intentar dejar actualizada la documentacion de `doc/bbdd/`.
