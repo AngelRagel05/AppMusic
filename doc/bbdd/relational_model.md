@@ -157,6 +157,7 @@ Restricciones:
 * `file_path` debe ser unico
 * cada cancion pertenece a una sola `local_folder`
 * `download_id` es nullable porque una cancion puede no venir de descarga
+* `track_number_album` debe cumplir `>= 0` cuando tenga valor
 
 ### `youtube_playlist`
 
@@ -313,3 +314,49 @@ Si falta en local:
 La descarga se inicia desde `youtube_playlist_item` porque ahi vive la URL de origen.
 
 Si termina correctamente, puede quedar enlazada con `local_song`.
+
+## Integridad en BBDD vs integridad en aplicacion
+
+## Reglas que deben vivir en BBDD
+
+Estas reglas son estructurales y deben reforzarse con el esquema relacional:
+
+* claves primarias de todas las tablas
+* claves foraneas entre tablas relacionadas
+* unicidad de:
+  * `local_folder.path`
+  * `local_song.file_path`
+  * `youtube_playlist.playlist_url`
+  * `youtube_playlist.external_playlist_id`
+  * `youtube_playlist_item.video_id`
+  * `youtube_playlist_item.video_url`
+  * `playlist_comparison_result (playlist_comparison_id, youtube_playlist_item_id)`
+  * `ignored_term (term, scope, language)`
+* nulabilidad segun el modelo definido
+* checks simples cuando se implementen:
+  * `track_number_album >= 0`
+  * `position > 0`
+  * `duration_seconds >= 0` si tiene valor
+* indices de soporte para claves foraneas y consultas frecuentes
+
+## Reglas que deben vivir en aplicacion
+
+Estas reglas dependen del flujo del sistema o son mas portables si se resuelven fuera de la BBDD:
+
+* solo una `local_folder` puede estar activa al mismo tiempo
+* solo una `youtube_playlist` puede estar activa al mismo tiempo
+* validacion de que la ruta de `local_folder.path` exista realmente
+* validacion de que `playlist_url` sea una URL de YouTube valida
+* normalizacion de titulos y artistas
+* matching entre `youtube_playlist_item` y `local_song`
+* calculo de `score`
+* calculo de `matched_by`
+* asignacion de `match_status`
+* catalogo de errores posibles de `download`
+* control de transiciones de `download.status`
+* control del flujo completo de descarga y posterior insercion en `local_song`
+
+## Criterio general
+
+* la BBDD protege estructura, referencias y unicidad objetiva
+* la aplicacion protege reglas operativas, validaciones de entorno y decisiones de negocio dinamicas
