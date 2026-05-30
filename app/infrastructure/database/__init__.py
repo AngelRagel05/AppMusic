@@ -1,6 +1,7 @@
 """Database infrastructure."""
 
 from app.infrastructure.database.base import Base
+from app.infrastructure.database.bootstrap import DatabaseBootstrapper
 from app.infrastructure.database.models import (
     Download,
     IgnoredTerm,
@@ -15,6 +16,7 @@ from app.infrastructure.database.session import SessionLocal, engine, get_sessio
 
 __all__ = [
     "Base",
+    "DatabaseBootstrapper",
     "Download",
     "IgnoredTerm",
     "LocalFolder",
