@@ -3,11 +3,10 @@ from __future__ import annotations
 from logging.config import fileConfig
 
 from alembic import context
+from app.config.settings import get_settings
+from app.infrastructure.database import models  # noqa: F401
+from app.infrastructure.database.base import Base
 from sqlalchemy import engine_from_config, pool
-
-from music_app.app.config.settings import get_settings
-from music_app.app.infrastructure.database.base import Base
-from music_app.app.infrastructure.database import models  # noqa: F401
 
 config = context.config
 
@@ -51,4 +50,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-

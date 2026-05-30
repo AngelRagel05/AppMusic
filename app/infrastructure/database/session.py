@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from music_app.app.config.settings import get_settings
+from app.config.settings import get_settings
 
 settings = get_settings()
 
@@ -13,4 +13,3 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, clas
 
 def get_session() -> Session:
     return SessionLocal()
-
