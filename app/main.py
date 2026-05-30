@@ -4,10 +4,16 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from app.application.use_cases import BootstrapDatabaseUseCase
+from app.application.use_cases import (
+    BootstrapDatabaseUseCase,
+    CreateIgnoredTermUseCase,
+    ListIgnoredTermsUseCase,
+)
 from app.config.settings import get_settings
-from app.infrastructure.database import DatabaseBootstrapper, SessionLocal, engine
+from app.infrastructure.database import DatabaseBootstrapper, SessionLocal, engine, get_session
+from app.infrastructure.repositories import IgnoredTermSqlAlchemyRepository
 from app.presentation.ui.main_window import MainWindow
+from app.presentation.viewmodels import IgnoredTermsViewModel
 from app.utils.logging import configure_logging
 
 
@@ -15,14 +21,24 @@ def main() -> int:
     settings = get_settings()
     configure_logging(settings.log_level)
     BootstrapDatabaseUseCase(DatabaseBootstrapper(engine, SessionLocal)).execute()
+    session = get_session()
+
+    ignored_term_repository = IgnoredTermSqlAlchemyRepository(session)
+    ignored_terms_view_model = IgnoredTermsViewModel(
+        list_use_case=ListIgnoredTermsUseCase(ignored_term_repository),
+        create_use_case=CreateIgnoredTermUseCase(ignored_term_repository),
+    )
 
     app = QApplication(sys.argv)
     app.setApplicationName(settings.app_name)
 
-    window = MainWindow()
+    window = MainWindow(ignored_terms_view_model)
     window.show()
 
-    return app.exec()
+    try:
+        return app.exec()
+    finally:
+        session.close()
 
 
 if __name__ == "__main__":
