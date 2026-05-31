@@ -8,6 +8,9 @@ from app.presentation.styles import applyComponentQss
 from app.presentation.ui.ignoredTerms.ignoredTermsSection import IgnoredTermsSection
 from app.presentation.ui.localLibraries.localLibrariesSection import LocalLibrariesSection
 from app.presentation.ui.mainScreen.heroSection.heroSection import HeroSection
+from app.presentation.ui.youtubePlaylists.youtubePlaylistsSection import (
+    YoutubePlaylistsSection,
+)
 
 
 class MainWindowPage(QScrollArea):
@@ -16,6 +19,7 @@ class MainWindowPage(QScrollArea):
         self.setObjectName("mainWindowPageRoot")
         self.heroSection = HeroSection()
         self.localLibrariesSection = LocalLibrariesSection()
+        self.youtubePlaylistsSection = YoutubePlaylistsSection()
         self.ignoredTermsSection = IgnoredTermsSection()
 
         pageLayout = QVBoxLayout()
@@ -38,7 +42,8 @@ class MainWindowPage(QScrollArea):
         layout.setHorizontalSpacing(20)
         layout.setVerticalSpacing(20)
         layout.addWidget(self.localLibrariesSection, 0, 0)
-        layout.addWidget(self.ignoredTermsSection, 0, 1)
+        layout.addWidget(self.youtubePlaylistsSection, 0, 1)
+        layout.addWidget(self.ignoredTermsSection, 1, 0, 1, 2)
         layout.setColumnStretch(0, 3)
-        layout.setColumnStretch(1, 2)
+        layout.setColumnStretch(1, 3)
         return layout

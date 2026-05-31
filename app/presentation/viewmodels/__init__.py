@@ -2,5 +2,6 @@
 
 from app.presentation.viewmodels.ignored_terms_view_model import IgnoredTermsViewModel
 from app.presentation.viewmodels.localFolderViewModel import LocalFolderViewModel
+from app.presentation.viewmodels.youtubePlaylistViewModel import YoutubePlaylistViewModel
 
-__all__ = ["IgnoredTermsViewModel", "LocalFolderViewModel"]
+__all__ = ["IgnoredTermsViewModel", "LocalFolderViewModel", "YoutubePlaylistViewModel"]

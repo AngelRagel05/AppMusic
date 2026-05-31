@@ -19,6 +19,10 @@ class HeroSection(QFrame):
         self.activeFolderValueLabel.setObjectName("heroMetricValue")
         self.libraryCountValueLabel = QLabel("0 bibliotecas guardadas")
         self.libraryCountValueLabel.setObjectName("heroMetricValue")
+        self.activePlaylistValueLabel = QLabel("Sin playlist activa")
+        self.activePlaylistValueLabel.setObjectName("heroMetricValue")
+        self.playlistCountValueLabel = QLabel("0 playlists guardadas")
+        self.playlistCountValueLabel.setObjectName("heroMetricValue")
 
         title = QLabel("Organiza tu música sin perderte en la interfaz")
         title.setObjectName("heroTitle")
@@ -29,8 +33,8 @@ class HeroSection(QFrame):
         title.setWordWrap(True)
 
         subtitle = QLabel(
-            "Empieza definiendo la biblioteca local activa y despues ajusta los términos "
-            "que la app debe ignorar al comparar nombres."
+            "Empieza definiendo la biblioteca local activa y la playlist principal de "
+            "YouTube. Despues ajusta los terminos que la app debe ignorar al comparar nombres."
         )
         subtitle.setObjectName("heroSubtitle")
         subtitle.setWordWrap(True)
@@ -40,6 +44,12 @@ class HeroSection(QFrame):
         metricsLayout.addWidget(self._buildMetricCard("Biblioteca activa", self.activeFolderValueLabel))
         metricsLayout.addWidget(
             self._buildMetricCard("Bibliotecas guardadas", self.libraryCountValueLabel)
+        )
+        metricsLayout.addWidget(
+            self._buildMetricCard("Playlist principal", self.activePlaylistValueLabel)
+        )
+        metricsLayout.addWidget(
+            self._buildMetricCard("Playlists guardadas", self.playlistCountValueLabel)
         )
 
         layout = QVBoxLayout()
@@ -60,6 +70,12 @@ class HeroSection(QFrame):
 
     def showActiveFolderName(self, display_name: str) -> None:
         self.activeFolderValueLabel.setText(display_name)
+
+    def showPlaylistCount(self, count: int) -> None:
+        self.playlistCountValueLabel.setText(f"{count} playlists guardadas")
+
+    def showActivePlaylistTitle(self, title: str) -> None:
+        self.activePlaylistValueLabel.setText(title)
 
     def _buildMetricCard(self, title: str, valueLabel: QLabel) -> QWidget:
         card = QFrame()

@@ -52,6 +52,18 @@ def test_local_folder_has_unique_constraint_for_path() -> None:
     assert ("path",) in unique_constraints
 
 
+def test_youtube_playlist_has_unique_constraints_for_url_and_external_id() -> None:
+    table = Base.metadata.tables["youtube_playlist"]
+    unique_constraints = {
+        tuple(constraint.columns.keys())
+        for constraint in table.constraints
+        if isinstance(constraint, UniqueConstraint)
+    }
+
+    assert ("playlist_url",) in unique_constraints
+    assert ("external_playlist_id",) in unique_constraints
+
+
 def test_local_song_has_non_negative_check_constraints() -> None:
     table = Base.metadata.tables["local_song"]
     check_constraints = {

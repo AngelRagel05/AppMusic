@@ -26,6 +26,10 @@ app/presentation/ui/localLibraries/
 app/presentation/ui/ignoredTerms/
 ├─ ignoredTermsSection.py
 └─ ignoredTermsSection.qss
+
+app/presentation/ui/youtubePlaylists/
+├─ youtubePlaylistsSection.py
+└─ youtubePlaylistsSection.qss
 ```
 
 Cuando un componente crezca demasiado y mezcle composicion, coordinacion de eventos y

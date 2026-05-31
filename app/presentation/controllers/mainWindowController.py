@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QFileDialog
 from app.presentation.ui.mainScreen.mainWindow.mainWindow import MainWindow
 from app.presentation.viewmodels.ignored_terms_view_model import IgnoredTermsViewModel
 from app.presentation.viewmodels.localFolderViewModel import LocalFolderViewModel
+from app.presentation.viewmodels.youtubePlaylistViewModel import YoutubePlaylistViewModel
 
 
 class MainWindowController:
@@ -12,10 +13,12 @@ class MainWindowController:
         self,
         view: MainWindow,
         local_folder_view_model: LocalFolderViewModel,
+        youtube_playlist_view_model: YoutubePlaylistViewModel,
         ignored_terms_view_model: IgnoredTermsViewModel,
     ) -> None:
         self._view = view
         self._local_folder_view_model = local_folder_view_model
+        self._youtube_playlist_view_model = youtube_playlist_view_model
         self._ignored_terms_view_model = ignored_terms_view_model
 
     def initialize(self) -> None:
@@ -25,9 +28,16 @@ class MainWindowController:
         page.localLibrariesSection.activateFolderButton.clicked.connect(
             self._handle_activate_folder
         )
+        page.youtubePlaylistsSection.savePlaylistButton.clicked.connect(
+            self._handle_save_playlist
+        )
+        page.youtubePlaylistsSection.activatePlaylistButton.clicked.connect(
+            self._handle_activate_playlist
+        )
         page.ignoredTermsSection.createButton.clicked.connect(self._handle_create_term)
 
         self._load_folders()
+        self._load_playlists()
         self._load_terms()
 
     def _load_folders(self) -> None:
@@ -38,6 +48,16 @@ class MainWindowController:
         self._view.page.heroSection.showLibraryCount(len(local_folders))
         self._view.page.heroSection.showActiveFolderName(
             active_folder.display_name if active_folder is not None else "Sin biblioteca activa"
+        )
+
+    def _load_playlists(self) -> None:
+        youtube_playlists = self._youtube_playlist_view_model.load_playlists()
+        active_playlist = self._youtube_playlist_view_model.load_active_playlist()
+        self._view.page.youtubePlaylistsSection.showPlaylists(youtube_playlists)
+        self._view.page.youtubePlaylistsSection.showActivePlaylist(active_playlist)
+        self._view.page.heroSection.showPlaylistCount(len(youtube_playlists))
+        self._view.page.heroSection.showActivePlaylistTitle(
+            active_playlist.title if active_playlist is not None else "Sin playlist activa"
         )
 
     def _load_terms(self) -> None:
@@ -84,6 +104,41 @@ class MainWindowController:
         self._load_folders()
         self._view.page.heroSection.showStatusMessage(
             f'Ahora estas trabajando con la biblioteca "{local_folder.display_name}".'
+        )
+
+    def _handle_save_playlist(self) -> None:
+        try:
+            youtube_playlist = self._youtube_playlist_view_model.define_main_playlist(
+                self._view.page.youtubePlaylistsSection.playlistUrl()
+            )
+        except ValueError as exc:
+            self._view.page.heroSection.showStatusMessage(str(exc))
+            return
+
+        self._load_playlists()
+        self._view.page.heroSection.showStatusMessage(
+            f'Playlist principal "{youtube_playlist.title}" guardada y activada correctamente.'
+        )
+
+    def _handle_activate_playlist(self) -> None:
+        selected_playlist_id = self._view.page.youtubePlaylistsSection.selectedPlaylistId()
+        if selected_playlist_id is None:
+            self._view.page.heroSection.showStatusMessage(
+                "Selecciona una playlist guardada para activarla."
+            )
+            return
+
+        try:
+            youtube_playlist = self._youtube_playlist_view_model.activate_playlist(
+                selected_playlist_id
+            )
+        except (TypeError, ValueError) as exc:
+            self._view.page.heroSection.showStatusMessage(str(exc))
+            return
+
+        self._load_playlists()
+        self._view.page.heroSection.showStatusMessage(
+            f'Ahora estas comparando contra la playlist "{youtube_playlist.title}".'
         )
 
     def _handle_create_term(self) -> None:
