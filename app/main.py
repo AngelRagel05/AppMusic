@@ -20,7 +20,8 @@ from app.infrastructure.repositories import (
     LocalFolderSqlAlchemyRepository,
 )
 from app.presentation.styles import loadQss
-from app.presentation.ui import MainWindow
+from app.presentation.ui.mainScreen.mainWindow.mainWindow import MainWindow
+from app.presentation.controllers.mainWindowController import MainWindowController
 from app.presentation.viewmodels import IgnoredTermsViewModel, LocalFolderViewModel
 from app.utils.logging import configure_logging
 
@@ -48,7 +49,13 @@ def main() -> int:
     app.setApplicationName(settings.app_name)
     app.setStyleSheet(loadQss("app/presentation/styles/global.qss"))
 
-    window = MainWindow(local_folder_view_model, ignored_terms_view_model)
+    window = MainWindow()
+    controller = MainWindowController(
+        window,
+        local_folder_view_model=local_folder_view_model,
+        ignored_terms_view_model=ignored_terms_view_model,
+    )
+    controller.initialize()
     window.show()
 
     try:

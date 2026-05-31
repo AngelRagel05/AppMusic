@@ -20,7 +20,7 @@ class HeroSection(QFrame):
         self.libraryCountValueLabel = QLabel("0 bibliotecas guardadas")
         self.libraryCountValueLabel.setObjectName("heroMetricValue")
 
-        title = QLabel("Organiza tu musica sin perderte en la interfaz")
+        title = QLabel("Organiza tu música sin perderte en la interfaz")
         title.setObjectName("heroTitle")
         titleFont = QFont()
         titleFont.setPointSize(24)
@@ -29,7 +29,7 @@ class HeroSection(QFrame):
         title.setWordWrap(True)
 
         subtitle = QLabel(
-            "Empieza definiendo la biblioteca local activa y despues ajusta los terminos "
+            "Empieza definiendo la biblioteca local activa y despues ajusta los términos "
             "que la app debe ignorar al comparar nombres."
         )
         subtitle.setObjectName("heroSubtitle")
@@ -51,6 +51,15 @@ class HeroSection(QFrame):
         layout.addWidget(self.statusLabel)
         self.setLayout(layout)
         applyComponentQss(self, Path(__file__).with_suffix(".qss"))
+
+    def showStatusMessage(self, message: str) -> None:
+        self.statusLabel.setText(message)
+
+    def showLibraryCount(self, count: int) -> None:
+        self.libraryCountValueLabel.setText(f"{count} bibliotecas guardadas")
+
+    def showActiveFolderName(self, display_name: str) -> None:
+        self.activeFolderValueLabel.setText(display_name)
 
     def _buildMetricCard(self, title: str, valueLabel: QLabel) -> QWidget:
         card = QFrame()

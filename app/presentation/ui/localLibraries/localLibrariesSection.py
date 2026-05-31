@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFormLayout,
     QFrame,
@@ -12,12 +13,14 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
+from app.application.dto.localFolderDto import LocalFolderDto
 from app.presentation.styles import applyComponentQss
-from app.presentation.ui.shared import configureDataTable
+from app.presentation.ui.shared.dataTable import configureDataTable
 
 
 class LocalLibrariesSection(QFrame):
@@ -25,7 +28,7 @@ class LocalLibrariesSection(QFrame):
         super().__init__()
         self.setObjectName("localLibrariesRoot")
 
-        self.activeFolderLabel = QLabel("Todavia no has elegido una biblioteca principal.")
+        self.activeFolderLabel = QLabel("Todavía no has elegido una biblioteca principal.")
         self.activeFolderLabel.setWordWrap(True)
         self.savedFoldersCaption = QLabel(
             "Guarda varias bibliotecas y activa la que quieras usar en este momento."
@@ -62,12 +65,58 @@ class LocalLibrariesSection(QFrame):
         self.setLayout(layout)
         applyComponentQss(self, Path(__file__).with_suffix(".qss"))
 
+    def showFolders(self, localFolders: list[LocalFolderDto]) -> None:
+        self.foldersTable.setRowCount(len(localFolders))
+
+        for rowIndex, localFolder in enumerate(localFolders):
+            self._setTableItem(rowIndex, 0, localFolder.display_name)
+            self._setTableItem(rowIndex, 1, localFolder.path)
+            self._setTableItem(rowIndex, 2, "Si" if localFolder.is_active else "No")
+            nameItem = self.foldersTable.item(rowIndex, 0)
+            if nameItem is not None:
+                nameItem.setData(Qt.ItemDataRole.UserRole, localFolder.id)
+
+    def showActiveFolder(self, activeFolder: LocalFolderDto | None) -> None:
+        if activeFolder is None:
+            self.activeFolderLabel.setText(
+                "Todavía no has elegido una biblioteca principal. Guarda una carpeta o "
+                "selecciona una ya existente."
+            )
+            return
+
+        self.activeFolderLabel.setText(
+            f"<b>{activeFolder.display_name}</b><br>{activeFolder.path}"
+        )
+        self.folderInput.setText(activeFolder.path)
+
+    def folderPath(self) -> str:
+        return self.folderInput.text()
+
+    def setFolderPath(self, path: str) -> None:
+        self.folderInput.setText(path)
+
+    def selectedFolderId(self) -> int | None:
+        selectedItems = self.foldersTable.selectedItems()
+        if not selectedItems:
+            return None
+
+        selectedRow = selectedItems[0].row()
+        folderItem = self.foldersTable.item(selectedRow, 0)
+        if folderItem is None:
+            return None
+
+        folderId = folderItem.data(Qt.ItemDataRole.UserRole)
+        if folderId is None:
+            return None
+
+        return int(folderId)
+
     def _buildHeader(self) -> QWidget:
         container = QWidget()
         title = QLabel("Bibliotecas locales")
         title.setObjectName("sectionTitle")
         intro = QLabel(
-            "Usa esta zona para registrar carpetas de musica y cambiar de biblioteca "
+            "Usa esta zona para registrar carpetas de música y cambiar de biblioteca "
             "sin tener que volver a escribir la ruta cada vez."
         )
         intro.setObjectName("sectionHint")
@@ -118,3 +167,8 @@ class LocalLibrariesSection(QFrame):
         layout.addStretch()
         layout.addWidget(self.activateFolderButton)
         return layout
+
+    def _setTableItem(self, rowIndex: int, columnIndex: int, value: str) -> None:
+        item = QTableWidgetItem(value)
+        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        self.foldersTable.setItem(rowIndex, columnIndex, item)
