@@ -12,6 +12,13 @@ class LocalFolderSqlAlchemyRepository(LocalFolderRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
 
+    def list_all(self) -> list[LocalFolder]:
+        statement: Select[tuple[LocalFolderModel]] = select(LocalFolderModel).order_by(
+            LocalFolderModel.display_name.asc(),
+            LocalFolderModel.path.asc(),
+        )
+        return [self._to_entity(model) for model in self._session.scalars(statement).all()]
+
     def get_active(self) -> LocalFolder | None:
         statement: Select[tuple[LocalFolderModel]] = select(LocalFolderModel).where(
             LocalFolderModel.is_active.is_(True)
@@ -41,6 +48,21 @@ class LocalFolderSqlAlchemyRepository(LocalFolderRepository):
             model.display_name = display_name
             model.is_active = True
 
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
+
+    def activate(self, local_folder_id: int) -> LocalFolder:
+        statement: Select[tuple[LocalFolderModel]] = select(LocalFolderModel).where(
+            LocalFolderModel.id == local_folder_id
+        )
+        model = self._session.scalar(statement)
+        if model is None:
+            msg = "La biblioteca seleccionada no existe."
+            raise ValueError(msg)
+
+        self._session.query(LocalFolderModel).update({LocalFolderModel.is_active: False})
+        model.is_active = True
         self._session.commit()
         self._session.refresh(model)
         return self._to_entity(model)

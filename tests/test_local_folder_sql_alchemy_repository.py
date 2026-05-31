@@ -23,6 +23,22 @@ def test_get_active_returns_none_when_there_is_no_active_folder() -> None:
     assert repository.get_active() is None
 
 
+def test_list_all_returns_saved_libraries(tmp_path: Path) -> None:
+    session = create_session()
+    repository = LocalFolderSqlAlchemyRepository(session)
+    first_folder = tmp_path / "first"
+    second_folder = tmp_path / "second"
+    first_folder.mkdir()
+    second_folder.mkdir()
+
+    repository.save_as_active(str(first_folder), first_folder.name)
+    repository.save_as_active(str(second_folder), second_folder.name)
+
+    local_folders = repository.list_all()
+
+    assert len(local_folders) == 2
+
+
 def test_save_as_active_persists_folder_and_marks_it_active(tmp_path: Path) -> None:
     session = create_session()
     repository = LocalFolderSqlAlchemyRepository(session)
@@ -53,3 +69,23 @@ def test_save_as_active_deactivates_previous_active_folder(tmp_path: Path) -> No
 
     assert len(active_folders) == 1
     assert active_folders[0].path == str(second_folder)
+
+
+def test_activate_switches_back_to_an_existing_library(tmp_path: Path) -> None:
+    session = create_session()
+    repository = LocalFolderSqlAlchemyRepository(session)
+    first_folder = tmp_path / "first"
+    second_folder = tmp_path / "second"
+    first_folder.mkdir()
+    second_folder.mkdir()
+
+    first_local_folder = repository.save_as_active(str(first_folder), first_folder.name)
+    repository.save_as_active(str(second_folder), second_folder.name)
+
+    activated_folder = repository.activate(first_local_folder.id or 0)
+
+    assert activated_folder.id == first_local_folder.id
+    assert activated_folder.is_active is True
+    active_folder = repository.get_active()
+    assert active_folder is not None
+    assert active_folder.id == first_local_folder.id

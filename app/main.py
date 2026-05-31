@@ -5,10 +5,12 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from app.application.use_cases import (
+    ActivateLocalFolderUseCase,
     BootstrapDatabaseUseCase,
     CreateIgnoredTermUseCase,
     DefineMainLocalFolderUseCase,
     GetActiveLocalFolderUseCase,
+    ListLocalFoldersUseCase,
     ListIgnoredTermsUseCase,
 )
 from app.config.settings import get_settings
@@ -35,7 +37,9 @@ def main() -> int:
         create_use_case=CreateIgnoredTermUseCase(ignored_term_repository),
     )
     local_folder_view_model = LocalFolderViewModel(
+        list_use_case=ListLocalFoldersUseCase(local_folder_repository),
         get_active_use_case=GetActiveLocalFolderUseCase(local_folder_repository),
+        activate_use_case=ActivateLocalFolderUseCase(local_folder_repository),
         define_main_use_case=DefineMainLocalFolderUseCase(local_folder_repository),
     )
 
