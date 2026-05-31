@@ -24,6 +24,19 @@ Debe:
 * Evitar sobreingenieria.
 * Proponer cambios pequenos, coherentes y verificables.
 
+### Permiso para lectura de archivos
+
+El usuario autoriza a la IA a ejecutar comandos de lectura de archivos y exploracion del arbol del proyecto cuando sean necesarios para analizar, revisar o modificar el codigo.
+
+Esto incluye, por ejemplo:
+
+* lectura de archivos de codigo, configuracion y documentacion
+* busquedas de texto en el proyecto
+* listado de carpetas y archivos
+* inspeccion de estructura dentro de `app/`, `tests/`, `doc/` y rutas relacionadas
+
+Este permiso aplica como regla general de trabajo dentro del repositorio.
+
 ---
 
 ## Reglas de diseño
@@ -269,6 +282,10 @@ Reglas operativas:
 * No introducir HTML/CSS web ni paradigmas de React, Tailwind o Bootstrap
 * Respetar espaciados consistentes y una jerarquia tipografica clara
 * Mantener sidebar, paneles, tablas y barras persistentes con estructura entendible para usuario final
+* Todo componente visual dentro de `app/presentation/ui/` debe vivir en su propia carpeta con su pareja `componentName.py` y `componentName.qss`
+* En un mismo nivel no pueden convivir archivos `.py` y `.qss` de un componente con subcarpetas de otros componentes; si ocurre, el componente de ese nivel debe moverse a su propia subcarpeta
+* Cuando varios componentes formen parte de una misma pantalla o feature, deben agruparse dentro de una carpeta padre con nombre de feature, no reutilizar el nombre de uno de sus hijos
+* Los helpers no visuales no deben vivir dentro de `app/presentation/ui/`; deben ir fuera de UI dentro de `presentation` segun su responsabilidad
 
 La guia completa de UI/UX debe mantenerse en `doc/ui/ui_ux_guidelines.md`.
 
