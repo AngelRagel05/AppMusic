@@ -1,0 +1,22 @@
+#ignoredTermsRoot {
+    background-color: {{COLOR_PANEL}};
+    border: 1px solid {{COLOR_BORDER}};
+    border-radius: {{RADIUS_12}};
+}
+
+#sectionTitle {
+    color: {{COLOR_TEXT}};
+    font-size: 20px;
+    font-weight: 700;
+}
+
+#sectionHint {
+    color: {{COLOR_TEXT_SECONDARY}};
+    font-size: 12px;
+}
+
+#softGroup {
+    background-color: {{COLOR_SURFACE}};
+    border: 1px solid {{COLOR_BORDER}};
+    border-radius: {{RADIUS_12}};
+}

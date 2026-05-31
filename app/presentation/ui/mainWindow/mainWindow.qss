@@ -1,0 +1,3 @@
+#mainWindowRoot {
+    background-color: {{COLOR_BG}};
+}

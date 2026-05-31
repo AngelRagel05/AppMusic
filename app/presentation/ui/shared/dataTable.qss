@@ -1,0 +1,14 @@
+QTableWidget {
+    background-color: {{COLOR_SURFACE}};
+    alternate-background-color: {{COLOR_SURFACE_ALT}};
+    border: 1px solid {{COLOR_BORDER}};
+    border-radius: {{RADIUS_12}};
+    color: {{COLOR_TEXT}};
+    selection-background-color: {{COLOR_SELECTION}};
+}
+
+QHeaderView::section {
+    background-color: {{COLOR_PANEL}};
+    color: {{COLOR_TEXT_SECONDARY}};
+    border-bottom: 1px solid {{COLOR_BORDER}};
+}

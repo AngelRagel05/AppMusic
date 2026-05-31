@@ -19,7 +19,8 @@ from app.infrastructure.repositories import (
     IgnoredTermSqlAlchemyRepository,
     LocalFolderSqlAlchemyRepository,
 )
-from app.presentation.ui.main_window import MainWindow
+from app.presentation.styles import loadQss
+from app.presentation.ui import MainWindow
 from app.presentation.viewmodels import IgnoredTermsViewModel, LocalFolderViewModel
 from app.utils.logging import configure_logging
 
@@ -45,6 +46,7 @@ def main() -> int:
 
     app = QApplication(sys.argv)
     app.setApplicationName(settings.app_name)
+    app.setStyleSheet(loadQss("app/presentation/styles/global.qss"))
 
     window = MainWindow(local_folder_view_model, ignored_terms_view_model)
     window.show()

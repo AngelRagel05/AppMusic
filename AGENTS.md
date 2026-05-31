@@ -254,6 +254,24 @@ boton
 → use case coordina servicios
 ```
 
+### UI y UX
+
+La interfaz debe sentirse como una aplicacion de escritorio profesional, no como una web empaquetada.
+
+Reglas operativas:
+
+* Usar PySide6 y widgets nativos de Qt
+* Centralizar estilos visuales en QSS
+* Evitar estilos dispersos dentro de ventanas o widgets salvo excepciones justificadas
+* Mantener una estetica oscura, limpia y orientada a productividad
+* Reutilizar componentes visuales antes de crear otros nuevos
+* Usar `objectName` para estilos especificos en vez de jerarquias frágiles
+* No introducir HTML/CSS web ni paradigmas de React, Tailwind o Bootstrap
+* Respetar espaciados consistentes y una jerarquia tipografica clara
+* Mantener sidebar, paneles, tablas y barras persistentes con estructura entendible para usuario final
+
+La guia completa de UI/UX debe mantenerse en `doc/ui/ui_ux_guidelines.md`.
+
 ### Repositories
 
 Los repositories deben ocultar el ORM o la tecnologia de persistencia.

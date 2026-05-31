@@ -1,0 +1,42 @@
+#heroCard {
+    background-color: {{COLOR_PANEL}};
+    border: 1px solid {{COLOR_BORDER}};
+    border-radius: {{RADIUS_12}};
+}
+
+#heroTitle {
+    color: {{COLOR_TEXT}};
+    font-size: 24px;
+    font-weight: 700;
+}
+
+#heroSubtitle {
+    color: {{COLOR_TEXT_SECONDARY}};
+    font-size: 16px;
+}
+
+#metricCard {
+    background-color: {{COLOR_SURFACE}};
+    border: 1px solid {{COLOR_BORDER}};
+    border-radius: {{RADIUS_12}};
+}
+
+#heroMetricTitle {
+    color: {{COLOR_TEXT_DISABLED}};
+    font-size: 12px;
+    font-weight: 700;
+}
+
+#heroMetricValue {
+    color: {{COLOR_TEXT}};
+    font-size: 18px;
+    font-weight: 700;
+}
+
+#statusBanner {
+    background-color: {{COLOR_ACCENT_SOFT}};
+    color: {{COLOR_TEXT}};
+    border: 1px solid {{COLOR_ACCENT}};
+    border-radius: {{RADIUS_8}};
+    padding: 12px 14px;
+}
