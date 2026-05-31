@@ -41,6 +41,17 @@ def test_ignored_term_has_composite_unique_constraint() -> None:
     assert ("term", "scope", "language") in unique_constraints
 
 
+def test_local_folder_has_unique_constraint_for_path() -> None:
+    table = Base.metadata.tables["local_folder"]
+    unique_constraints = {
+        tuple(constraint.columns.keys())
+        for constraint in table.constraints
+        if isinstance(constraint, UniqueConstraint)
+    }
+
+    assert ("path",) in unique_constraints
+
+
 def test_local_song_has_non_negative_check_constraints() -> None:
     table = Base.metadata.tables["local_song"]
     check_constraints = {
