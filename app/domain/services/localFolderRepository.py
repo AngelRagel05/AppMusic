@@ -21,3 +21,11 @@ class LocalFolderRepository(ABC):
     @abstractmethod
     def activate(self, local_folder_id: int) -> LocalFolder:
         raise NotImplementedError
+
+    @abstractmethod
+    def update(self, local_folder_id: int, path: str, display_name: str) -> LocalFolder:
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete(self, local_folder_id: int) -> None:
+        raise NotImplementedError

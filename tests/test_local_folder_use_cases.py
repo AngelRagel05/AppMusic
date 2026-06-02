@@ -5,12 +5,15 @@ from pathlib import Path
 import pytest
 
 from app.application.dto.activateLocalFolderInputDto import ActivateLocalFolderInputDto
+from app.application.dto.deleteLocalFolderInputDto import DeleteLocalFolderInputDto
 from app.application.dto.defineMainLocalFolderInputDto import (
     DefineMainLocalFolderInputDto,
 )
+from app.application.dto.updateLocalFolderInputDto import UpdateLocalFolderInputDto
 from app.application.use_cases.activateLocalFolderUseCase import (
     ActivateLocalFolderUseCase,
 )
+from app.application.use_cases.deleteLocalFolderUseCase import DeleteLocalFolderUseCase
 from app.application.use_cases.defineMainLocalFolderUseCase import (
     DefineMainLocalFolderUseCase,
 )
@@ -18,6 +21,7 @@ from app.application.use_cases.getActiveLocalFolderUseCase import (
     GetActiveLocalFolderUseCase,
 )
 from app.application.use_cases.listLocalFoldersUseCase import ListLocalFoldersUseCase
+from app.application.use_cases.updateLocalFolderUseCase import UpdateLocalFolderUseCase
 from app.domain.entities.localFolder import LocalFolder
 from app.domain.services.localFolderRepository import LocalFolderRepository
 
@@ -104,6 +108,39 @@ class InMemoryLocalFolderRepository(LocalFolderRepository):
 
         msg = "La biblioteca seleccionada no existe."
         raise ValueError(msg)
+
+    def update(self, local_folder_id: int, path: str, display_name: str) -> LocalFolder:
+        for existing_folder in self._folders:
+            if existing_folder.path == path and existing_folder.id != local_folder_id:
+                msg = "Ya existe una biblioteca guardada con esa ruta."
+                raise ValueError(msg)
+
+        for index, folder in enumerate(self._folders):
+            if folder.id != local_folder_id:
+                continue
+
+            updated_folder = LocalFolder(
+                id=folder.id,
+                path=path,
+                display_name=display_name,
+                is_active=folder.is_active,
+                created_at=folder.created_at,
+                updated_at=folder.updated_at,
+            )
+            self._folders[index] = updated_folder
+            return updated_folder
+
+        msg = "La biblioteca seleccionada no existe."
+        raise ValueError(msg)
+
+    def delete(self, local_folder_id: int) -> None:
+        previous_count = len(self._folders)
+        self._folders = [
+            folder for folder in self._folders if folder.id != local_folder_id
+        ]
+        if len(self._folders) == previous_count:
+            msg = "La biblioteca seleccionada no existe."
+            raise ValueError(msg)
 
 
 def test_define_main_local_folder_use_case_persists_existing_folder_as_active(
@@ -195,3 +232,43 @@ def test_activate_local_folder_use_case_switches_active_library(tmp_path: Path) 
     active_folder = repository.get_active()
     assert active_folder is not None
     assert active_folder.id == first_local_folder.id
+
+
+def test_update_local_folder_use_case_updates_selected_library(tmp_path: Path) -> None:
+    repository = InMemoryLocalFolderRepository()
+    define_use_case = DefineMainLocalFolderUseCase(repository)
+    update_use_case = UpdateLocalFolderUseCase(repository)
+    first_folder = tmp_path / "first"
+    renamed_folder = tmp_path / "renamed"
+    first_folder.mkdir()
+    renamed_folder.mkdir()
+
+    created_folder = define_use_case.execute(
+        DefineMainLocalFolderInputDto(path=str(first_folder))
+    )
+
+    updated_folder = update_use_case.execute(
+        UpdateLocalFolderInputDto(
+            local_folder_id=created_folder.id,
+            path=str(renamed_folder),
+        )
+    )
+
+    assert updated_folder.path == str(renamed_folder.resolve())
+    assert updated_folder.display_name == "renamed"
+
+
+def test_delete_local_folder_use_case_removes_selected_library(tmp_path: Path) -> None:
+    repository = InMemoryLocalFolderRepository()
+    define_use_case = DefineMainLocalFolderUseCase(repository)
+    delete_use_case = DeleteLocalFolderUseCase(repository)
+    first_folder = tmp_path / "first"
+    first_folder.mkdir()
+
+    created_folder = define_use_case.execute(
+        DefineMainLocalFolderInputDto(path=str(first_folder))
+    )
+
+    delete_use_case.execute(DeleteLocalFolderInputDto(local_folder_id=created_folder.id))
+
+    assert repository.list_all() == []

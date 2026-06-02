@@ -17,7 +17,7 @@ La app puede recordar varias playlists, pero solo una debe estar activa como pla
 | `id` | entero | si | PK | Identificador unico |
 | `playlist_url` | texto | si | UNIQUE | URL completa de la playlist |
 | `external_playlist_id` | texto | si | UNIQUE | Identificador externo de YouTube |
-| `title` | texto | si | - | Titulo de la playlist |
+| `title` | texto | si | - | Nombre visible definido por el usuario para identificar la playlist dentro de la app |
 | `is_active` | booleano | si | - | Indica si es la playlist operativa |
 | `created_at` | fecha-hora | si | - | Fecha de creacion |
 | `updated_at` | fecha-hora | si | - | Fecha de ultima actualizacion |
@@ -58,3 +58,6 @@ erDiagram
 ## Notas
 
 * La restriccion de una sola playlist activa debe resolverse desde la aplicacion.
+* `external_playlist_id` guarda exclusivamente el id externo que viene de YouTube.
+* `id` sigue siendo el identificador interno de la tabla.
+* `title` no es el id ni un alias tecnico: es el nombre visible que el usuario decide usar.

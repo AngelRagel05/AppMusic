@@ -103,3 +103,39 @@ def test_activate_switches_back_to_an_existing_playlist() -> None:
     active_playlist = repository.get_active()
     assert active_playlist is not None
     assert active_playlist.id == first_youtube_playlist.id
+
+
+def test_update_changes_existing_playlist_data() -> None:
+    session = create_session()
+    repository = YoutubePlaylistSqlAlchemyRepository(session)
+
+    created_playlist = repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PLFIRST",
+        "PLFIRST",
+        "Playlist PLFIRST",
+    )
+
+    updated_playlist = repository.update(
+        created_playlist.id or 0,
+        "https://www.youtube.com/playlist?list=PLUPDATED",
+        "PLUPDATED",
+        "Playlist actualizada",
+    )
+
+    assert updated_playlist.external_playlist_id == "PLUPDATED"
+    assert updated_playlist.title == "Playlist actualizada"
+
+
+def test_delete_removes_existing_playlist() -> None:
+    session = create_session()
+    repository = YoutubePlaylistSqlAlchemyRepository(session)
+
+    created_playlist = repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PLFIRST",
+        "PLFIRST",
+        "Playlist PLFIRST",
+    )
+
+    repository.delete(created_playlist.id or 0)
+
+    assert repository.list_all() == []

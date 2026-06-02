@@ -67,6 +67,42 @@ class LocalFolderSqlAlchemyRepository(LocalFolderRepository):
         self._session.refresh(model)
         return self._to_entity(model)
 
+    def update(self, local_folder_id: int, path: str, display_name: str) -> LocalFolder:
+        statement: Select[tuple[LocalFolderModel]] = select(LocalFolderModel).where(
+            LocalFolderModel.id == local_folder_id
+        )
+        model = self._session.scalar(statement)
+        if model is None:
+            msg = "La biblioteca seleccionada no existe."
+            raise ValueError(msg)
+
+        duplicate_statement: Select[tuple[LocalFolderModel]] = select(LocalFolderModel).where(
+            LocalFolderModel.path == path,
+            LocalFolderModel.id != local_folder_id,
+        )
+        duplicate_model = self._session.scalar(duplicate_statement)
+        if duplicate_model is not None:
+            msg = "Ya existe una biblioteca guardada con esa ruta."
+            raise ValueError(msg)
+
+        model.path = path
+        model.display_name = display_name
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
+
+    def delete(self, local_folder_id: int) -> None:
+        statement: Select[tuple[LocalFolderModel]] = select(LocalFolderModel).where(
+            LocalFolderModel.id == local_folder_id
+        )
+        model = self._session.scalar(statement)
+        if model is None:
+            msg = "La biblioteca seleccionada no existe."
+            raise ValueError(msg)
+
+        self._session.delete(model)
+        self._session.commit()
+
     def _to_entity(self, model: LocalFolderModel) -> LocalFolder:
         return LocalFolder(
             id=model.id,

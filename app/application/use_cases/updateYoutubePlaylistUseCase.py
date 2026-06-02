@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from urllib.parse import parse_qs, urlparse
 
-from app.application.dto.defineMainYoutubePlaylistInputDto import (
-    DefineMainYoutubePlaylistInputDto,
-)
+from app.application.dto.updateYoutubePlaylistInputDto import UpdateYoutubePlaylistInputDto
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
 from app.domain.services.youtubePlaylistRepository import YoutubePlaylistRepository
 
@@ -18,14 +16,13 @@ VALID_YOUTUBE_HOSTS = {
 }
 
 
-class DefineMainYoutubePlaylistUseCase:
+class UpdateYoutubePlaylistUseCase:
     def __init__(self, repository: YoutubePlaylistRepository) -> None:
         self._repository = repository
 
-    def execute(self, input_dto: DefineMainYoutubePlaylistInputDto) -> YoutubePlaylistDto:
-        normalized_url = input_dto.playlist_url.strip()
-        if not normalized_url:
-            msg = "La playlist principal no puede estar vacia."
+    def execute(self, input_dto: UpdateYoutubePlaylistInputDto) -> YoutubePlaylistDto:
+        if input_dto.youtube_playlist_id <= 0:
+            msg = "La playlist seleccionada no es valida."
             raise ValueError(msg)
 
         normalized_title = input_dto.title.strip()
@@ -33,14 +30,20 @@ class DefineMainYoutubePlaylistUseCase:
             msg = "El nombre de la playlist no puede estar vacio."
             raise ValueError(msg)
 
+        normalized_url = input_dto.playlist_url.strip()
+        if not normalized_url:
+            msg = "La playlist principal no puede estar vacia."
+            raise ValueError(msg)
+
         external_playlist_id = self._extract_playlist_id(normalized_url)
         playlist_url = CANONICAL_YOUTUBE_PLAYLIST_URL.format(
             playlist_id=external_playlist_id
         )
-        youtube_playlist = self._repository.save_as_active(
-            playlist_url=playlist_url,
-            external_playlist_id=external_playlist_id,
-            title=normalized_title,
+        youtube_playlist = self._repository.update(
+            input_dto.youtube_playlist_id,
+            playlist_url,
+            external_playlist_id,
+            normalized_title,
         )
         return YoutubePlaylistDto(
             id=youtube_playlist.id or 0,

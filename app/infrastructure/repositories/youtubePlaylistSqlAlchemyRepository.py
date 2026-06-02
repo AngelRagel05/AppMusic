@@ -78,6 +78,62 @@ class YoutubePlaylistSqlAlchemyRepository(YoutubePlaylistRepository):
         self._session.refresh(model)
         return self._to_entity(model)
 
+    def update(
+        self,
+        youtube_playlist_id: int,
+        playlist_url: str,
+        external_playlist_id: str,
+        title: str,
+    ) -> YoutubePlaylist:
+        statement: Select[tuple[YoutubePlaylistModel]] = select(YoutubePlaylistModel).where(
+            YoutubePlaylistModel.id == youtube_playlist_id
+        )
+        model = self._session.scalar(statement)
+        if model is None:
+            msg = "La playlist seleccionada no existe."
+            raise ValueError(msg)
+
+        duplicate_id_statement: Select[tuple[YoutubePlaylistModel]] = select(
+            YoutubePlaylistModel
+        ).where(
+            YoutubePlaylistModel.external_playlist_id == external_playlist_id,
+            YoutubePlaylistModel.id != youtube_playlist_id,
+        )
+        duplicate_id_model = self._session.scalar(duplicate_id_statement)
+        if duplicate_id_model is not None:
+            msg = "Ya existe una playlist guardada con ese identificador de YouTube."
+            raise ValueError(msg)
+
+        duplicate_url_statement: Select[tuple[YoutubePlaylistModel]] = select(
+            YoutubePlaylistModel
+        ).where(
+            YoutubePlaylistModel.playlist_url == playlist_url,
+            YoutubePlaylistModel.id != youtube_playlist_id,
+        )
+        duplicate_url_model = self._session.scalar(duplicate_url_statement)
+        if duplicate_url_model is not None:
+            msg = "Ya existe una playlist guardada con esa URL."
+            raise ValueError(msg)
+
+        model.playlist_url = playlist_url
+        model.external_playlist_id = external_playlist_id
+        model.title = title
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
+
+    def delete(self, youtube_playlist_id: int) -> None:
+        statement: Select[tuple[YoutubePlaylistModel]] = select(YoutubePlaylistModel).where(
+            YoutubePlaylistModel.id == youtube_playlist_id
+        )
+        model = self._session.scalar(statement)
+        if model is None:
+            msg = "La playlist seleccionada no existe."
+            raise ValueError(msg)
+
+        self._session.delete(model)
+        self._session.commit()
+
     def _to_entity(self, model: YoutubePlaylistModel) -> YoutubePlaylist:
         return YoutubePlaylist(
             id=model.id,

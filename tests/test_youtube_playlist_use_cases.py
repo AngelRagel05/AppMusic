@@ -5,11 +5,20 @@ import pytest
 from app.application.dto.activateYoutubePlaylistInputDto import (
     ActivateYoutubePlaylistInputDto,
 )
+from app.application.dto.deleteYoutubePlaylistInputDto import (
+    DeleteYoutubePlaylistInputDto,
+)
 from app.application.dto.defineMainYoutubePlaylistInputDto import (
     DefineMainYoutubePlaylistInputDto,
 )
+from app.application.dto.updateYoutubePlaylistInputDto import (
+    UpdateYoutubePlaylistInputDto,
+)
 from app.application.use_cases.activateYoutubePlaylistUseCase import (
     ActivateYoutubePlaylistUseCase,
+)
+from app.application.use_cases.deleteYoutubePlaylistUseCase import (
+    DeleteYoutubePlaylistUseCase,
 )
 from app.application.use_cases.defineMainYoutubePlaylistUseCase import (
     DefineMainYoutubePlaylistUseCase,
@@ -19,6 +28,9 @@ from app.application.use_cases.getActiveYoutubePlaylistUseCase import (
 )
 from app.application.use_cases.listYoutubePlaylistsUseCase import (
     ListYoutubePlaylistsUseCase,
+)
+from app.application.use_cases.updateYoutubePlaylistUseCase import (
+    UpdateYoutubePlaylistUseCase,
 )
 from app.domain.entities.youtubePlaylist import YoutubePlaylist
 from app.domain.services.youtubePlaylistRepository import YoutubePlaylistRepository
@@ -117,6 +129,55 @@ class InMemoryYoutubePlaylistRepository(YoutubePlaylistRepository):
         msg = "La playlist seleccionada no existe."
         raise ValueError(msg)
 
+    def update(
+        self,
+        youtube_playlist_id: int,
+        playlist_url: str,
+        external_playlist_id: str,
+        title: str,
+    ) -> YoutubePlaylist:
+        for existing_playlist in self._playlists:
+            if (
+                existing_playlist.external_playlist_id == external_playlist_id
+                and existing_playlist.id != youtube_playlist_id
+            ):
+                msg = "Ya existe una playlist guardada con ese identificador de YouTube."
+                raise ValueError(msg)
+            if (
+                existing_playlist.playlist_url == playlist_url
+                and existing_playlist.id != youtube_playlist_id
+            ):
+                msg = "Ya existe una playlist guardada con esa URL."
+                raise ValueError(msg)
+
+        for index, playlist in enumerate(self._playlists):
+            if playlist.id != youtube_playlist_id:
+                continue
+
+            updated_playlist = YoutubePlaylist(
+                id=playlist.id,
+                playlist_url=playlist_url,
+                external_playlist_id=external_playlist_id,
+                title=title,
+                is_active=playlist.is_active,
+                created_at=playlist.created_at,
+                updated_at=playlist.updated_at,
+            )
+            self._playlists[index] = updated_playlist
+            return updated_playlist
+
+        msg = "La playlist seleccionada no existe."
+        raise ValueError(msg)
+
+    def delete(self, youtube_playlist_id: int) -> None:
+        previous_count = len(self._playlists)
+        self._playlists = [
+            playlist for playlist in self._playlists if playlist.id != youtube_playlist_id
+        ]
+        if len(self._playlists) == previous_count:
+            msg = "La playlist seleccionada no existe."
+            raise ValueError(msg)
+
 
 def test_define_main_youtube_playlist_use_case_persists_playlist_as_active() -> None:
     repository = InMemoryYoutubePlaylistRepository()
@@ -124,13 +185,14 @@ def test_define_main_youtube_playlist_use_case_persists_playlist_as_active() -> 
 
     youtube_playlist = use_case.execute(
         DefineMainYoutubePlaylistInputDto(
-            playlist_url="  https://www.youtube.com/playlist?list=PL1234567890  "
+            playlist_url="  https://www.youtube.com/playlist?list=PL1234567890  ",
+            title="  Favoritas junio  ",
         )
     )
 
     assert youtube_playlist.playlist_url == "https://www.youtube.com/playlist?list=PL1234567890"
     assert youtube_playlist.external_playlist_id == "PL1234567890"
-    assert youtube_playlist.title == "Playlist PL1234567890"
+    assert youtube_playlist.title == "Favoritas junio"
     assert youtube_playlist.is_active is True
 
 
@@ -141,7 +203,21 @@ def test_define_main_youtube_playlist_use_case_rejects_non_youtube_url() -> None
     with pytest.raises(ValueError, match="no pertenece a YouTube"):
         use_case.execute(
             DefineMainYoutubePlaylistInputDto(
-                playlist_url="https://open.spotify.com/playlist/123"
+                playlist_url="https://open.spotify.com/playlist/123",
+                title="Mi playlist",
+            )
+        )
+
+
+def test_define_main_youtube_playlist_use_case_rejects_empty_title() -> None:
+    repository = InMemoryYoutubePlaylistRepository()
+    use_case = DefineMainYoutubePlaylistUseCase(repository)
+
+    with pytest.raises(ValueError, match="nombre de la playlist"):
+        use_case.execute(
+            DefineMainYoutubePlaylistInputDto(
+                playlist_url="https://www.youtube.com/playlist?list=PL123",
+                title="   ",
             )
         )
 
@@ -153,7 +229,8 @@ def test_define_main_youtube_playlist_use_case_rejects_url_without_list_paramete
     with pytest.raises(ValueError, match="parametro list"):
         use_case.execute(
             DefineMainYoutubePlaylistInputDto(
-                playlist_url="https://www.youtube.com/watch?v=abc123"
+                playlist_url="https://www.youtube.com/watch?v=abc123",
+                title="Mi playlist",
             )
         )
 
@@ -172,12 +249,14 @@ def test_list_youtube_playlists_use_case_returns_saved_playlists() -> None:
 
     define_use_case.execute(
         DefineMainYoutubePlaylistInputDto(
-            playlist_url="https://www.youtube.com/playlist?list=PLFIRST"
+            playlist_url="https://www.youtube.com/playlist?list=PLFIRST",
+            title="Lista uno",
         )
     )
     define_use_case.execute(
         DefineMainYoutubePlaylistInputDto(
-            playlist_url="https://music.youtube.com/playlist?list=PLSECOND"
+            playlist_url="https://music.youtube.com/playlist?list=PLSECOND",
+            title="Lista dos",
         )
     )
 
@@ -197,12 +276,14 @@ def test_activate_youtube_playlist_use_case_switches_active_playlist() -> None:
 
     first_playlist = define_use_case.execute(
         DefineMainYoutubePlaylistInputDto(
-            playlist_url="https://www.youtube.com/playlist?list=PLFIRST"
+            playlist_url="https://www.youtube.com/playlist?list=PLFIRST",
+            title="Lista uno",
         )
     )
     define_use_case.execute(
         DefineMainYoutubePlaylistInputDto(
-            playlist_url="https://www.youtube.com/playlist?list=PLSECOND"
+            playlist_url="https://www.youtube.com/playlist?list=PLSECOND",
+            title="Lista dos",
         )
     )
 
@@ -215,3 +296,46 @@ def test_activate_youtube_playlist_use_case_switches_active_playlist() -> None:
     active_playlist = repository.get_active()
     assert active_playlist is not None
     assert active_playlist.id == first_playlist.id
+
+
+def test_update_youtube_playlist_use_case_updates_selected_playlist() -> None:
+    repository = InMemoryYoutubePlaylistRepository()
+    define_use_case = DefineMainYoutubePlaylistUseCase(repository)
+    update_use_case = UpdateYoutubePlaylistUseCase(repository)
+
+    created_playlist = define_use_case.execute(
+        DefineMainYoutubePlaylistInputDto(
+            playlist_url="https://www.youtube.com/playlist?list=PLFIRST",
+            title="Lista uno",
+        )
+    )
+
+    updated_playlist = update_use_case.execute(
+        UpdateYoutubePlaylistInputDto(
+            youtube_playlist_id=created_playlist.id,
+            playlist_url="https://www.youtube.com/playlist?list=PLUPDATED",
+            title="Lista actualizada",
+        )
+    )
+
+    assert updated_playlist.external_playlist_id == "PLUPDATED"
+    assert updated_playlist.title == "Lista actualizada"
+
+
+def test_delete_youtube_playlist_use_case_removes_selected_playlist() -> None:
+    repository = InMemoryYoutubePlaylistRepository()
+    define_use_case = DefineMainYoutubePlaylistUseCase(repository)
+    delete_use_case = DeleteYoutubePlaylistUseCase(repository)
+
+    created_playlist = define_use_case.execute(
+        DefineMainYoutubePlaylistInputDto(
+            playlist_url="https://www.youtube.com/playlist?list=PLFIRST",
+            title="Lista uno",
+        )
+    )
+
+    delete_use_case.execute(
+        DeleteYoutubePlaylistInputDto(youtube_playlist_id=created_playlist.id)
+    )
+
+    assert repository.list_all() == []

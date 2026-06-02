@@ -4,6 +4,6 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class DefineMainYoutubePlaylistInputDto:
-    playlist_url: str
-    title: str
+class UpdateLocalFolderInputDto:
+    local_folder_id: int
+    path: str

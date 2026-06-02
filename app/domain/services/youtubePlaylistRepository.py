@@ -26,3 +26,17 @@ class YoutubePlaylistRepository(ABC):
     @abstractmethod
     def activate(self, youtube_playlist_id: int) -> YoutubePlaylist:
         raise NotImplementedError
+
+    @abstractmethod
+    def update(
+        self,
+        youtube_playlist_id: int,
+        playlist_url: str,
+        external_playlist_id: str,
+        title: str,
+    ) -> YoutubePlaylist:
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete(self, youtube_playlist_id: int) -> None:
+        raise NotImplementedError

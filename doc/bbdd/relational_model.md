@@ -176,6 +176,12 @@ Restricciones:
 * `external_playlist_id` debe ser unico
 * solo una playlist debe estar activa al mismo tiempo a nivel de aplicacion
 
+Notas:
+
+* `title` guarda el nombre visible definido por el usuario dentro de la app
+* `external_playlist_id` guarda el id externo real de YouTube
+* `id` es la clave primaria interna de la tabla
+
 ### `youtube_playlist_item`
 
 Representa una cancion o video individual dentro de una playlist de YouTube.

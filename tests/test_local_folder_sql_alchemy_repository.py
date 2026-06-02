@@ -89,3 +89,36 @@ def test_activate_switches_back_to_an_existing_library(tmp_path: Path) -> None:
     active_folder = repository.get_active()
     assert active_folder is not None
     assert active_folder.id == first_local_folder.id
+
+
+def test_update_changes_existing_library_path(tmp_path: Path) -> None:
+    session = create_session()
+    repository = LocalFolderSqlAlchemyRepository(session)
+    first_folder = tmp_path / "first"
+    renamed_folder = tmp_path / "renamed"
+    first_folder.mkdir()
+    renamed_folder.mkdir()
+
+    created_folder = repository.save_as_active(str(first_folder), first_folder.name)
+
+    updated_folder = repository.update(
+        created_folder.id or 0,
+        str(renamed_folder),
+        renamed_folder.name,
+    )
+
+    assert updated_folder.path == str(renamed_folder)
+    assert updated_folder.display_name == renamed_folder.name
+
+
+def test_delete_removes_existing_library(tmp_path: Path) -> None:
+    session = create_session()
+    repository = LocalFolderSqlAlchemyRepository(session)
+    folder = tmp_path / "first"
+    folder.mkdir()
+
+    created_folder = repository.save_as_active(str(folder), folder.name)
+
+    repository.delete(created_folder.id or 0)
+
+    assert repository.list_all() == []
