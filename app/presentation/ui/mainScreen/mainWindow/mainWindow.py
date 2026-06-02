@@ -1,25 +1,22 @@
 from __future__ import annotations
 
-from pathlib import Path
+import tkinter as tk
 
-from PySide6.QtWidgets import QMainWindow
-
-from app.presentation.styles import applyComponentQss
-from app.presentation.ui.mainScreen.mainWindowPage.mainWindowPage import MainWindowPage
+from app.presentation.ui.mainScreen.appLayout.appLayout import AppLayout
 
 
-class MainWindow(QMainWindow):
+class MainWindow:
     def __init__(self) -> None:
-        super().__init__()
-        self._page = MainWindowPage()
-
-        self.setObjectName("mainWindowRoot")
-        self.setWindowTitle("AppMusic")
-        self.resize(1280, 820)
-        self.showMaximized()
-        self.setCentralWidget(self._page)
-        applyComponentQss(self, Path(__file__).with_suffix(".qss"))
+        self.window = tk.Tk()
+        self._page = AppLayout(self.window)
+        self._page.pack(fill="both", expand=True)
 
     @property
-    def page(self) -> MainWindowPage:
+    def page(self) -> AppLayout:
         return self._page
+
+    def show(self) -> None:
+        self.window.deiconify()
+
+    def mainloop(self) -> None:
+        self.window.mainloop()

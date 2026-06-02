@@ -1,3 +1,1 @@
-from app.presentation.styles.qssLoader import applyComponentQss, loadQss
-
-__all__ = ["applyComponentQss", "loadQss"]
+"""Legacy package kept only to preserve module structure during the Tkinter migration."""

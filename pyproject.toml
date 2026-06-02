@@ -5,12 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "music-app"
 version = "0.1.0"
-description = "Desktop app for local music management built with Python, PySide6 and SQLAlchemy."
+description = "Desktop app for local music management built with Python, Tkinter and SQLAlchemy."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "Angel J Ragel" }]
 dependencies = [
-    "PySide6>=6.8,<7.0",
     "SQLAlchemy>=2.0,<3.0",
     "alembic>=1.14,<2.0",
     "yt-dlp>=2025.1.0",

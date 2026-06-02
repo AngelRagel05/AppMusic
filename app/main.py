@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import sys
-
-from PySide6.QtWidgets import QApplication
-
 from app.application.use_cases import (
     ActivateLocalFolderUseCase,
     ActivateYoutubePlaylistUseCase,
     BootstrapDatabaseUseCase,
     CreateIgnoredTermUseCase,
+    DeleteLocalFolderUseCase,
+    DeleteYoutubePlaylistUseCase,
     DefineMainLocalFolderUseCase,
     DefineMainYoutubePlaylistUseCase,
     GetActiveLocalFolderUseCase,
@@ -16,6 +14,8 @@ from app.application.use_cases import (
     ListLocalFoldersUseCase,
     ListYoutubePlaylistsUseCase,
     ListIgnoredTermsUseCase,
+    UpdateLocalFolderUseCase,
+    UpdateYoutubePlaylistUseCase,
 )
 from app.config.settings import get_settings
 from app.infrastructure.database import DatabaseBootstrapper, SessionLocal, engine, get_session
@@ -24,7 +24,7 @@ from app.infrastructure.repositories import (
     LocalFolderSqlAlchemyRepository,
     YoutubePlaylistSqlAlchemyRepository,
 )
-from app.presentation.styles import loadQss
+from app.presentation.uiTheme import BASE_THEME, configureRootWindow
 from app.presentation.ui.mainScreen.mainWindow.mainWindow import MainWindow
 from app.presentation.controllers.mainWindowController import MainWindowController
 from app.presentation.viewmodels import (
@@ -53,19 +53,20 @@ def main() -> int:
         get_active_use_case=GetActiveLocalFolderUseCase(local_folder_repository),
         activate_use_case=ActivateLocalFolderUseCase(local_folder_repository),
         define_main_use_case=DefineMainLocalFolderUseCase(local_folder_repository),
+        update_use_case=UpdateLocalFolderUseCase(local_folder_repository),
+        delete_use_case=DeleteLocalFolderUseCase(local_folder_repository),
     )
     youtube_playlist_view_model = YoutubePlaylistViewModel(
         list_use_case=ListYoutubePlaylistsUseCase(youtube_playlist_repository),
         get_active_use_case=GetActiveYoutubePlaylistUseCase(youtube_playlist_repository),
         activate_use_case=ActivateYoutubePlaylistUseCase(youtube_playlist_repository),
         define_main_use_case=DefineMainYoutubePlaylistUseCase(youtube_playlist_repository),
+        update_use_case=UpdateYoutubePlaylistUseCase(youtube_playlist_repository),
+        delete_use_case=DeleteYoutubePlaylistUseCase(youtube_playlist_repository),
     )
 
-    app = QApplication(sys.argv)
-    app.setApplicationName(settings.app_name)
-    app.setStyleSheet(loadQss("app/presentation/styles/global.qss"))
-
     window = MainWindow()
+    configureRootWindow(window.window, settings.app_name, theme=BASE_THEME)
     controller = MainWindowController(
         window,
         local_folder_view_model=local_folder_view_model,
@@ -76,7 +77,8 @@ def main() -> int:
     window.show()
 
     try:
-        return app.exec()
+        window.mainloop()
+        return 0
     finally:
         session.close()
 
