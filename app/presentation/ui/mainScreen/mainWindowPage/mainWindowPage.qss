@@ -1,4 +1,0 @@
-#mainWindowPageRoot,
-#mainWindowPageContent {
-    background-color: transparent;
-}

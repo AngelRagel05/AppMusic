@@ -12,24 +12,20 @@ Cada componente visual debe vivir en su propia carpeta y agrupar como minimo:
 
 ```txt
 componentName/
-├─ componentName.py
-└─ componentName.qss
+└─ componentName.py
 ```
 
 Ejemplos:
 
 ```txt
 app/presentation/ui/localLibraries/
-├─ localLibrariesSection.py
-└─ localLibrariesSection.qss
+└─ localLibrariesSection.py
 
 app/presentation/ui/ignoredTerms/
-├─ ignoredTermsSection.py
-└─ ignoredTermsSection.qss
+└─ ignoredTermsSection.py
 
 app/presentation/ui/youtubePlaylists/
-├─ youtubePlaylistsSection.py
-└─ youtubePlaylistsSection.qss
+└─ youtubePlaylistsSection.py
 ```
 
 Cuando un componente crezca demasiado y mezcle composicion, coordinacion de eventos y
@@ -38,8 +34,8 @@ sincronizacion de datos, no se deben anadir helpers sueltos dentro de su carpeta
 La regla sigue siendo estricta:
 
 * cada componente visual tiene su propia carpeta
-* cada carpeta de componente visual contiene su pareja `.py` y `.qss`
-* en un mismo nivel no pueden convivir archivos `.py` y `.qss` de un componente con subcarpetas de otros componentes
+* cada carpeta de componente visual contiene su modulo principal `.py`
+* si un componente necesita soporte adicional, debe usarse un helper local o la capa compartida de presentacion, no una hoja de estilos paralela por defecto
 * cuando varios componentes pertenezcan a una misma pantalla o feature, deben agruparse bajo una carpeta padre con nombre de feature
 * los helpers no visuales deben salir de `app/presentation/ui/`
 
@@ -47,15 +43,37 @@ Ejemplo valido:
 
 ```txt
 app/presentation/ui/mainScreen/
-├─ mainWindow/
-│  ├─ mainWindow.py
-│  └─ mainWindow.qss
-├─ heroSection/
-│  ├─ heroSection.py
-│  └─ heroSection.qss
-└─ mainWindowPage/
-   ├─ mainWindowPage.py
-   └─ mainWindowPage.qss
+├─ appLayout/
+│  └─ appLayout.py
+├─ sidebar/
+│  ├─ sidebar/
+│  │  └─ sidebar.py
+│  ├─ brandPanel/
+│  │  └─ brandPanel.py
+│  ├─ navigationMenu/
+│  │  └─ navigationMenu.py
+│  ├─ contextSummary/
+│  │  └─ contextSummary.py
+│  └─ navigationFooter/
+│     └─ navigationFooter.py
+├─ shared/
+│  └─ pageHeader/
+│     └─ pageHeader.py
+└─ pages/
+   ├─ overviewPage/
+   │  └─ overviewPage.py
+   ├─ libraryLocalPage/
+   │  ├─ libraryLocalPage.py
+   │  └─ localLibrariesSection/
+   │     └─ localLibrariesSection.py
+   ├─ playlistYouTubePage/
+   │  ├─ playlistYouTubePage.py
+   │  └─ youtubePlaylistsSection/
+   │     └─ youtubePlaylistsSection.py
+   └─ filtersPage/
+      ├─ filtersPage.py
+      └─ ignoredTermsSection/
+         └─ ignoredTermsSection.py
 ```
 
 ---

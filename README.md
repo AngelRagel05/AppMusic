@@ -1,11 +1,11 @@
 ## AppMusic
 
-Base minima para construir una aplicacion de escritorio de musica en Python y dejarla preparada para empaquetarse como `.exe` al final con `PyInstaller`.
+Base minima para construir una aplicacion de escritorio de musica en Python con `Tkinter` y dejarla preparada para empaquetarse como `.exe` al final con `PyInstaller`.
 
 ### Estado actual
 
 - Estructura inicial alineada con `AGENTS.md`
-- Arranque de aplicacion con `PySide6`
+- Arranque de aplicacion con `Tkinter`
 - Configuracion central con `.env`
 - Logging base con `loguru`
 - Base pensada como aplicacion de escritorio, no como libreria

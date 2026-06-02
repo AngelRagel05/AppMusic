@@ -27,7 +27,7 @@ La vista:
 
 * crea widgets
 * define layout
-* aplica QSS
+* aplica tema y estilos de `Tkinter`
 * expone metodos de lectura y renderizado de estado visual
 * encapsula la lectura y escritura de sus propios widgets internos
 
@@ -67,9 +67,11 @@ app/presentation/
 │  └─ mainWindowController.py
 ├─ ui/
 │  └─ mainScreen/
+│     ├─ appLayout/
 │     ├─ mainWindow/
-│     ├─ mainWindowPage/
-│     └─ heroSection/
+│     ├─ sidebar/
+│     ├─ shared/
+│     └─ pages/
 └─ viewmodels/
 ```
 

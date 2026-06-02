@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-La aplicacion es un reproductor y gestor musical de escritorio desarrollado con Python y PySide6.
+La aplicacion es un reproductor y gestor musical de escritorio desarrollado con Python y Tkinter.
 
 La interfaz debe ser moderna, limpia, oscura, profesional y centrada en la productividad.
 
@@ -12,25 +12,35 @@ Debe inspirarse en aplicaciones como Spotify Desktop, Plexamp, Discord Desktop y
 
 ## Tecnologias de UI
 
-* Framework de interfaz: PySide6
-* Sistema de estilos: QSS (Qt Style Sheets)
+* Framework de interfaz: Tkinter
+* Sistema de estilos: tema centralizado con helpers de `Tkinter`
 * No utilizar HTML/CSS web
 * No utilizar conceptos propios de React, Tailwind o Bootstrap
-* Toda la interfaz debe construirse utilizando widgets nativos de Qt
+* Toda la interfaz debe construirse utilizando widgets nativos de Tkinter
 
 ---
 
 ## Sistema de estilos
 
-Todos los estilos visuales deben centralizarse en:
+Los estilos base compartidos deben centralizarse en:
 
 ```txt
-app/presentation/styles/app.qss
+app/presentation/uiTheme/
 ```
 
-No se deben definir estilos dispersos dentro de ventanas, dialogos o widgets individuales salvo casos excepcionales.
+Los widgets deben reutilizar helpers visuales comunes y mantener la paleta compartida.
 
-La apariencia visual debe poder modificarse desde un unico punto.
+La estructura minima esperada es:
+
+```txt
+app/presentation/uiTheme/
+├─ themePalette.py
+├─ widgetFactory.py
+├─ windowStyler.py
+└─ signalSupport.py
+```
+
+No se deben dispersar colores, fuentes o reglas de estado fuera de la capa de soporte visual salvo casos excepcionales muy justificados.
 
 ---
 
@@ -176,6 +186,58 @@ Descargas
 Configuracion
 ```
 
+La sidebar debe sentirse como una columna de navegacion nativa de escritorio:
+
+* fija
+* limpia
+* con pocas acciones visibles
+* sin badges innecesarios ni decoracion excesiva
+
+---
+
+## Navegacion principal
+
+La app debe comportarse como una aplicacion musical de escritorio con navegacion real:
+
+```txt
+Sidebar fija izquierda
++ pagina fullscreen a la derecha
+```
+
+La vista derecha debe resolverse con paginas separadas dentro de un contenedor de navegacion controlado por frames.
+
+Ejemplo esperado:
+
+* `ResumenPage`
+* `BibliotecaLocalPage`
+* `PlaylistYouTubePage`
+* `FiltrosPage`
+
+No deben convivir todas las features principales apiladas en la misma pantalla.
+
+## Paginas de contenido
+
+Cada pagina debe seguir este patron:
+
+* header compacto con titulo, contexto activo y acciones principales
+* un bloque principal claro, sin cadenas de cards anidadas
+* contenido centrado en musica, playlists, filtros o sincronizacion segun la vista
+* feedback contextual dentro de su propia pagina
+
+Cuando haya pocos elementos, priorizar:
+
+* listas visuales
+* filas tipo card
+* estados vacios bien resueltos
+
+Evitar por defecto:
+
+* tablas grandes para colecciones pequenas
+* cards dentro de cards sin una razon clara
+* formularios largos cuando solo hay uno o dos campos
+
+La estetica debe inspirarse mas en Spotify, Apple Music, Plex o Notion que en un dashboard corporativo.
+
 ---
 
 ## Reproductor
@@ -293,22 +355,9 @@ La consistencia visual tiene prioridad sobre la personalizacion.
 
 ---
 
-## Object Names
+## Identificadores visuales
 
-Utilizar `objectName` para aplicar estilos especificos.
-
-Ejemplos:
-
-```python
-PrimaryButton
-DangerButton
-Sidebar
-PlayerBar
-SearchInput
-SongTable
-```
-
-Evitar estilos especificos basados en jerarquias complejas.
+Cuando haga falta diferenciar widgets reutilizables, encapsular esa decision en componentes o helpers de estilo en vez de depender de jerarquias fragiles.
 
 ---
 
@@ -327,9 +376,9 @@ Evitar estilos especificos basados en jerarquias complejas.
 * Priorizar funcionalidad sobre decoracion
 * Mantener consistencia visual en todas las ventanas
 * Reutilizar componentes existentes
-* Centralizar estilos en QSS
+* Centralizar estilos y helpers visuales en la capa compartida de Tkinter
 * No introducir frameworks web
 * No introducir CSS web
-* No mezclar paradigmas de React con PySide6
+* No mezclar paradigmas de React con Tkinter
 * Todo nuevo componente debe respetar estas directrices
 * La experiencia de usuario debe sentirse como una aplicacion de escritorio profesional, no como una pagina web empaquetada
