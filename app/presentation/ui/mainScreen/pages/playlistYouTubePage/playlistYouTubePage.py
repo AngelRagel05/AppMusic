@@ -1,24 +1,33 @@
 from __future__ import annotations
 
-import tkinter as tk
+import customtkinter as ctk
 
-from app.presentation.uiTheme import getPageTheme
 from app.presentation.ui.mainScreen.pages.playlistYouTubePage.youtubePlaylistsSection.youtubePlaylistsSection import (
     YoutubePlaylistsSection,
 )
 from app.presentation.ui.mainScreen.shared.pageHeader.pageHeader import PageHeader
+from app.presentation.uiTheme import createFrame, getPageTheme
 
 
-class PlaylistYouTubePage(tk.Frame):
-    def __init__(self, parent: tk.Misc) -> None:
+class PlaylistYouTubePage(ctk.CTkFrame):
+    def __init__(self, parent) -> None:
         self._theme = getPageTheme("playlists")
-        super().__init__(parent, bg=self._theme["bg"], padx=28, pady=20)
-        self.header = PageHeader(self, "Playlist YouTube", self._theme)
-        self.header.setActions("Nueva playlist", None)
-        self.section = YoutubePlaylistsSection(self, self._theme)
+        super().__init__(parent, fg_color=self._theme["bg"], corner_radius=0)
+
+        content = createFrame(self, theme=self._theme, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=int(self._theme["page_padding"]), pady=36)
+
+        self.header = PageHeader(
+            content,
+            "Playlist YouTube",
+            self._theme,
+            subtitle="Mantén una playlist de referencia para sincronizar tu biblioteca musical",
+        )
+        self.header.setActions(None, "Guardar playlist")
+        self.section = YoutubePlaylistsSection(content, self._theme)
 
         self.header.pack(fill="x")
-        self.section.pack(fill="both", expand=True, pady=(14, 0))
+        self.section.pack(fill="both", expand=True, pady=(28, 0))
 
     def setActiveFolderName(self, name: str) -> None:
         self.header.setActiveFolderName(name)

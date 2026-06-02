@@ -1,98 +1,82 @@
 from __future__ import annotations
 
-import tkinter as tk
+import customtkinter as ctk
 
 from app.application.dto.localFolderDto import LocalFolderDto
+from app.presentation.ui.mainScreen.shared.statusBadge.statusBadge import StatusBadge
 from app.presentation.uiTheme import (
     ActionButton,
     Signal,
     bindRecursive,
     clearChildren,
     createEntry,
+    createFrame,
     createLabel,
+    createScrollableFrame,
     setStatusLabelTone,
 )
-from app.presentation.uiTheme.themePalette import ThemeTokens
 
 
-class _LocalFolderRow(tk.Frame):
-    def __init__(
-        self,
-        parent: tk.Misc,
-        local_folder: LocalFolderDto,
-        theme: ThemeTokens,
-    ) -> None:
-        super().__init__(parent, bg=theme["surface"], padx=16, pady=14, cursor="hand2")
+class _LocalFolderRow(ctk.CTkFrame):
+    def __init__(self, parent, local_folder: LocalFolderDto, theme) -> None:
+        self._theme = theme
+        super().__init__(
+            parent,
+            fg_color=self._theme["panel"],
+            corner_radius=int(self._theme["radius_lg"]),
+            border_width=1,
+            border_color=self._theme["border"],
+        )
         self.activated = Signal()
         self.editRequested = Signal()
         self.deleteRequested = Signal()
         self._local_folder_id = local_folder.id
-        self._theme = theme
 
-        text_host = tk.Frame(self, bg=self._theme["surface"])
-        text_host.pack(side="left", fill="both", expand=True)
+        self.grid_columnconfigure(0, weight=1)
+
+        content = createFrame(self, theme=self._theme, fg_color="transparent")
+        content.grid(row=0, column=0, sticky="ew", padx=18, pady=18)
+        content.grid_columnconfigure(0, weight=1)
 
         createLabel(
-            text_host,
+            content,
             local_folder.display_name,
             theme=self._theme,
-            bg=self._theme["surface"],
-            font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w")
+            font=("Segoe UI", 16, "bold"),
+        ).grid(row=0, column=0, sticky="w")
         createLabel(
-            text_host,
+            content,
             local_folder.path,
             theme=self._theme,
-            bg=self._theme["surface"],
-            fg=self._theme["text_secondary"],
-            wraplength=520,
-        ).pack(anchor="w", pady=(4, 0))
-        createLabel(
-            text_host,
-            "Contenido sin escanear",
-            theme=self._theme,
-            bg=self._theme["surface"],
-            fg=self._theme["text_muted"],
-        ).pack(anchor="w", pady=(4, 0))
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 13),
+            wraplength=620,
+        ).grid(row=1, column=0, sticky="w", pady=(6, 0))
 
-        status = createLabel(
-            self,
-            "Activa" if local_folder.is_active else "Guardada",
-            theme=self._theme,
-            bg=self._theme["surface"],
-            fg=self._theme["success"] if local_folder.is_active else self._theme["text_secondary"],
-            font=("Segoe UI", 9, "bold"),
-        )
-        status.pack(side="left", padx=(12, 12), anchor="n")
+        badgeTone = "success" if local_folder.is_active else "idle"
+        badgeText = "Activa" if local_folder.is_active else "Guardada"
+        self._statusBadge = StatusBadge(content, badgeText, badgeTone, self._theme)
+        self._statusBadge.grid(row=0, column=1, sticky="e", padx=(16, 0))
 
-        menu_button = tk.Menubutton(
-            self,
-            text="...",
-            bg=self._theme["surface_alt"],
-            fg=self._theme["text"],
-            activebackground=self._theme["surface"],
-            activeforeground=self._theme["text"],
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
-            cursor="hand2",
+        actions = createFrame(self, theme=self._theme, fg_color="transparent")
+        actions.grid(row=1, column=0, sticky="ew", padx=18, pady=(0, 18))
+
+        activateButton = ActionButton(
+            actions,
+            "Activar",
+            variant="ghost",
+            theme=self._theme,
         )
-        menu = tk.Menu(
-            menu_button,
-            tearoff=0,
-            bg=self._theme["surface_alt"],
-            fg=self._theme["text"],
-        )
-        menu.add_command(
-            label="Editar",
-            command=lambda: self.editRequested.emit(self._local_folder_id),
-        )
-        menu.add_command(
-            label="Eliminar",
-            command=lambda: self.deleteRequested.emit(self._local_folder_id),
-        )
-        menu_button.configure(menu=menu)
-        menu_button.pack(side="left", anchor="n")
+        activateButton.clicked.connect(lambda: self.activated.emit(self._local_folder_id))
+        activateButton.widget.pack(side="left")
+
+        editButton = ActionButton(actions, "Editar", variant="secondary", theme=self._theme)
+        editButton.clicked.connect(lambda: self.editRequested.emit(self._local_folder_id))
+        editButton.widget.pack(side="left", padx=(10, 10))
+
+        deleteButton = ActionButton(actions, "Eliminar", variant="danger", theme=self._theme)
+        deleteButton.clicked.connect(lambda: self.deleteRequested.emit(self._local_folder_id))
+        deleteButton.widget.pack(side="left")
 
         bindRecursive(self, "<Double-Button-1>", self._emit_activate)
 
@@ -100,74 +84,45 @@ class _LocalFolderRow(tk.Frame):
         self.activated.emit(self._local_folder_id)
 
 
-class LocalLibrariesSection(tk.Frame):
-    def __init__(self, parent: tk.Misc, theme: ThemeTokens) -> None:
-        super().__init__(parent, bg=theme["bg"])
+class LocalLibrariesSection(ctk.CTkFrame):
+    def __init__(self, parent, theme) -> None:
+        self._theme = theme
+        super().__init__(parent, fg_color="transparent", corner_radius=0)
         self.activateRequested = Signal()
         self.editRequested = Signal()
         self.deleteRequested = Signal()
-        self._theme = theme
 
-        self.activeFolderValue = createLabel(
-            self,
-            "Sin biblioteca activa",
-            theme=self._theme,
-            font=("Segoe UI", 15, "bold"),
-        )
-        self.activeFolderSongs = createLabel(
-            self,
-            "Canciones sin escanear",
-            theme=self._theme,
-            fg=self._theme["text_secondary"],
-        )
-        self.activeFolderSize = createLabel(
-            self,
-            "Tamano sin calcular",
-            theme=self._theme,
-            fg=self._theme["text_secondary"],
-        )
-        self.activeFolderPath = createLabel(
-            self,
-            "Ruta pendiente",
-            theme=self._theme,
-            fg=self._theme["text_secondary"],
-            wraplength=720,
-        )
+        topGrid = createFrame(self, theme=self._theme, fg_color="transparent")
+        topGrid.pack(fill="x")
+        topGrid.grid_columnconfigure(0, weight=1)
+        topGrid.grid_columnconfigure(1, weight=1)
 
-        self.folderInput = createEntry(self, theme=self._theme, width=48)
-        self.browseFolderButton = ActionButton(
-            self,
-            "Explorar carpeta",
-            variant="secondary",
-            theme=self._theme,
-        )
-        self.saveFolderButton = ActionButton(self, "Guardar cambios", theme=self._theme)
-        self.saveModeLabel = createLabel(
-            self,
-            "Crea o actualiza tu biblioteca principal desde aqui.",
-            theme=self._theme,
-            fg=self._theme["text_secondary"],
-        )
+        self._buildStatusCard(topGrid).grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        self._buildComposerCard(topGrid).grid(row=0, column=1, sticky="nsew")
+
         self.statusLabel = createLabel(
             self,
-            "Doble clic en una biblioteca para activarla.",
+            "Selecciona una biblioteca para activarla o actualizarla.",
             theme=self._theme,
-            fg=self._theme["accent"],
-            wraplength=720,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 13),
         )
-        self.listCaption = createLabel(
-            self,
+        self.statusLabel.pack(anchor="w", pady=(18, 12))
+
+        listHeader = createFrame(self, theme=self._theme, fg_color="transparent")
+        listHeader.pack(fill="x", pady=(8, 12))
+        createLabel(
+            listHeader,
             "Bibliotecas guardadas",
             theme=self._theme,
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 18, "bold"),
+        ).pack(side="left")
+
+        self._rowsHost = createScrollableFrame(
+            self,
+            theme=self._theme,
+            fg_color="transparent",
         )
-
-        self._rowsHost = tk.Frame(self, bg=self._theme["bg"])
-
-        self._buildComposerCard().pack(fill="x")
-        self.saveModeLabel.pack(anchor="w", pady=(16, 4))
-        self.statusLabel.pack(anchor="w")
-        self.listCaption.pack(anchor="w", pady=(16, 8))
         self._rowsHost.pack(fill="both", expand=True)
 
     def showFolders(self, local_folders: list[LocalFolderDto]) -> None:
@@ -181,42 +136,44 @@ class LocalLibrariesSection(tk.Frame):
             row.activated.connect(self.activateRequested.emit)
             row.editRequested.connect(self.editRequested.emit)
             row.deleteRequested.connect(self.deleteRequested.emit)
-            row.pack(fill="x", pady=(0, 12))
+            row.pack(fill="x", pady=(0, 14))
 
     def showActiveFolder(self, active_folder: LocalFolderDto | None) -> None:
         if active_folder is None:
-            self.activeFolderValue.configure(text="Sin biblioteca activa")
-            self.activeFolderSongs.configure(text="Canciones sin escanear")
-            self.activeFolderSize.configure(text="Tamano sin calcular")
-            self.activeFolderPath.configure(text="Ruta pendiente")
+            self.activeFolderValue.configure(text="Sin biblioteca configurada")
+            self.activeFolderMeta.configure(text="La aplicación aún no tiene una carpeta principal.")
+            self.activeFolderPath.configure(text="Añade una ruta para empezar a escanear tu música.")
+            self.activeFolderBadge.setStatus("Pendiente", "idle")
             return
 
         self.activeFolderValue.configure(text=active_folder.display_name)
-        self.activeFolderSongs.configure(text="Biblioteca preparada para escaneo")
-        self.activeFolderSize.configure(text="Tamano sin calcular")
+        self.activeFolderMeta.configure(text="Biblioteca lista para análisis y sincronización.")
         self.activeFolderPath.configure(text=active_folder.path)
+        self.activeFolderBadge.setStatus("Activa", "success")
         self.setFolderPath(active_folder.path)
 
     def folderPath(self) -> str:
         return self.folderInput.get()
 
     def setFolderPath(self, path: str) -> None:
-        self.folderInput.delete(0, tk.END)
+        self.folderInput.delete(0, "end")
         self.folderInput.insert(0, path)
 
     def setSaveMode(self, is_editing: bool) -> None:
         if is_editing:
             self.saveFolderButton.setText("Guardar cambios")
-            self.saveModeLabel.configure(
-                text="Estas editando la biblioteca seleccionada. Guarda para aplicar los cambios."
+            self.formHelper.configure(
+                text="Estás editando la biblioteca seleccionada. Guarda para actualizar la ruta principal."
             )
             return
 
-        self.saveFolderButton.setText("Guardar cambios")
-        self.saveModeLabel.configure(text="Crea o actualiza tu biblioteca principal desde aqui.")
+        self.saveFolderButton.setText("Guardar biblioteca")
+        self.formHelper.configure(
+            text="Define la carpeta principal para escaneo, comparación y mantenimiento."
+        )
 
     def clearForm(self) -> None:
-        self.folderInput.delete(0, tk.END)
+        self.folderInput.delete(0, "end")
         self.setSaveMode(False)
 
     def showStatusMessage(self, message: str, tone: str = "info") -> None:
@@ -226,39 +183,128 @@ class LocalLibrariesSection(tk.Frame):
     def focusPrimaryInput(self) -> None:
         self.folderInput.focus_set()
 
-    def _buildComposerCard(self) -> tk.Frame:
-        card = tk.Frame(self, bg=self._theme["surface"], padx=16, pady=16)
-        self.activeFolderValue.configure(bg=self._theme["surface"])
-        self.activeFolderSongs.configure(bg=self._theme["surface"])
-        self.activeFolderSize.configure(bg=self._theme["surface"])
-        self.activeFolderPath.configure(bg=self._theme["surface"])
+    def _buildStatusCard(self, parent):
+        card = createFrame(
+            parent,
+            theme=self._theme,
+            fg_color=self._theme["panel"],
+            border_width=1,
+            border_color=self._theme["border"],
+            corner_radius=int(self._theme["radius_lg"]),
+        )
+        createLabel(
+            card,
+            "Biblioteca principal",
+            theme=self._theme,
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w", padx=20, pady=(18, 10))
 
-        self.activeFolderValue.pack(in_=card, anchor="w")
-        self.activeFolderSongs.pack(in_=card, anchor="w", pady=(2, 0))
-        self.activeFolderPath.pack(in_=card, anchor="w", pady=(2, 0))
+        headerRow = createFrame(card, theme=self._theme, fg_color="transparent")
+        headerRow.pack(fill="x", padx=20)
+        self.activeFolderValue = createLabel(
+            headerRow,
+            "Sin biblioteca configurada",
+            theme=self._theme,
+            font=("Segoe UI", 20, "bold"),
+            wraplength=360,
+        )
+        self.activeFolderValue.pack(side="left", anchor="w")
+        self.activeFolderBadge = StatusBadge(headerRow, "Pendiente", "idle", self._theme)
+        self.activeFolderBadge.pack(side="right")
 
-        controls = tk.Frame(card, bg=self._theme["surface"])
-        controls.pack(fill="x", pady=(14, 0))
-        self.folderInput.pack(in_=controls, side="left", fill="x", expand=True)
-        self.browseFolderButton.widget.pack(in_=controls, side="left", padx=(10, 10))
-        self.saveFolderButton.widget.pack(in_=controls, side="left")
+        self.activeFolderMeta = createLabel(
+            card,
+            "La aplicación aún no tiene una carpeta principal.",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 13),
+            wraplength=380,
+        )
+        self.activeFolderMeta.pack(anchor="w", padx=20, pady=(12, 6))
+        self.activeFolderPath = createLabel(
+            card,
+            "Añade una ruta para empezar a escanear tu música.",
+            theme=self._theme,
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 12),
+            wraplength=380,
+        )
+        self.activeFolderPath.pack(anchor="w", padx=20, pady=(0, 18))
         return card
 
-    def _buildEmptyState(self, parent: tk.Misc) -> tk.Frame:
-        card = tk.Frame(parent, bg=self._theme["surface"], padx=18, pady=18)
+    def _buildComposerCard(self, parent):
+        card = createFrame(
+            parent,
+            theme=self._theme,
+            fg_color=self._theme["panel"],
+            border_width=1,
+            border_color=self._theme["border"],
+            corner_radius=int(self._theme["radius_lg"]),
+        )
         createLabel(
             card,
-            "Todavia no hay bibliotecas guardadas",
+            "Configurar biblioteca",
             theme=self._theme,
-            bg=self._theme["surface"],
-            font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w")
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w", padx=20, pady=(18, 10))
+        self.formHelper = createLabel(
+            card,
+            "Define la carpeta principal para escaneo, comparación y mantenimiento.",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 13),
+            wraplength=380,
+        )
+        self.formHelper.pack(anchor="w", padx=20, pady=(0, 14))
+
+        self.folderInput = createEntry(
+            card,
+            theme=self._theme,
+            width=420,
+            placeholder_text=r"C:\Music\Rap",
+        )
+        self.folderInput.pack(fill="x", padx=20)
+
+        actions = createFrame(card, theme=self._theme, fg_color="transparent")
+        actions.pack(fill="x", padx=20, pady=(16, 20))
+        self.browseFolderButton = ActionButton(
+            actions,
+            "Explorar carpeta",
+            variant="secondary",
+            theme=self._theme,
+        )
+        self.browseFolderButton.widget.pack(side="left")
+        self.saveFolderButton = ActionButton(
+            actions,
+            "Guardar biblioteca",
+            theme=self._theme,
+        )
+        self.saveFolderButton.widget.pack(side="right")
+        return card
+
+    def _buildEmptyState(self, parent):
+        card = createFrame(
+            parent,
+            theme=self._theme,
+            fg_color=self._theme["panel"],
+            border_width=1,
+            border_color=self._theme["border"],
+            corner_radius=int(self._theme["radius_lg"]),
+        )
         createLabel(
             card,
-            "Guarda tu primera carpeta para verla aqui como una coleccion musical compacta.",
+            "Todavía no hay bibliotecas guardadas",
             theme=self._theme,
-            bg=self._theme["surface"],
-            fg=self._theme["text_secondary"],
-            wraplength=700,
-        ).pack(anchor="w", pady=(6, 0))
+            font=("Segoe UI", 18, "bold"),
+        ).pack(anchor="w", padx=20, pady=(18, 8))
+        createLabel(
+            card,
+            "Guarda tu primera carpeta para verla aquí como una colección lista para escaneo y sincronización.",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 13),
+            wraplength=760,
+        ).pack(anchor="w", padx=20, pady=(0, 18))
         return card

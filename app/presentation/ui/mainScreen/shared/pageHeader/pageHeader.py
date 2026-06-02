@@ -1,67 +1,67 @@
 from __future__ import annotations
 
-import tkinter as tk
+import customtkinter as ctk
 
-from app.presentation.uiTheme import ActionButton, Signal, createLabel
-from app.presentation.uiTheme.themePalette import ThemeTokens
+from app.presentation.ui.mainScreen.shared.statusBadge.statusBadge import StatusBadge
+from app.presentation.uiTheme import ActionButton, Signal, createFrame, createLabel
 
 
-class PageHeader(tk.Frame):
-    def __init__(self, parent: tk.Misc, title: str, theme: ThemeTokens) -> None:
-        super().__init__(parent, bg=theme["bg"])
+class PageHeader(ctk.CTkFrame):
+    def __init__(self, parent, title: str, theme, subtitle: str | None = None) -> None:
+        self._theme = theme
+        super().__init__(parent, fg_color="transparent", corner_radius=0)
         self.secondaryActionRequested = Signal()
         self.primaryActionRequested = Signal()
-        self._theme = theme
 
+        self._subtitleText = subtitle or ""
+
+        self.grid_columnconfigure(0, weight=1)
+
+        titleGroup = createFrame(self, theme=self._theme, fg_color="transparent")
+        titleGroup.grid(row=0, column=0, sticky="w")
         self.titleLabel = createLabel(
-            self,
+            titleGroup,
             title,
             theme=self._theme,
-            font=("Segoe UI", 18, "bold"),
+            font=("Segoe UI", 28, "bold"),
         )
-        self.activeFolderTitle = createLabel(
-            self,
-            "Biblioteca activa:",
+        self.titleLabel.pack(anchor="w")
+        self.subtitleLabel = createLabel(
+            titleGroup,
+            self._subtitleText,
             theme=self._theme,
-            fg=self._theme["text_secondary"],
-            font=("Segoe UI", 10, "bold"),
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 14),
         )
-        self.activeFolderValue = createLabel(self, "Sin biblioteca", theme=self._theme)
-        self.activePlaylistTitleLabel = createLabel(
-            self,
-            "Playlist principal:",
-            theme=self._theme,
-            fg=self._theme["text_secondary"],
-            font=("Segoe UI", 10, "bold"),
-        )
-        self.activePlaylistValue = createLabel(self, "Sin playlist", theme=self._theme)
+        self.subtitleLabel.pack(anchor="w", pady=(6, 0))
 
-        self.secondaryButton = ActionButton(self, variant="secondary", theme=self._theme)
-        self.secondaryButton.clicked.connect(self.secondaryActionRequested.emit)
-        self.primaryButton = ActionButton(self, theme=self._theme)
+        self.primaryButton = ActionButton(self, theme=self._theme, variant="primary")
         self.primaryButton.clicked.connect(self.primaryActionRequested.emit)
+        self.secondaryButton = ActionButton(self, theme=self._theme, variant="secondary")
+        self.secondaryButton.clicked.connect(self.secondaryActionRequested.emit)
+        self.secondaryButton.widget.grid(row=0, column=1, sticky="e", padx=(0, 12))
+        self.primaryButton.widget.grid(row=0, column=2, sticky="e")
 
-        top_row = tk.Frame(self, bg=self._theme["bg"])
-        top_row.pack(fill="x")
-        self.titleLabel.pack(in_=top_row, side="left")
-        self.primaryButton.widget.pack(in_=top_row, side="right")
-        self.secondaryButton.widget.pack(in_=top_row, side="right", padx=(0, 12))
-
-        context_row = tk.Frame(self, bg=self._theme["bg"])
-        context_row.pack(fill="x", pady=(10, 0))
-        self._build_context_chip(
-            context_row,
-            self.activeFolderTitle,
-            self.activeFolderValue,
-        ).pack(side="left", padx=(0, 12))
-        self._build_context_chip(
-            context_row,
-            self.activePlaylistTitleLabel,
-            self.activePlaylistValue,
-        ).pack(side="left")
+        contextRow = createFrame(self, theme=self._theme, fg_color="transparent")
+        contextRow.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(20, 0))
+        self.activeFolderBadge = self._build_context_badge(
+            contextRow,
+            "Biblioteca activa",
+            "Sin biblioteca configurada",
+        )
+        self.activeFolderBadge.pack(side="left", padx=(0, 12))
+        self.activePlaylistBadge = self._build_context_badge(
+            contextRow,
+            "Playlist activa",
+            "Sin playlist configurada",
+        )
+        self.activePlaylistBadge.pack(side="left")
 
     def setTitle(self, title: str) -> None:
         self.titleLabel.configure(text=title)
+
+    def setSubtitle(self, subtitle: str) -> None:
+        self.subtitleLabel.configure(text=subtitle)
 
     def setActiveFolderName(self, name: str) -> None:
         self.activeFolderValue.configure(text=name)
@@ -74,22 +74,39 @@ class PageHeader(tk.Frame):
         self._set_button_state(self.primaryButton, primary_label)
 
     def _set_button_state(self, button: ActionButton, label: str | None) -> None:
-        has_label = label is not None and label != ""
-        if has_label:
+        hasLabel = label is not None and label != ""
+        if hasLabel:
             button.setText(label or "")
-            button.widget.pack(side="right", padx=(0, 12) if button is self.secondaryButton else 0)
+            button.widget.grid()
         else:
-            button.widget.pack_forget()
+            button.widget.grid_remove()
 
-    def _build_context_chip(
-        self,
-        parent: tk.Misc,
-        title_label: tk.Label,
-        value_label: tk.Label,
-    ) -> tk.Frame:
-        pill = tk.Frame(parent, bg=self._theme["surface"], padx=10, pady=6)
-        title_label.configure(bg=self._theme["surface"])
-        value_label.configure(bg=self._theme["surface"])
-        title_label.pack(in_=pill, side="left")
-        value_label.pack(in_=pill, side="left", padx=(6, 0))
-        return pill
+    def _build_context_badge(self, parent, label: str, value: str):
+        card = createFrame(
+            parent,
+            theme=self._theme,
+            fg_color=self._theme["panel"],
+            corner_radius=int(self._theme["radius_md"]),
+            border_width=1,
+            border_color=self._theme["border"],
+        )
+        createLabel(
+            card,
+            label,
+            theme=self._theme,
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="w", padx=14, pady=(10, 4))
+        valueLabel = createLabel(
+            card,
+            value,
+            theme=self._theme,
+            font=("Segoe UI", 13, "bold"),
+        )
+        valueLabel.pack(anchor="w", padx=14, pady=(0, 10))
+
+        if "Biblioteca" in label:
+            self.activeFolderValue = valueLabel
+        else:
+            self.activePlaylistValue = valueLabel
+        return card

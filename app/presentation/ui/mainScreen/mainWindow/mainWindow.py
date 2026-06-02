@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import tkinter as tk
+import customtkinter as ctk
 
 from app.presentation.ui.mainScreen.appLayout.appLayout import AppLayout
 
 
 class MainWindow:
     def __init__(self) -> None:
-        self.window = tk.Tk()
+        self.window = ctk.CTk()
         self._page = AppLayout(self.window)
         self._page.pack(fill="both", expand=True)
 

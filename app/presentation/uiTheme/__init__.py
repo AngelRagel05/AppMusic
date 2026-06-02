@@ -8,6 +8,7 @@ from app.presentation.uiTheme.widgetFactory import (
     createEntry,
     createFrame,
     createLabel,
+    createScrollableFrame,
     createOptionMenu,
     setStatusLabelTone,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "createEntry",
     "createFrame",
     "createLabel",
+    "createScrollableFrame",
     "createOptionMenu",
     "getPageTheme",
     "mergeTheme",

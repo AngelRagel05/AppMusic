@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-La aplicacion es un reproductor y gestor musical de escritorio desarrollado con Python y Tkinter.
+La aplicacion es un reproductor y gestor musical de escritorio desarrollado con Python, Tkinter y CustomTkinter.
 
 La interfaz debe ser moderna, limpia, oscura, profesional y centrada en la productividad.
 
@@ -12,11 +12,11 @@ Debe inspirarse en aplicaciones como Spotify Desktop, Plexamp, Discord Desktop y
 
 ## Tecnologias de UI
 
-* Framework de interfaz: Tkinter
-* Sistema de estilos: tema centralizado con helpers de `Tkinter`
+* Framework de interfaz: Tkinter con CustomTkinter
+* Sistema de estilos: tema centralizado con helpers y factories de `CustomTkinter`
 * No utilizar HTML/CSS web
 * No utilizar conceptos propios de React, Tailwind o Bootstrap
-* Toda la interfaz debe construirse utilizando widgets nativos de Tkinter
+* Toda la interfaz debe construirse utilizando `CTkFrame`, `CTkLabel`, `CTkButton`, `CTkEntry`, `CTkOptionMenu` y widgets equivalentes cuando sea posible
 
 ---
 
@@ -41,6 +41,7 @@ app/presentation/uiTheme/
 ```
 
 No se deben dispersar colores, fuentes o reglas de estado fuera de la capa de soporte visual salvo casos excepcionales muy justificados.
+Evitar `tk.Label`, `tk.Button`, `tk.Frame` y widgets nativos equivalentes en vistas finales salvo necesidad tecnica concreta.
 
 ---
 
@@ -376,9 +377,9 @@ Cuando haga falta diferenciar widgets reutilizables, encapsular esa decision en 
 * Priorizar funcionalidad sobre decoracion
 * Mantener consistencia visual en todas las ventanas
 * Reutilizar componentes existentes
-* Centralizar estilos y helpers visuales en la capa compartida de Tkinter
+* Centralizar estilos y helpers visuales en la capa compartida de CustomTkinter
 * No introducir frameworks web
 * No introducir CSS web
-* No mezclar paradigmas de React con Tkinter
+* No mezclar paradigmas de React con Tkinter ni mezclar widgets nativos y CTk sin necesidad real
 * Todo nuevo componente debe respetar estas directrices
 * La experiencia de usuario debe sentirse como una aplicacion de escritorio profesional, no como una pagina web empaquetada

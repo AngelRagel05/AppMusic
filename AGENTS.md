@@ -273,7 +273,7 @@ La interfaz debe sentirse como una aplicacion de escritorio profesional, no como
 
 Reglas operativas:
 
-* Usar Tkinter y sus widgets nativos como base de interfaz
+* Usar Tkinter y preferentemente CustomTkinter para los widgets visibles de produccion
 * Centralizar tema, colores y helpers visuales en una capa compartida de presentacion
 * Evitar estilos dispersos dentro de ventanas o widgets salvo excepciones justificadas
 * Mantener una estetica oscura, limpia y orientada a productividad

@@ -1,24 +1,33 @@
 from __future__ import annotations
 
-import tkinter as tk
+import customtkinter as ctk
 
-from app.presentation.uiTheme import getPageTheme
 from app.presentation.ui.mainScreen.pages.libraryLocalPage.localLibrariesSection.localLibrariesSection import (
     LocalLibrariesSection,
 )
 from app.presentation.ui.mainScreen.shared.pageHeader.pageHeader import PageHeader
+from app.presentation.uiTheme import createFrame, getPageTheme
 
 
-class LibraryLocalPage(tk.Frame):
-    def __init__(self, parent: tk.Misc) -> None:
+class LibraryLocalPage(ctk.CTkFrame):
+    def __init__(self, parent) -> None:
         self._theme = getPageTheme("libraries")
-        super().__init__(parent, bg=self._theme["bg"], padx=28, pady=20)
-        self.header = PageHeader(self, "Biblioteca local", self._theme)
-        self.header.setActions("Nueva biblioteca", None)
-        self.section = LocalLibrariesSection(self, self._theme)
+        super().__init__(parent, fg_color=self._theme["bg"], corner_radius=0)
+
+        content = createFrame(self, theme=self._theme, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=int(self._theme["page_padding"]), pady=36)
+
+        self.header = PageHeader(
+            content,
+            "Biblioteca local",
+            self._theme,
+            subtitle="Gestiona la carpeta principal y el conjunto de bibliotecas guardadas",
+        )
+        self.header.setActions(None, "Escanear biblioteca")
+        self.section = LocalLibrariesSection(content, self._theme)
 
         self.header.pack(fill="x")
-        self.section.pack(fill="both", expand=True, pady=(14, 0))
+        self.section.pack(fill="both", expand=True, pady=(28, 0))
 
     def setActiveFolderName(self, name: str) -> None:
         self.header.setActiveFolderName(name)

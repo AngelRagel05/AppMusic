@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import TypeAlias
 
-ThemeTokens: TypeAlias = dict[str, str]
+ThemeTokens: TypeAlias = dict[str, str | int]
 
 BASE_THEME: ThemeTokens = {
     "bg": "#121212",
-    "panel": "#1E1E1E",
-    "surface": "#262626",
-    "surface_alt": "#303030",
+    "sidebar": "#1B1B1B",
+    "panel": "#202020",
+    "surface": "#242424",
+    "hover": "#2D2D2D",
     "border": "#343434",
     "text": "#FFFFFF",
     "text_secondary": "#D0D0D0",
@@ -20,22 +21,24 @@ BASE_THEME: ThemeTokens = {
     "success": "#3DA37C",
     "warning": "#C7A252",
     "danger": "#D64545",
+    "radius_sm": 12,
+    "radius_md": 16,
+    "radius_lg": 18,
+    "sidebar_width": 240,
+    "page_padding": 40,
+    "title_size": 30,
+    "subtitle_size": 14,
+    "label_size": 12,
+    "value_size": 22,
+    "button_height": 42,
+    "sidebar_button_height": 44,
 }
 
 PAGE_THEME_OVERRIDES: dict[str, ThemeTokens] = {
     "overview": {},
-    "libraries": {
-        "accent": "#4D9F70",
-        "accent_soft": "#20392C",
-    },
-    "playlists": {
-        "accent": "#D86C3F",
-        "accent_soft": "#40261C",
-    },
-    "filters": {
-        "accent": "#8B7CF6",
-        "accent_soft": "#2D2949",
-    },
+    "libraries": {},
+    "playlists": {},
+    "filters": {},
 }
 
 

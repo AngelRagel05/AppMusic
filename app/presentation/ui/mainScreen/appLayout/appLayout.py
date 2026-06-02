@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import tkinter as tk
+import customtkinter as ctk
 
-from app.presentation.uiTheme import BASE_THEME
 from app.presentation.ui.mainScreen.pages.filtersPage.filtersPage import FiltersPage
 from app.presentation.ui.mainScreen.pages.libraryLocalPage.libraryLocalPage import (
     LibraryLocalPage,
@@ -12,28 +11,29 @@ from app.presentation.ui.mainScreen.pages.playlistYouTubePage.playlistYouTubePag
     PlaylistYouTubePage,
 )
 from app.presentation.ui.mainScreen.sidebar.sidebar.sidebar import Sidebar
+from app.presentation.uiTheme import BASE_THEME, createFrame
 
 
-class AppLayout(tk.Frame):
-    def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent, bg=BASE_THEME["bg"])
+class AppLayout(ctk.CTkFrame):
+    def __init__(self, parent) -> None:
+        super().__init__(parent, fg_color=BASE_THEME["bg"], corner_radius=0)
 
-        self.sidebar = Sidebar(self)
-        self.pagesHost = tk.Frame(self, bg=BASE_THEME["bg"])
+        self.sidebar = Sidebar(self, BASE_THEME)
+        self.pagesHost = createFrame(self, theme=BASE_THEME, fg_color=BASE_THEME["bg"])
 
         self.overviewPage = OverviewPage(self.pagesHost)
         self.libraryPage = LibraryLocalPage(self.pagesHost)
         self.playlistPage = PlaylistYouTubePage(self.pagesHost)
         self.filtersPage = FiltersPage(self.pagesHost)
 
-        self.heroSection = self.overviewPage.header
+        self.heroSection = self.overviewPage.dashboard
         self.localLibrariesSection = self.libraryPage.section
         self.youtubePlaylistsSection = self.playlistPage.section
         self.ignoredTermsSection = self.filtersPage.section
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
-        self.sidebar.grid(row=0, column=0, sticky="ns")
+        self.sidebar.grid(row=0, column=0, sticky="nsw")
         self.pagesHost.grid(row=0, column=1, sticky="nsew")
         self.pagesHost.grid_rowconfigure(0, weight=1)
         self.pagesHost.grid_columnconfigure(0, weight=1)
@@ -51,16 +51,13 @@ class AppLayout(tk.Frame):
         self.sidebar.youtubePlaylistsRequested.connect(lambda: self.showPage("playlists"))
         self.sidebar.ignoredTermsRequested.connect(lambda: self.showPage("filters"))
 
-        self.overviewPage.header.secondaryActionRequested.connect(
+        self.overviewPage.dashboard.scanLibraryButton.clicked.connect(
             lambda: self.showPage("libraries", focus_input=True)
         )
-        self.overviewPage.header.primaryActionRequested.connect(
-            lambda: self.showPage("playlists", focus_input=True)
-        )
-        self.libraryPage.header.secondaryActionRequested.connect(
+        self.libraryPage.header.primaryActionRequested.connect(
             lambda: self.showPage("libraries", focus_input=True)
         )
-        self.playlistPage.header.secondaryActionRequested.connect(
+        self.playlistPage.header.primaryActionRequested.connect(
             lambda: self.showPage("playlists", focus_input=True)
         )
 
@@ -99,7 +96,7 @@ class AppLayout(tk.Frame):
         self.sidebar.showSongCount(value)
 
     def setSyncStatus(self, value: str, state: str = "idle") -> None:
-        self.overviewPage.setSyncStatus(value)
+        self.overviewPage.setSyncStatus(value, state=state)
         self.sidebar.showSyncStatus(value, state=state)
 
     def setLastAction(self, value: str) -> None:

@@ -1,30 +1,20 @@
 from __future__ import annotations
 
-import tkinter as tk
+import customtkinter as ctk
 
 from app.presentation.uiTheme import createLabel
-from app.presentation.uiTheme.themePalette import ThemeTokens
 
 
-class NavigationFooter(tk.Frame):
-    def __init__(self, parent: tk.Misc, theme: ThemeTokens) -> None:
-        super().__init__(parent, bg=theme["panel"])
+class NavigationFooter(ctk.CTkFrame):
+    def __init__(self, parent, theme) -> None:
         self._theme = theme
+        super().__init__(parent, fg_color="transparent", corner_radius=0)
 
-        title = createLabel(
+        createLabel(
             self,
-            "Navegacion",
+            "AppMusic organiza bibliotecas, playlists y filtros desde una única consola.",
             theme=self._theme,
-            fg=self._theme["text_secondary"],
-            font=("Segoe UI", 9, "bold"),
-        )
-        text = createLabel(
-            self,
-            "Cada seccion ocupa toda la vista principal.",
-            theme=self._theme,
-            fg=self._theme["text_secondary"],
-            wraplength=170,
-        )
-
-        title.pack(anchor="w")
-        text.pack(anchor="w", pady=(4, 0))
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 12),
+            wraplength=190,
+        ).pack(anchor="w")

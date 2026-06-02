@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import tkinter as tk
+import customtkinter as ctk
 
 from app.presentation.uiTheme import BASE_THEME, Signal
-from app.presentation.uiTheme.themePalette import ThemeTokens
 from app.presentation.ui.mainScreen.sidebar.brandPanel.brandPanel import BrandPanel
 from app.presentation.ui.mainScreen.sidebar.contextSummary.contextSummary import (
     ContextSummary,
@@ -16,15 +15,23 @@ from app.presentation.ui.mainScreen.sidebar.navigationMenu.navigationMenu import
 )
 
 
-class Sidebar(tk.Frame):
-    def __init__(self, parent: tk.Misc, theme: ThemeTokens | None = None) -> None:
+class Sidebar(ctk.CTkFrame):
+    def __init__(self, parent, theme=None) -> None:
         self._theme = theme or BASE_THEME
-        super().__init__(parent, bg=self._theme["panel"], width=212, padx=14, pady=18)
+        super().__init__(
+            parent,
+            width=int(self._theme["sidebar_width"]),
+            fg_color=self._theme["sidebar"],
+            corner_radius=0,
+            border_width=0,
+        )
         self.grid_propagate(False)
         self.overviewRequested = Signal()
         self.localLibrariesRequested = Signal()
         self.youtubePlaylistsRequested = Signal()
         self.ignoredTermsRequested = Signal()
+
+        self.grid_rowconfigure(2, weight=1)
 
         self.brandPanel = BrandPanel(self, self._theme)
         self.navigationMenu = NavigationMenu(self, self._theme)
@@ -38,10 +45,10 @@ class Sidebar(tk.Frame):
         )
         self.navigationMenu.ignoredTermsRequested.connect(self.ignoredTermsRequested.emit)
 
-        self.brandPanel.pack(fill="x")
-        self.navigationMenu.pack(fill="x", pady=(18, 18))
-        self.contextSummary.pack(fill="x")
-        self.navigationFooter.pack(fill="x", side="bottom", pady=(18, 0))
+        self.brandPanel.grid(row=0, column=0, sticky="ew", padx=24, pady=(26, 28))
+        self.navigationMenu.grid(row=1, column=0, sticky="ew", padx=18)
+        self.contextSummary.grid(row=2, column=0, sticky="sew", padx=18, pady=(18, 12))
+        self.navigationFooter.grid(row=3, column=0, sticky="ew", padx=24, pady=(0, 22))
         self.setActiveSection("overview")
 
     def setActiveSection(self, section: str) -> None:

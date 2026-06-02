@@ -1,24 +1,33 @@
 from __future__ import annotations
 
-import tkinter as tk
+import customtkinter as ctk
 
-from app.presentation.uiTheme import getPageTheme
 from app.presentation.ui.mainScreen.pages.filtersPage.ignoredTermsSection.ignoredTermsSection import (
     IgnoredTermsSection,
 )
 from app.presentation.ui.mainScreen.shared.pageHeader.pageHeader import PageHeader
+from app.presentation.uiTheme import createFrame, getPageTheme
 
 
-class FiltersPage(tk.Frame):
-    def __init__(self, parent: tk.Misc) -> None:
+class FiltersPage(ctk.CTkFrame):
+    def __init__(self, parent) -> None:
         self._theme = getPageTheme("filters")
-        super().__init__(parent, bg=self._theme["bg"], padx=28, pady=20)
-        self.header = PageHeader(self, "Filtros", self._theme)
+        super().__init__(parent, fg_color=self._theme["bg"], corner_radius=0)
+
+        content = createFrame(self, theme=self._theme, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=int(self._theme["page_padding"]), pady=36)
+
+        self.header = PageHeader(
+            content,
+            "Filtros",
+            self._theme,
+            subtitle="Define términos ignorados para mejorar la limpieza y comparación musical",
+        )
         self.header.setActions(None, None)
-        self.section = IgnoredTermsSection(self, self._theme)
+        self.section = IgnoredTermsSection(content, self._theme)
 
         self.header.pack(fill="x")
-        self.section.pack(fill="both", expand=True, pady=(14, 0))
+        self.section.pack(fill="both", expand=True, pady=(28, 0))
 
     def setActiveFolderName(self, name: str) -> None:
         self.header.setActiveFolderName(name)

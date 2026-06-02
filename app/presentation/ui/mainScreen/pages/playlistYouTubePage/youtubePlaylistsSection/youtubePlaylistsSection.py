@@ -1,99 +1,77 @@
 from __future__ import annotations
 
-import tkinter as tk
+import customtkinter as ctk
 
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
+from app.presentation.ui.mainScreen.shared.statusBadge.statusBadge import StatusBadge
 from app.presentation.uiTheme import (
     ActionButton,
     Signal,
     bindRecursive,
     clearChildren,
     createEntry,
+    createFrame,
     createLabel,
+    createScrollableFrame,
     setStatusLabelTone,
 )
-from app.presentation.uiTheme.themePalette import ThemeTokens
 
 
-class _YoutubePlaylistRow(tk.Frame):
-    def __init__(
-        self,
-        parent: tk.Misc,
-        youtube_playlist: YoutubePlaylistDto,
-        theme: ThemeTokens,
-    ) -> None:
-        super().__init__(parent, bg=theme["surface"], padx=16, pady=14, cursor="hand2")
+class _YoutubePlaylistRow(ctk.CTkFrame):
+    def __init__(self, parent, youtube_playlist: YoutubePlaylistDto, theme) -> None:
+        self._theme = theme
+        super().__init__(
+            parent,
+            fg_color=self._theme["panel"],
+            corner_radius=int(self._theme["radius_lg"]),
+            border_width=1,
+            border_color=self._theme["border"],
+        )
         self.activated = Signal()
         self.editRequested = Signal()
         self.deleteRequested = Signal()
         self._youtube_playlist_id = youtube_playlist.id
-        self._theme = theme
 
-        text_host = tk.Frame(self, bg=self._theme["surface"])
-        text_host.pack(side="left", fill="both", expand=True)
+        self.grid_columnconfigure(0, weight=1)
+
+        content = createFrame(self, theme=self._theme, fg_color="transparent")
+        content.grid(row=0, column=0, sticky="ew", padx=18, pady=18)
+        content.grid_columnconfigure(0, weight=1)
 
         createLabel(
-            text_host,
+            content,
             youtube_playlist.title,
             theme=self._theme,
-            bg=self._theme["surface"],
-            font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w")
+            font=("Segoe UI", 16, "bold"),
+        ).grid(row=0, column=0, sticky="w")
         createLabel(
-            text_host,
-            f"ID YouTube: {youtube_playlist.external_playlist_id}",
+            content,
+            youtube_playlist.playlist_url,
             theme=self._theme,
-            bg=self._theme["surface"],
-            fg=self._theme["text_secondary"],
-        ).pack(anchor="w", pady=(4, 0))
-        createLabel(
-            text_host,
-            "Playlist lista para sincronizar",
-            theme=self._theme,
-            bg=self._theme["surface"],
-            fg=self._theme["text_muted"],
-        ).pack(anchor="w", pady=(4, 0))
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 13),
+            wraplength=620,
+        ).grid(row=1, column=0, sticky="w", pady=(6, 0))
 
-        status = createLabel(
-            self,
-            "Activa" if youtube_playlist.is_active else "Guardada",
-            theme=self._theme,
-            bg=self._theme["surface"],
-            fg=self._theme["success"]
-            if youtube_playlist.is_active
-            else self._theme["text_secondary"],
-            font=("Segoe UI", 9, "bold"),
-        )
-        status.pack(side="left", padx=(12, 12), anchor="n")
+        badgeTone = "success" if youtube_playlist.is_active else "idle"
+        badgeText = "Activa" if youtube_playlist.is_active else "Guardada"
+        self._statusBadge = StatusBadge(content, badgeText, badgeTone, self._theme)
+        self._statusBadge.grid(row=0, column=1, sticky="e", padx=(16, 0))
 
-        menu_button = tk.Menubutton(
-            self,
-            text="...",
-            bg=self._theme["surface_alt"],
-            fg=self._theme["text"],
-            activebackground=self._theme["surface"],
-            activeforeground=self._theme["text"],
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
-            cursor="hand2",
-        )
-        menu = tk.Menu(
-            menu_button,
-            tearoff=0,
-            bg=self._theme["surface_alt"],
-            fg=self._theme["text"],
-        )
-        menu.add_command(
-            label="Editar",
-            command=lambda: self.editRequested.emit(self._youtube_playlist_id),
-        )
-        menu.add_command(
-            label="Eliminar",
-            command=lambda: self.deleteRequested.emit(self._youtube_playlist_id),
-        )
-        menu_button.configure(menu=menu)
-        menu_button.pack(side="left", anchor="n")
+        actions = createFrame(self, theme=self._theme, fg_color="transparent")
+        actions.grid(row=1, column=0, sticky="ew", padx=18, pady=(0, 18))
+
+        activateButton = ActionButton(actions, "Activar", variant="ghost", theme=self._theme)
+        activateButton.clicked.connect(lambda: self.activated.emit(self._youtube_playlist_id))
+        activateButton.widget.pack(side="left")
+
+        editButton = ActionButton(actions, "Editar", variant="secondary", theme=self._theme)
+        editButton.clicked.connect(lambda: self.editRequested.emit(self._youtube_playlist_id))
+        editButton.widget.pack(side="left", padx=(10, 10))
+
+        deleteButton = ActionButton(actions, "Eliminar", variant="danger", theme=self._theme)
+        deleteButton.clicked.connect(lambda: self.deleteRequested.emit(self._youtube_playlist_id))
+        deleteButton.widget.pack(side="left")
 
         bindRecursive(self, "<Double-Button-1>", self._emit_activate)
 
@@ -101,63 +79,41 @@ class _YoutubePlaylistRow(tk.Frame):
         self.activated.emit(self._youtube_playlist_id)
 
 
-class YoutubePlaylistsSection(tk.Frame):
-    def __init__(self, parent: tk.Misc, theme: ThemeTokens) -> None:
-        super().__init__(parent, bg=theme["bg"])
+class YoutubePlaylistsSection(ctk.CTkFrame):
+    def __init__(self, parent, theme) -> None:
+        self._theme = theme
+        super().__init__(parent, fg_color="transparent", corner_radius=0)
         self.activateRequested = Signal()
         self.editRequested = Signal()
         self.deleteRequested = Signal()
-        self._theme = theme
 
-        self.activePlaylistValue = createLabel(
-            self,
-            "Sin playlist principal",
-            theme=self._theme,
-            font=("Segoe UI", 15, "bold"),
-        )
-        self.activePlaylistSongs = createLabel(
-            self,
-            "Canciones sin sincronizar",
-            theme=self._theme,
-            fg=self._theme["text_secondary"],
-        )
-        self.activePlaylistUrl = createLabel(
-            self,
-            "URL pendiente",
-            theme=self._theme,
-            fg=self._theme["text_secondary"],
-            wraplength=720,
-        )
+        topGrid = createFrame(self, theme=self._theme, fg_color="transparent")
+        topGrid.pack(fill="x")
+        topGrid.grid_columnconfigure(0, weight=1)
+        topGrid.grid_columnconfigure(1, weight=1)
 
-        self.playlistTitleInput = createEntry(self, theme=self._theme, width=28)
-        self.playlistUrlInput = createEntry(self, theme=self._theme, width=60)
-        self.savePlaylistButton = ActionButton(self, "Guardar playlist", theme=self._theme)
-        self.saveModeLabel = createLabel(
-            self,
-            "Crea o actualiza la playlist principal desde aqui.",
-            theme=self._theme,
-            fg=self._theme["text_secondary"],
-        )
+        self._buildStatusCard(topGrid).grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        self._buildComposerCard(topGrid).grid(row=0, column=1, sticky="nsew")
+
         self.statusLabel = createLabel(
             self,
-            "Doble clic en una playlist para activarla.",
+            "Selecciona una playlist para activarla o actualizarla.",
             theme=self._theme,
-            fg=self._theme["accent"],
-            wraplength=720,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 13),
         )
-        self.listCaption = createLabel(
-            self,
+        self.statusLabel.pack(anchor="w", pady=(18, 12))
+
+        listHeader = createFrame(self, theme=self._theme, fg_color="transparent")
+        listHeader.pack(fill="x", pady=(8, 12))
+        createLabel(
+            listHeader,
             "Playlists guardadas",
             theme=self._theme,
-            font=("Segoe UI", 11, "bold"),
-        )
+            font=("Segoe UI", 18, "bold"),
+        ).pack(side="left")
 
-        self._rowsHost = tk.Frame(self, bg=self._theme["bg"])
-
-        self._buildComposerCard().pack(fill="x")
-        self.saveModeLabel.pack(anchor="w", pady=(16, 4))
-        self.statusLabel.pack(anchor="w")
-        self.listCaption.pack(anchor="w", pady=(16, 8))
+        self._rowsHost = createScrollableFrame(self, theme=self._theme, fg_color="transparent")
         self._rowsHost.pack(fill="both", expand=True)
 
     def showPlaylists(self, youtube_playlists: list[YoutubePlaylistDto]) -> None:
@@ -171,20 +127,20 @@ class YoutubePlaylistsSection(tk.Frame):
             row.activated.connect(self.activateRequested.emit)
             row.editRequested.connect(self.editRequested.emit)
             row.deleteRequested.connect(self.deleteRequested.emit)
-            row.pack(fill="x", pady=(0, 12))
+            row.pack(fill="x", pady=(0, 14))
 
     def showActivePlaylist(self, active_playlist: YoutubePlaylistDto | None) -> None:
         if active_playlist is None:
-            self.activePlaylistValue.configure(text="Sin playlist principal")
-            self.activePlaylistSongs.configure(text="Canciones sin sincronizar")
-            self.activePlaylistUrl.configure(text="URL pendiente")
+            self.activePlaylistValue.configure(text="Sin playlist configurada")
+            self.activePlaylistMeta.configure(text="Aún no hay una playlist principal de referencia.")
+            self.activePlaylistUrl.configure(text="Añade una URL para empezar a sincronizar tu música.")
+            self.activePlaylistBadge.setStatus("Pendiente", "idle")
             return
 
         self.activePlaylistValue.configure(text=active_playlist.title)
-        self.activePlaylistSongs.configure(
-            text=f"ID YouTube: {active_playlist.external_playlist_id}"
-        )
+        self.activePlaylistMeta.configure(text="Playlist preparada para comparaciones y sincronización.")
         self.activePlaylistUrl.configure(text=active_playlist.playlist_url)
+        self.activePlaylistBadge.setStatus("Activa", "success")
         self.setPlaylistTitle(active_playlist.title)
         self.setPlaylistUrl(active_playlist.playlist_url)
 
@@ -195,27 +151,29 @@ class YoutubePlaylistsSection(tk.Frame):
         return self.playlistUrlInput.get()
 
     def setPlaylistTitle(self, title: str) -> None:
-        self.playlistTitleInput.delete(0, tk.END)
+        self.playlistTitleInput.delete(0, "end")
         self.playlistTitleInput.insert(0, title)
 
     def setPlaylistUrl(self, playlist_url: str) -> None:
-        self.playlistUrlInput.delete(0, tk.END)
+        self.playlistUrlInput.delete(0, "end")
         self.playlistUrlInput.insert(0, playlist_url)
 
     def setSaveMode(self, is_editing: bool) -> None:
         if is_editing:
-            self.savePlaylistButton.setText("Guardar playlist")
-            self.saveModeLabel.configure(
-                text="Estas editando la playlist seleccionada. Guarda para aplicar los cambios."
+            self.savePlaylistButton.setText("Guardar cambios")
+            self.formHelper.configure(
+                text="Estás editando la playlist seleccionada. Guarda para actualizar la referencia principal."
             )
             return
 
         self.savePlaylistButton.setText("Guardar playlist")
-        self.saveModeLabel.configure(text="Crea o actualiza la playlist principal desde aqui.")
+        self.formHelper.configure(
+            text="Define una playlist principal para sincronizar y comparar contra tu biblioteca local."
+        )
 
     def clearForm(self) -> None:
-        self.playlistTitleInput.delete(0, tk.END)
-        self.playlistUrlInput.delete(0, tk.END)
+        self.playlistTitleInput.delete(0, "end")
+        self.playlistUrlInput.delete(0, "end")
         self.setSaveMode(False)
 
     def showStatusMessage(self, message: str, tone: str = "info") -> None:
@@ -225,38 +183,124 @@ class YoutubePlaylistsSection(tk.Frame):
     def focusPrimaryInput(self) -> None:
         self.playlistTitleInput.focus_set()
 
-    def _buildComposerCard(self) -> tk.Frame:
-        card = tk.Frame(self, bg=self._theme["surface"], padx=16, pady=16)
-        self.activePlaylistValue.configure(bg=self._theme["surface"])
-        self.activePlaylistSongs.configure(bg=self._theme["surface"])
-        self.activePlaylistUrl.configure(bg=self._theme["surface"])
+    def _buildStatusCard(self, parent):
+        card = createFrame(
+            parent,
+            theme=self._theme,
+            fg_color=self._theme["panel"],
+            border_width=1,
+            border_color=self._theme["border"],
+            corner_radius=int(self._theme["radius_lg"]),
+        )
+        createLabel(
+            card,
+            "Playlist principal",
+            theme=self._theme,
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w", padx=20, pady=(18, 10))
 
-        self.activePlaylistValue.pack(in_=card, anchor="w")
-        self.activePlaylistSongs.pack(in_=card, anchor="w", pady=(2, 0))
-        self.activePlaylistUrl.pack(in_=card, anchor="w", pady=(2, 0))
+        headerRow = createFrame(card, theme=self._theme, fg_color="transparent")
+        headerRow.pack(fill="x", padx=20)
+        self.activePlaylistValue = createLabel(
+            headerRow,
+            "Sin playlist configurada",
+            theme=self._theme,
+            font=("Segoe UI", 20, "bold"),
+            wraplength=360,
+        )
+        self.activePlaylistValue.pack(side="left", anchor="w")
+        self.activePlaylistBadge = StatusBadge(headerRow, "Pendiente", "idle", self._theme)
+        self.activePlaylistBadge.pack(side="right")
 
-        first_row = tk.Frame(card, bg=self._theme["surface"])
-        first_row.pack(fill="x", pady=(14, 0))
-        self.playlistTitleInput.pack(in_=first_row, side="left", fill="x", expand=True)
-        self.savePlaylistButton.widget.pack(in_=first_row, side="left", padx=(10, 0))
-        self.playlistUrlInput.pack(in_=card, fill="x", pady=(12, 0))
+        self.activePlaylistMeta = createLabel(
+            card,
+            "Aún no hay una playlist principal de referencia.",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 13),
+            wraplength=380,
+        )
+        self.activePlaylistMeta.pack(anchor="w", padx=20, pady=(12, 6))
+        self.activePlaylistUrl = createLabel(
+            card,
+            "Añade una URL para empezar a sincronizar tu música.",
+            theme=self._theme,
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 12),
+            wraplength=380,
+        )
+        self.activePlaylistUrl.pack(anchor="w", padx=20, pady=(0, 18))
         return card
 
-    def _buildEmptyState(self, parent: tk.Misc) -> tk.Frame:
-        card = tk.Frame(parent, bg=self._theme["surface"], padx=18, pady=18)
+    def _buildComposerCard(self, parent):
+        card = createFrame(
+            parent,
+            theme=self._theme,
+            fg_color=self._theme["panel"],
+            border_width=1,
+            border_color=self._theme["border"],
+            corner_radius=int(self._theme["radius_lg"]),
+        )
         createLabel(
             card,
-            "Todavia no hay playlists guardadas",
+            "Configurar playlist",
             theme=self._theme,
-            bg=self._theme["surface"],
-            font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w")
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w", padx=20, pady=(18, 10))
+        self.formHelper = createLabel(
+            card,
+            "Define una playlist principal para sincronizar y comparar contra tu biblioteca local.",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 13),
+            wraplength=380,
+        )
+        self.formHelper.pack(anchor="w", padx=20, pady=(0, 14))
+
+        self.playlistTitleInput = createEntry(
+            card,
+            theme=self._theme,
+            width=420,
+            placeholder_text="Nombre visible de la playlist",
+        )
+        self.playlistTitleInput.pack(fill="x", padx=20)
+        self.playlistUrlInput = createEntry(
+            card,
+            theme=self._theme,
+            width=420,
+            placeholder_text="https://www.youtube.com/playlist?list=...",
+        )
+        self.playlistUrlInput.pack(fill="x", padx=20, pady=(12, 0))
+
+        actions = createFrame(card, theme=self._theme, fg_color="transparent")
+        actions.pack(fill="x", padx=20, pady=(16, 20))
+        self.savePlaylistButton = ActionButton(actions, "Guardar playlist", theme=self._theme)
+        self.savePlaylistButton.widget.pack(side="right")
+        return card
+
+    def _buildEmptyState(self, parent):
+        card = createFrame(
+            parent,
+            theme=self._theme,
+            fg_color=self._theme["panel"],
+            border_width=1,
+            border_color=self._theme["border"],
+            corner_radius=int(self._theme["radius_lg"]),
+        )
         createLabel(
             card,
-            "Guarda tu primera playlist principal para verla aqui como una referencia musical limpia.",
+            "Todavía no hay playlists guardadas",
             theme=self._theme,
-            bg=self._theme["surface"],
-            fg=self._theme["text_secondary"],
-            wraplength=700,
-        ).pack(anchor="w", pady=(6, 0))
+            font=("Segoe UI", 18, "bold"),
+        ).pack(anchor="w", padx=20, pady=(18, 8))
+        createLabel(
+            card,
+            "Guarda tu primera playlist principal para usarla como referencia de comparación y sincronización.",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 13),
+            wraplength=760,
+        ).pack(anchor="w", padx=20, pady=(0, 18))
         return card
