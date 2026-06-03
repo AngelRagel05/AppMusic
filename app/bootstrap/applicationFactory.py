@@ -22,8 +22,11 @@ from app.application.use_cases import (
     UpdateYoutubePlaylistUseCase,
 )
 from app.bootstrap.serviceRegistry import ServiceRegistry
-from app.infrastructure.database import DatabaseBootstrapper, SessionLocal, engine, get_session
-from app.infrastructure.repositories import (
+from app.infrastructure.persistence import (
+    DatabaseBootstrapper,
+    SessionLocal,
+    engine,
+    get_session,
     IgnoredTermSqlAlchemyRepository,
     LocalFolderSqlAlchemyRepository,
     YoutubePlaylistSqlAlchemyRepository,

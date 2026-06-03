@@ -5,9 +5,9 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.infrastructure.database.base import Base
-from app.infrastructure.database.models import LocalFolder as LocalFolderModel
-from app.infrastructure.repositories import LocalFolderSqlAlchemyRepository
+from app.infrastructure.persistence import LocalFolderSqlAlchemyRepository
+from app.infrastructure.persistence.database.base import Base
+from app.infrastructure.persistence.database.models import LocalFolder as LocalFolderModel
 
 
 def create_session() -> Session:

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.library.entities.localFolder import LocalFolder
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
-from app.infrastructure.database.models import LocalFolder as LocalFolderModel
+from app.infrastructure.persistence.database.models import LocalFolder as LocalFolderModel
 
 
 class LocalFolderSqlAlchemyRepository(LocalFolderRepository):

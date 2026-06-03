@@ -5,8 +5,8 @@ from collections.abc import Iterable
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.infrastructure.database.base import Base
-from app.infrastructure.database.models import IgnoredTerm
+from app.infrastructure.persistence.database.base import Base
+from app.infrastructure.persistence.database.models import IgnoredTerm
 
 DEFAULT_IGNORED_TERMS: tuple[tuple[str, str, str], ...] = (
     ("official", "title", "global"),

@@ -7,7 +7,9 @@ from app.domain.playlists.entities.youtubePlaylist import YoutubePlaylist
 from app.domain.playlists.repositories.youtubePlaylistRepository import (
     YoutubePlaylistRepository,
 )
-from app.infrastructure.database.models import YoutubePlaylist as YoutubePlaylistModel
+from app.infrastructure.persistence.database.models import (
+    YoutubePlaylist as YoutubePlaylistModel,
+)
 
 
 class YoutubePlaylistSqlAlchemyRepository(YoutubePlaylistRepository):

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pytest
-from app.infrastructure.database.base import Base
-from app.infrastructure.database.models import IgnoredTerm as IgnoredTermModel
-from app.infrastructure.repositories import IgnoredTermSqlAlchemyRepository
+from app.infrastructure.persistence import IgnoredTermSqlAlchemyRepository
+from app.infrastructure.persistence.database.base import Base
+from app.infrastructure.persistence.database.models import IgnoredTerm as IgnoredTermModel
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 

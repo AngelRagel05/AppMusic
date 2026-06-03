@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.infrastructure.database.base import Base
+from app.infrastructure.persistence.database.base import Base
 from sqlalchemy import CheckConstraint, UniqueConstraint
 
 

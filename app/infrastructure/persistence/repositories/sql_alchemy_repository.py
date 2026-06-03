@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.database.base import Base
+from app.infrastructure.persistence.database.base import Base
 
 
 class SqlAlchemyRepository[ModelType: Base, IdType]:

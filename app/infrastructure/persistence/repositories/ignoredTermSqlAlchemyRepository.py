@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.filters.entities.ignoredTerm import IgnoredTerm
 from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
-from app.infrastructure.database.models import IgnoredTerm as IgnoredTermModel
+from app.infrastructure.persistence.database.models import IgnoredTerm as IgnoredTermModel
 
 
 class IgnoredTermSqlAlchemyRepository(IgnoredTermRepository):

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from app.infrastructure.database.base import Base
-from app.infrastructure.database.models import LocalFolder
-from app.infrastructure.repositories import SqlAlchemyRepository
+from app.infrastructure.persistence import SqlAlchemyRepository
+from app.infrastructure.persistence.database.base import Base
+from app.infrastructure.persistence.database.models import LocalFolder
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 

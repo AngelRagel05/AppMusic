@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from app.infrastructure.database.bootstrap import DEFAULT_IGNORED_TERMS, DatabaseBootstrapper
-from app.infrastructure.database.models import IgnoredTerm
+from app.infrastructure.persistence.database.bootstrap import (
+    DEFAULT_IGNORED_TERMS,
+    DatabaseBootstrapper,
+)
+from app.infrastructure.persistence.database.models import IgnoredTerm
 from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 

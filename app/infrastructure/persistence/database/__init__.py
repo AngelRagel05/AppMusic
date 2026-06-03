@@ -1,8 +1,8 @@
 """Database infrastructure."""
 
-from app.infrastructure.database.base import Base
-from app.infrastructure.database.bootstrap import DatabaseBootstrapper
-from app.infrastructure.database.models import (
+from app.infrastructure.persistence.database.base import Base
+from app.infrastructure.persistence.database.bootstrap import DatabaseBootstrapper
+from app.infrastructure.persistence.database.models import (
     Download,
     IgnoredTerm,
     LocalFolder,
@@ -12,7 +12,7 @@ from app.infrastructure.database.models import (
     YoutubePlaylist,
     YoutubePlaylistItem,
 )
-from app.infrastructure.database.session import SessionLocal, engine, get_session
+from app.infrastructure.persistence.database.session import SessionLocal, engine, get_session
 
 __all__ = [
     "Base",

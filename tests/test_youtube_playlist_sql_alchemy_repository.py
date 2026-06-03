@@ -3,9 +3,11 @@ from __future__ import annotations
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.infrastructure.database.base import Base
-from app.infrastructure.database.models import YoutubePlaylist as YoutubePlaylistModel
-from app.infrastructure.repositories import YoutubePlaylistSqlAlchemyRepository
+from app.infrastructure.persistence import YoutubePlaylistSqlAlchemyRepository
+from app.infrastructure.persistence.database.base import Base
+from app.infrastructure.persistence.database.models import (
+    YoutubePlaylist as YoutubePlaylistModel,
+)
 
 
 def create_session() -> Session:
