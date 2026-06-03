@@ -3,7 +3,7 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from app.presentation.shared.widgets.statusBadge.statusBadge import StatusBadge
-from app.presentation.uiTheme import createFrame, createLabel
+from app.presentation.shared.theme import createFrame, createLabel
 
 
 class ContextSummary(ctk.CTkFrame):

@@ -12,7 +12,7 @@ from app.presentation.shell.sidebar.navigationFooter.navigationFooter import (
 from app.presentation.shell.sidebar.navigationMenu.navigationMenu import (
     NavigationMenu,
 )
-from app.presentation.uiTheme import BASE_THEME, Signal
+from app.presentation.shared.theme import BASE_THEME, Signal
 
 
 class Sidebar(ctk.CTkFrame):

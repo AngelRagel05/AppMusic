@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from app.presentation.uiTheme import Signal
+from app.presentation.shared.theme import Signal
 
 
 class NavigationMenu(ctk.CTkFrame):

@@ -3,8 +3,8 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from app.presentation.shared.widgets.statCard.statCard import StatCard
-from app.presentation.uiTheme import ActionButton, createFrame, createLabel
-from app.presentation.uiTheme.themePalette import ThemeTokens
+from app.presentation.shared.theme import ActionButton, createFrame, createLabel
+from app.presentation.shared.theme.themePalette import ThemeTokens
 
 
 class DashboardView(ctk.CTkFrame):

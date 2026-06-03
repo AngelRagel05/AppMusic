@@ -13,7 +13,7 @@ from app.presentation.features.youtubePlaylists.ui.youtubePlaylistsPage.youtubeP
     YoutubePlaylistsPage,
 )
 from app.presentation.shell.sidebar.sidebar.sidebar import Sidebar
-from app.presentation.uiTheme import BASE_THEME, createFrame
+from app.presentation.shared.theme import BASE_THEME, createFrame
 
 
 class AppShell(ctk.CTkFrame):

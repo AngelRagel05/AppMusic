@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from app.presentation.uiTheme import createLabel
+from app.presentation.shared.theme import createLabel
 
 
 class NavigationFooter(ctk.CTkFrame):

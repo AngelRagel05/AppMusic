@@ -33,7 +33,7 @@ from app.presentation.features.localLibrary.viewmodel import LocalFolderViewMode
 from app.presentation.features.youtubePlaylists.viewmodel import YoutubePlaylistViewModel
 from app.presentation.shell.appShell import AppShellController
 from app.presentation.shell.mainWindow import MainWindow
-from app.presentation.uiTheme import BASE_THEME, configureRootWindow
+from app.presentation.shared.theme import BASE_THEME, configureRootWindow
 
 
 @dataclass

@@ -6,7 +6,7 @@ import customtkinter as ctk
 
 from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.presentation.shared.widgets.statusBadge.statusBadge import StatusBadge
-from app.presentation.uiTheme import (
+from app.presentation.shared.theme import (
     ActionButton,
     Signal,
     clearChildren,

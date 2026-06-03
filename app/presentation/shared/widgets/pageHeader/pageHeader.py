@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from app.presentation.uiTheme import ActionButton, Signal, createFrame, createLabel
+from app.presentation.shared.theme import ActionButton, Signal, createFrame, createLabel
 
 
 class PageHeader(ctk.CTkFrame):

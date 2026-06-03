@@ -6,7 +6,7 @@ from app.presentation.features.youtubePlaylists.ui.youtubePlaylistsPage.youtubeP
     YoutubePlaylistsSection,
 )
 from app.presentation.shared.widgets.pageHeader.pageHeader import PageHeader
-from app.presentation.uiTheme import createFrame, getPageTheme
+from app.presentation.shared.theme import createFrame, getPageTheme
 
 
 class YoutubePlaylistsPage(ctk.CTkFrame):

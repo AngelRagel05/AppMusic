@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from app.presentation.uiTheme.signalSupport import Signal
-from app.presentation.uiTheme.themePalette import BASE_THEME, ThemeTokens
+from app.presentation.shared.theme.signalSupport import Signal
+from app.presentation.shared.theme.themePalette import BASE_THEME, ThemeTokens
 
 
 class ActionButton:

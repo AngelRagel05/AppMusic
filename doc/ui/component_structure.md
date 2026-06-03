@@ -60,7 +60,14 @@ app/presentation/
 │     └─ navigationFooter/
 │        └─ navigationFooter.py
 ├─ shared/
+│  ├─ theme/
+│  │  ├─ signalSupport.py
+│  │  ├─ themePalette.py
+│  │  ├─ widgetFactory.py
+│  │  └─ windowStyler.py
 │  └─ widgets/
+│     ├─ dataTable/
+│     │  └─ dataTable.py
 │     ├─ pageHeader/
 │     │  └─ pageHeader.py
 │     ├─ statCard/
@@ -148,3 +155,14 @@ from app.presentation.ui.shared import configureDataTable
 * menos ficheros accesorios por componente
 * estructura mas limpia para componentes pequenos y reutilizables
 * menor acoplamiento a reexports de paquete
+
+## Regla adicional para `shared/`
+
+`shared/` no es un cajon general.
+
+Solo debe contener:
+
+* tema visual reutilizable
+* widgets realmente compartidos entre varias features o el shell
+
+Si un componente solo se usa en una pantalla o depende de reglas concretas de una feature, debe salir de `shared/` y vivir dentro de esa feature.

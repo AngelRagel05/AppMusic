@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from app.presentation.uiTheme.themePalette import BASE_THEME, ThemeTokens
+from app.presentation.shared.theme.themePalette import BASE_THEME, ThemeTokens
 
 
 def configureRootWindow(

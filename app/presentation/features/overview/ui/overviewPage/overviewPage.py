@@ -3,7 +3,7 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from app.presentation.features.overview.ui.overviewPage.dashboardView import DashboardView
-from app.presentation.uiTheme import createFrame, getPageTheme
+from app.presentation.shared.theme import createFrame, getPageTheme
 
 
 class OverviewPage(ctk.CTkFrame):
