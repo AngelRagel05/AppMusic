@@ -1,4 +1,4 @@
-# ADR: Arranque de ventana en pantalla completa
+# ADR: Arranque de ventana maximizada por defecto
 
 ## Estado
 
@@ -12,24 +12,26 @@ Aprobada
 
 La aplicacion se usa como escritorio principal de trabajo y debe abrir con la mayor superficie posible desde el arranque.
 
-Hasta ahora el arranque usaba un tamaño base grande y un intento de ventana maximizada, pero no una politica explicita de pantalla completa por defecto.
+La necesidad es ocupar la pantalla desde el inicio sin entrar en modo fullscreen exclusivo.
 
 ## Decision
 
-La ventana principal arranca en pantalla completa por defecto desde la configuracion centralizada de `windowStyler.py`.
+La ventana principal arranca maximizada por defecto desde la configuracion centralizada de `windowStyler.py`.
 
 La politica queda asi:
 
-* primero se intenta `fullscreen`
-* si el entorno no lo soporta correctamente, se mantiene tambien el fallback existente de ventana maximizada
+* se mantiene un tamaño base razonable
+* se intenta abrir la ventana en estado maximizado con `zoomed`
+* no se usa modo `fullscreen`
 
 ## Consecuencias
 
 Ventajas:
 
 * la app abre lista para uso intensivo sin ajuste manual
+* se evita el comportamiento mas invasivo del fullscreen real
 * la decision queda centralizada en un unico punto de estilo de ventana
 
 Coste:
 
-* algunos entornos pueden preferir solo maximizado, por lo que se mantiene fallback compatible
+* el resultado visual depende del soporte del entorno para `zoomed`
