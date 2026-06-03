@@ -35,8 +35,7 @@ class YoutubePlaylistsController:
         self._page.onDeletePlaylistRequested(self._handleDeletePlaylistById)
 
     def load(self) -> None:
-        youtube_playlists = self._view_model.load_playlists()
-        active_playlist = self._view_model.load_active_playlist()
+        youtube_playlists, active_playlist = self._view_model.refreshState()
         self._page.showPlaylists(youtube_playlists)
         self._page.showActivePlaylist(active_playlist)
         active_playlist_title = (
@@ -71,7 +70,7 @@ class YoutubePlaylistsController:
 
         self._editing_playlist_id = None
         self._page.clearForm()
-        self.load()
+        self._renderState()
         self._page.showStatusMessage(message, tone="success")
         self._on_action_recorded(message)
 
@@ -82,7 +81,7 @@ class YoutubePlaylistsController:
             self._page.showStatusMessage(str(exc), tone="error")
             return
 
-        self.load()
+        self._renderState()
         self._page.showStatusMessage(
             f'Ahora estas comparando contra la playlist "{youtube_playlist.title}".',
             tone="success",
@@ -92,7 +91,7 @@ class YoutubePlaylistsController:
         )
 
     def _handleEditPlaylistById(self, youtube_playlist_id: int) -> None:
-        selected_playlist = self._selectedPlaylistById(youtube_playlist_id)
+        selected_playlist = self._view_model.find_playlist_by_id(youtube_playlist_id)
         if selected_playlist is None:
             self._page.showStatusMessage(
                 "La playlist seleccionada no existe.",
@@ -111,7 +110,7 @@ class YoutubePlaylistsController:
         )
 
     def _handleDeletePlaylistById(self, youtube_playlist_id: int) -> None:
-        selected_playlist = self._selectedPlaylistById(youtube_playlist_id)
+        selected_playlist = self._view_model.find_playlist_by_id(youtube_playlist_id)
         if selected_playlist is None:
             self._page.showStatusMessage(
                 "La playlist seleccionada no existe.",
@@ -128,7 +127,7 @@ class YoutubePlaylistsController:
         if self._editing_playlist_id == selected_playlist.id:
             self._editing_playlist_id = None
             self._page.clearForm()
-        self.load()
+        self._renderState()
         self._page.showStatusMessage(
             f'Playlist "{selected_playlist.title}" eliminada correctamente.',
             tone="success",
@@ -137,12 +136,13 @@ class YoutubePlaylistsController:
             f'Playlist "{selected_playlist.title}" eliminada.'
         )
 
-    def _selectedPlaylistById(self, youtube_playlist_id: int):
-        return next(
-            (
-                youtube_playlist
-                for youtube_playlist in self._view_model.load_playlists()
-                if youtube_playlist.id == youtube_playlist_id
-            ),
-            None,
+    def _renderState(self) -> None:
+        youtubePlaylists = self._view_model.load_playlists()
+        activePlaylist = self._view_model.load_active_playlist()
+        self._page.showPlaylists(youtubePlaylists)
+        self._page.showActivePlaylist(activePlaylist)
+        activePlaylistTitle = (
+            activePlaylist.title if activePlaylist is not None else "Sin playlist"
         )
+        self._on_active_playlist_changed(activePlaylistTitle)
+        self._on_state_changed()
