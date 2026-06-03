@@ -47,3 +47,25 @@ def test_create_raises_error_for_duplicate_term_scope_and_language() -> None:
 
     with pytest.raises(ValueError, match="Ya existe"):
         repository.create("live", "title", "global")
+
+
+def test_update_modifies_persisted_ignored_term() -> None:
+    session = create_session()
+    repository = IgnoredTermSqlAlchemyRepository(session)
+    ignored_term = repository.create("live", "title", "global")
+
+    updated_term = repository.update(ignored_term.id or 0, "official", "artist", "en")
+
+    assert updated_term.term == "official"
+    assert updated_term.scope == "artist"
+    assert updated_term.language == "en"
+
+
+def test_delete_removes_persisted_ignored_term() -> None:
+    session = create_session()
+    repository = IgnoredTermSqlAlchemyRepository(session)
+    ignored_term = repository.create("live", "title", "global")
+
+    repository.delete(ignored_term.id or 0)
+
+    assert session.query(IgnoredTermModel).count() == 0

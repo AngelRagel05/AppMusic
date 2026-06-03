@@ -1,6 +1,6 @@
 """Repository implementations."""
 
-from app.infrastructure.repositories.ignored_term_sql_alchemy_repository import (
+from app.infrastructure.repositories.ignoredTermSqlAlchemyRepository import (
     IgnoredTermSqlAlchemyRepository,
 )
 from app.infrastructure.repositories.localFolderSqlAlchemyRepository import (

@@ -5,6 +5,7 @@ from app.application.use_cases import (
     ActivateYoutubePlaylistUseCase,
     BootstrapDatabaseUseCase,
     CreateIgnoredTermUseCase,
+    DeleteIgnoredTermUseCase,
     DeleteLocalFolderUseCase,
     DeleteYoutubePlaylistUseCase,
     DefineMainLocalFolderUseCase,
@@ -15,6 +16,7 @@ from app.application.use_cases import (
     ListYoutubePlaylistsUseCase,
     ListIgnoredTermsUseCase,
     UpdateLocalFolderUseCase,
+    UpdateIgnoredTermUseCase,
     UpdateYoutubePlaylistUseCase,
 )
 from app.config.settings import get_settings
@@ -47,6 +49,8 @@ def main() -> int:
     ignored_terms_view_model = IgnoredTermsViewModel(
         list_use_case=ListIgnoredTermsUseCase(ignored_term_repository),
         create_use_case=CreateIgnoredTermUseCase(ignored_term_repository),
+        update_use_case=UpdateIgnoredTermUseCase(ignored_term_repository),
+        delete_use_case=DeleteIgnoredTermUseCase(ignored_term_repository),
     )
     local_folder_view_model = LocalFolderViewModel(
         list_use_case=ListLocalFoldersUseCase(local_folder_repository),

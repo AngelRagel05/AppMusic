@@ -4,10 +4,11 @@ import tkinter as tk
 
 import customtkinter as ctk
 
-from app.application.dto.ignored_term_dto import IgnoredTermDto
+from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.presentation.ui.mainScreen.shared.statusBadge.statusBadge import StatusBadge
 from app.presentation.uiTheme import (
     ActionButton,
+    Signal,
     clearChildren,
     createEntry,
     createFrame,
@@ -31,6 +32,9 @@ class _IgnoredTermRow(ctk.CTkFrame):
             border_width=1,
             border_color=self._theme["border"],
         )
+        self.editRequested = Signal()
+        self.deleteRequested = Signal()
+        self._ignored_term_id = ignored_term.id
 
         content = createFrame(self, theme=self._theme, fg_color="transparent")
         content.pack(fill="x", padx=18, pady=16)
@@ -54,11 +58,22 @@ class _IgnoredTermRow(ctk.CTkFrame):
             self._theme,
         ).pack(side="left")
 
+        actions = createFrame(content, theme=self._theme, fg_color="transparent")
+        actions.grid(row=0, column=1, rowspan=2, sticky="e")
+        editButton = ActionButton(actions, "Editar", variant="secondary", theme=self._theme)
+        editButton.clicked.connect(lambda: self.editRequested.emit(self._ignored_term_id))
+        editButton.widget.pack(side="left", padx=(0, 10))
+        deleteButton = ActionButton(actions, "Eliminar", variant="danger", theme=self._theme)
+        deleteButton.clicked.connect(lambda: self.deleteRequested.emit(self._ignored_term_id))
+        deleteButton.widget.pack(side="left")
+
 
 class IgnoredTermsSection(ctk.CTkFrame):
     def __init__(self, parent, theme) -> None:
         self._theme = theme
         super().__init__(parent, fg_color="transparent", corner_radius=0)
+        self.editRequested = Signal()
+        self.deleteRequested = Signal()
 
         topCard = createFrame(
             self,
@@ -115,6 +130,15 @@ class IgnoredTermsSection(ctk.CTkFrame):
         self.languageInput.pack(side="left", padx=(0, 12))
         self.createButton = ActionButton(inputs, "Guardar término", theme=self._theme)
         self.createButton.widget.pack(side="left")
+        self.formHelper = createLabel(
+            topCard,
+            "Define el término, su campo y el ámbito de aplicación.",
+            theme=self._theme,
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 12),
+            wraplength=860,
+        )
+        self.formHelper.pack(anchor="w", padx=20, pady=(0, 18))
 
         self.statusLabel = createLabel(
             self,
@@ -144,7 +168,10 @@ class IgnoredTermsSection(ctk.CTkFrame):
             return
 
         for ignored_term in ignored_terms:
-            _IgnoredTermRow(self._rowsHost, ignored_term, self._theme).pack(fill="x", pady=(0, 14))
+            row = _IgnoredTermRow(self._rowsHost, ignored_term, self._theme)
+            row.editRequested.connect(self.editRequested.emit)
+            row.deleteRequested.connect(self.deleteRequested.emit)
+            row.pack(fill="x", pady=(0, 14))
 
     def termText(self) -> str:
         return self.termInput.get()
@@ -157,6 +184,32 @@ class IgnoredTermsSection(ctk.CTkFrame):
 
     def clearTermInput(self) -> None:
         self.termInput.delete(0, "end")
+        self.setTermScope(SCOPE_OPTIONS[0])
+        self.setTermLanguage(LANGUAGE_OPTIONS[0])
+        self.setSaveMode(False)
+
+    def setTermText(self, value: str) -> None:
+        self.termInput.delete(0, "end")
+        self.termInput.insert(0, value)
+
+    def setTermScope(self, value: str) -> None:
+        self.scopeVar.set(value)
+
+    def setTermLanguage(self, value: str) -> None:
+        self.languageVar.set(value)
+
+    def setSaveMode(self, is_editing: bool) -> None:
+        if is_editing:
+            self.createButton.setText("Guardar cambios")
+            self.formHelper.configure(
+                text="Estás editando un término guardado. Ajusta los campos y guarda para actualizarlo."
+            )
+            return
+
+        self.createButton.setText("Guardar término")
+        self.formHelper.configure(
+            text="Define el término, su campo y el ámbito de aplicación."
+        )
 
     def showStatusMessage(self, message: str, tone: str = "info") -> None:
         self.statusLabel.configure(text=message)

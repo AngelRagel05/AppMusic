@@ -6,8 +6,8 @@ from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.domain.entities.ignored_term import IgnoredTerm
-from app.domain.services.ignored_term_repository import IgnoredTermRepository
+from app.domain.entities.ignoredTerm import IgnoredTerm
+from app.domain.services.ignoredTermRepository import IgnoredTermRepository
 from app.infrastructure.database.models import IgnoredTerm as IgnoredTermModel
 
 
@@ -40,6 +40,34 @@ class IgnoredTermSqlAlchemyRepository(IgnoredTermRepository):
 
         self._session.refresh(model)
         return self._to_entity(model)
+
+    def update(self, term_id: int, term: str, scope: str, language: str) -> IgnoredTerm:
+        model = self._session.get(IgnoredTermModel, term_id)
+        if model is None:
+            msg = "El termino ignorado seleccionado no existe."
+            raise ValueError(msg)
+
+        model.term = term
+        model.scope = scope
+        model.language = language
+        try:
+            self._session.commit()
+        except IntegrityError as exc:
+            self._session.rollback()
+            msg = "Ya existe un termino ignorado con esa combinacion."
+            raise ValueError(msg) from exc
+
+        self._session.refresh(model)
+        return self._to_entity(model)
+
+    def delete(self, term_id: int) -> None:
+        model = self._session.get(IgnoredTermModel, term_id)
+        if model is None:
+            msg = "El termino ignorado seleccionado no existe."
+            raise ValueError(msg)
+
+        self._session.delete(model)
+        self._session.commit()
 
     def _to_entity(self, model: IgnoredTermModel) -> IgnoredTerm:
         return IgnoredTerm(

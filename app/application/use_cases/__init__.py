@@ -5,7 +5,8 @@ from app.application.use_cases.activateYoutubePlaylistUseCase import (
     ActivateYoutubePlaylistUseCase,
 )
 from app.application.use_cases.bootstrap_database_use_case import BootstrapDatabaseUseCase
-from app.application.use_cases.create_ignored_term_use_case import CreateIgnoredTermUseCase
+from app.application.use_cases.createIgnoredTermUseCase import CreateIgnoredTermUseCase
+from app.application.use_cases.deleteIgnoredTermUseCase import DeleteIgnoredTermUseCase
 from app.application.use_cases.deleteLocalFolderUseCase import DeleteLocalFolderUseCase
 from app.application.use_cases.deleteYoutubePlaylistUseCase import (
     DeleteYoutubePlaylistUseCase,
@@ -26,8 +27,9 @@ from app.application.use_cases.listLocalFoldersUseCase import ListLocalFoldersUs
 from app.application.use_cases.listYoutubePlaylistsUseCase import (
     ListYoutubePlaylistsUseCase,
 )
-from app.application.use_cases.list_ignored_terms_use_case import ListIgnoredTermsUseCase
+from app.application.use_cases.listIgnoredTermsUseCase import ListIgnoredTermsUseCase
 from app.application.use_cases.updateLocalFolderUseCase import UpdateLocalFolderUseCase
+from app.application.use_cases.updateIgnoredTermUseCase import UpdateIgnoredTermUseCase
 from app.application.use_cases.updateYoutubePlaylistUseCase import (
     UpdateYoutubePlaylistUseCase,
 )
@@ -37,6 +39,7 @@ __all__ = [
     "ActivateYoutubePlaylistUseCase",
     "BootstrapDatabaseUseCase",
     "CreateIgnoredTermUseCase",
+    "DeleteIgnoredTermUseCase",
     "DeleteLocalFolderUseCase",
     "DeleteYoutubePlaylistUseCase",
     "DefineMainLocalFolderUseCase",
@@ -47,5 +50,6 @@ __all__ = [
     "ListYoutubePlaylistsUseCase",
     "ListIgnoredTermsUseCase",
     "UpdateLocalFolderUseCase",
+    "UpdateIgnoredTermUseCase",
     "UpdateYoutubePlaylistUseCase",
 ]

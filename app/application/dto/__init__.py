@@ -1,6 +1,13 @@
 """Application DTOs."""
 
-from app.application.dto.create_ignored_term_input_dto import CreateIgnoredTermInputDto
-from app.application.dto.ignored_term_dto import IgnoredTermDto
+from app.application.dto.createIgnoredTermInputDto import CreateIgnoredTermInputDto
+from app.application.dto.deleteIgnoredTermInputDto import DeleteIgnoredTermInputDto
+from app.application.dto.ignoredTermDto import IgnoredTermDto
+from app.application.dto.updateIgnoredTermInputDto import UpdateIgnoredTermInputDto
 
-__all__ = ["CreateIgnoredTermInputDto", "IgnoredTermDto"]
+__all__ = [
+    "CreateIgnoredTermInputDto",
+    "DeleteIgnoredTermInputDto",
+    "IgnoredTermDto",
+    "UpdateIgnoredTermInputDto",
+]
