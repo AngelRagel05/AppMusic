@@ -19,6 +19,10 @@ def configureRootWindow(
     window.geometry("1440x940")
     window.minsize(1280, 820)
     try:
+        window.attributes("-fullscreen", True)
+    except Exception:
+        pass
+    try:
         window.state("zoomed")
     except Exception:
         pass
