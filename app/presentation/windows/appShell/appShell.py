@@ -50,12 +50,6 @@ class AppShell(ctk.CTkFrame):
         )
         self.sidebar.ignoredTermsRequested.connect(lambda: self.showPage("ignoredTerms"))
 
-        self.overviewPage.onScanLibraryRequested(
-            lambda: self.showPage("localLibrary", focus_input=True)
-        )
-        self.localLibraryPage.onPrimaryActionRequested(
-            lambda: self.showPage("localLibrary", focus_input=True)
-        )
         self.youtubePlaylistsPage.onPrimaryActionRequested(
             lambda: self.showPage("youtubePlaylists", focus_input=True)
         )

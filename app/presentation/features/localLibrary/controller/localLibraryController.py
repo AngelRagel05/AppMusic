@@ -6,6 +6,10 @@ from tkinter import filedialog
 from app.presentation.viewmodels.localLibrary.localFolderViewModel import (
     LocalFolderViewModel,
 )
+from app.presentation.viewmodels.localLibrary.localLibraryScanViewModel import (
+    LocalLibraryScanFeedback,
+    LocalLibraryScanViewModel,
+)
 from app.presentation.features.localLibrary.ui.localLibraryPage.localLibraryPage import (
     LocalLibraryPage,
 )
@@ -16,6 +20,7 @@ class LocalLibraryController:
         self,
         page: LocalLibraryPage,
         view_model: LocalFolderViewModel,
+        scan_view_model: LocalLibraryScanViewModel,
         show_page: Callable[[str, bool], None],
         on_state_changed: Callable[[], None],
         on_action_recorded: Callable[[str], None],
@@ -24,6 +29,7 @@ class LocalLibraryController:
     ) -> None:
         self._page = page
         self._view_model = view_model
+        self._scan_view_model = scan_view_model
         self._show_page = show_page
         self._on_state_changed = on_state_changed
         self._on_action_recorded = on_action_recorded
@@ -32,6 +38,7 @@ class LocalLibraryController:
         self._editing_folder_id: int | None = None
 
     def bindEvents(self) -> None:
+        self._page.onPrimaryActionRequested(self._handleScanLibraryRequested)
         self._page.onBrowseFolderRequested(self._handleBrowseFolder)
         self._page.onSaveFolderRequested(self._handleSaveFolder)
         self._page.onActivateFolderRequested(self._handleActivateFolderById)
@@ -51,6 +58,9 @@ class LocalLibraryController:
 
     def activeFolder(self):
         return self._view_model.load_active_folder()
+
+    def requestScan(self) -> None:
+        self._handleScanLibraryRequested()
 
     def _handleBrowseFolder(self) -> None:
         selected_folder = filedialog.askdirectory(
@@ -165,6 +175,13 @@ class LocalLibraryController:
             f'Biblioteca "{selected_folder.display_name}" eliminada.'
         )
 
+    def _handleScanLibraryRequested(self) -> None:
+        self._scan_view_model.requestScan(
+            active_folder=self._view_model.load_active_folder(),
+            schedule_on_main_thread=lambda callback: self._page.after(0, callback),
+            on_feedback=self._renderScanFeedback,
+        )
+
     def _renderState(self) -> None:
         localFolders = self._view_model.load_folders()
         activeFolder = self._view_model.load_active_folder()
@@ -176,3 +193,10 @@ class LocalLibraryController:
         self._on_active_folder_changed(activeFolderName)
         self._on_song_count_changed("Sin escanear")
         self._on_state_changed()
+
+    def _renderScanFeedback(self, feedback: LocalLibraryScanFeedback) -> None:
+        if feedback.song_count_label is not None:
+            self._on_song_count_changed(feedback.song_count_label)
+        self._page.showStatusMessage(feedback.status_message, tone=feedback.status_tone)
+        if feedback.last_action_message is not None:
+            self._on_action_recorded(feedback.last_action_message)

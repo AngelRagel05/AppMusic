@@ -8,6 +8,7 @@ from app.presentation.features.youtubePlaylists.controller import (
 from app.presentation.viewmodels import (
     IgnoredTermsViewModel,
     LocalFolderViewModel,
+    LocalLibraryScanViewModel,
     YoutubePlaylistViewModel,
 )
 from app.presentation.windows.mainWindow.mainWindow import MainWindow
@@ -18,6 +19,7 @@ class AppShellController:
         self,
         view: MainWindow,
         local_folder_view_model: LocalFolderViewModel,
+        local_library_scan_view_model: LocalLibraryScanViewModel,
         youtube_playlist_view_model: YoutubePlaylistViewModel,
         ignored_terms_view_model: IgnoredTermsViewModel,
     ) -> None:
@@ -26,6 +28,7 @@ class AppShellController:
         self._local_library_controller = LocalLibraryController(
             page=view.page.localLibraryPage,
             view_model=local_folder_view_model,
+            scan_view_model=local_library_scan_view_model,
             show_page=view.page.showPage,
             on_state_changed=self._updateSyncStatus,
             on_action_recorded=self._recordLastAction,
@@ -48,6 +51,7 @@ class AppShellController:
         )
 
     def initialize(self) -> None:
+        self._view.page.overviewPage.onScanLibraryRequested(self._handleOverviewScanRequested)
         self._local_library_controller.bindEvents()
         self._youtube_playlists_controller.bindEvents()
         self._ignored_terms_controller.bindEvents()
@@ -69,3 +73,7 @@ class AppShellController:
     def _recordLastAction(self, message: str) -> None:
         self._last_action_message = message
         self._view.page.setLastAction(message)
+
+    def _handleOverviewScanRequested(self) -> None:
+        self._view.page.showPage("localLibrary")
+        self._local_library_controller.requestScan()

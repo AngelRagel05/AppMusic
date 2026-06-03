@@ -14,6 +14,7 @@ from app.application.use_cases import (
     ListIgnoredTermsUseCase,
     ListLocalFoldersUseCase,
     ListYoutubePlaylistsUseCase,
+    ScanLocalFolderUseCase,
     UpdateIgnoredTermUseCase,
     UpdateLocalFolderUseCase,
     UpdateYoutubePlaylistUseCase,
@@ -21,9 +22,12 @@ from app.application.use_cases import (
 from app.bootstrap.persistenceFactory import PersistenceFactory
 from app.bootstrap.presentationFactory import DesktopApplication, PresentationFactory
 from app.bootstrap.serviceRegistry import ServiceRegistry
+from app.infrastructure.filesystem import LocalMusicScanner
+from app.infrastructure.metadata import MutagenLocalSongMetadataReader
 from app.presentation.viewmodels import (
     IgnoredTermsViewModel,
     LocalFolderViewModel,
+    LocalLibraryScanViewModel,
     YoutubePlaylistViewModel,
 )
 
@@ -42,6 +46,13 @@ class ApplicationFactory:
 
     def createServiceRegistry(self) -> ServiceRegistry:
         persistence_registry = self._persistence_factory.createRegistry()
+        scanLocalFolderUseCase = ScanLocalFolderUseCase(
+            persistence_registry.localFolderRepository,
+            persistence_registry.localSongRepository,
+            LocalMusicScanner(),
+            MutagenLocalSongMetadataReader(),
+        )
+        localLibraryScanViewModel = LocalLibraryScanViewModel(scanLocalFolderUseCase)
 
         ignoredTermsViewModel = IgnoredTermsViewModel(
             list_use_case=ListIgnoredTermsUseCase(
@@ -102,6 +113,7 @@ class ApplicationFactory:
             session=persistence_registry.session,
             ignoredTermsViewModel=ignoredTermsViewModel,
             localFolderViewModel=localFolderViewModel,
+            localLibraryScanViewModel=localLibraryScanViewModel,
             youtubePlaylistViewModel=youtubePlaylistViewModel,
         )
 

@@ -40,6 +40,11 @@ Responsable de:
 * DTOs
 * validadores de entrada
 
+Ejemplos actuales:
+
+* `ScanLocalFolderUseCase` coordina el escaneo de biblioteca local
+* `LocalSongMetadataDto` transporta metadata extraida de MP3
+
 Orquesta acciones del sistema sin conocer detalles de UI ni implementaciones concretas de infraestructura.
 
 ### `domain/`
@@ -51,6 +56,12 @@ Responsable de:
 * servicios de dominio
 * contratos de repositorio
 
+Ejemplos actuales:
+
+* `LocalFolder` representa la biblioteca local activa o guardada
+* `LocalSong` representa cada MP3 registrado en disco
+* `LocalSongRepository` abstrae la persistencia de canciones locales
+
 No depende de frameworks ni adaptadores externos.
 
 ### `infrastructure/`
@@ -60,6 +71,12 @@ Responsable de:
 * persistencia
 * integraciones externas
 * adaptadores tecnicos
+
+Ejemplos actuales:
+
+* `persistence/` implementa repositorios SQLAlchemy
+* `filesystem/` descubre archivos MP3 en disco
+* `metadata/` extrae metadata con `Mutagen`
 
 Contiene implementaciones concretas de contratos definidos en capas superiores.
 
@@ -79,6 +96,17 @@ Responsable de:
 
 * composition root
 * construccion y cableado de dependencias
+
+### `workers/`
+
+Responsable de:
+
+* tareas en segundo plano
+* ejecucion no bloqueante de acciones pesadas de filesystem o integraciones externas
+
+Ejemplo actual:
+
+* `ScanLocalFolderWorker` ejecuta el escaneo local fuera del hilo principal
 
 ## Flujo principal
 

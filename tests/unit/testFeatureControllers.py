@@ -9,6 +9,9 @@ from app.presentation.features.ignoredTerms.controller.ignoredTermsController im
 from app.presentation.features.localLibrary.controller.localLibraryController import (
     LocalLibraryController,
 )
+from app.presentation.viewmodels.localLibrary.localLibraryScanViewModel import (
+    LocalLibraryScanFeedback,
+)
 from app.presentation.features.youtubePlaylists.controller.youtubePlaylistsController import (
     YoutubePlaylistsController,
 )
@@ -24,6 +27,7 @@ class PageCallbackPort:
 
 class LocalLibraryPageSpy:
     def __init__(self) -> None:
+        self.primaryActionRequested = PageCallbackPort()
         self.browseRequested = PageCallbackPort()
         self.saveRequested = PageCallbackPort()
         self.activateRequested = PageCallbackPort()
@@ -33,6 +37,10 @@ class LocalLibraryPageSpy:
         self.folder_display_name = ""
         self.save_mode = None
         self.status_messages: list[tuple[str, str]] = []
+        self.after_calls: list[int] = []
+
+    def onPrimaryActionRequested(self, callback) -> None:
+        self.primaryActionRequested.connect(callback)
 
     def onBrowseFolderRequested(self, callback) -> None:
         self.browseRequested.connect(callback)
@@ -80,6 +88,10 @@ class LocalLibraryPageSpy:
     def focusPrimaryInput(self) -> None:
         return None
 
+    def after(self, delay_ms: int, callback) -> None:
+        self.after_calls.append(delay_ms)
+        callback()
+
 
 class LocalLibraryViewModelSpy:
     def __init__(self, selected_folder: LocalFolderDto | None) -> None:
@@ -113,6 +125,19 @@ class LocalLibraryViewModelSpy:
 
     def delete_folder(self, _local_folder_id: int) -> None:
         return None
+
+
+class LocalLibraryScanViewModelSpy:
+    def __init__(self, feedbacks: list[LocalLibraryScanFeedback] | None = None) -> None:
+        self.feedbacks = feedbacks or []
+        self.received_active_folder = None
+        self.request_calls = 0
+
+    def requestScan(self, active_folder, schedule_on_main_thread, on_feedback) -> None:
+        self.request_calls += 1
+        self.received_active_folder = active_folder
+        for feedback in self.feedbacks:
+            on_feedback(feedback)
 
 
 class IgnoredTermsPageSpy:
@@ -277,6 +302,7 @@ def test_local_library_controller_uses_view_model_lookup_for_editing_selected_fo
     controller = LocalLibraryController(
         page=page,
         view_model=view_model,
+        scan_view_model=LocalLibraryScanViewModelSpy(),
         show_page=lambda page_name, focus_input: shown_pages.append((page_name, focus_input)),
         on_state_changed=lambda: None,
         on_action_recorded=lambda _message: None,
@@ -306,6 +332,7 @@ def test_local_library_controller_does_not_reactivate_active_folder() -> None:
     controller = LocalLibraryController(
         page=page,
         view_model=view_model,
+        scan_view_model=LocalLibraryScanViewModelSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
         on_action_recorded=lambda _message: None,
@@ -334,6 +361,7 @@ def test_local_library_controller_sends_visible_name_when_updating_folder() -> N
     controller = LocalLibraryController(
         page=page,
         view_model=view_model,
+        scan_view_model=LocalLibraryScanViewModelSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
         on_action_recorded=lambda _message: None,
@@ -345,6 +373,56 @@ def test_local_library_controller_sends_visible_name_when_updating_folder() -> N
     controller._handleSaveFolder()
 
     assert view_model.update_calls == [(7, r"C:\Music\Jazz", "Jazz personalizada")]
+
+
+def test_local_library_controller_delegates_scan_and_updates_song_count() -> None:
+    page = LocalLibraryPageSpy()
+    active_folder = LocalFolderDto(
+        id=7,
+        path=r"C:\Music\Jazz",
+        display_name="Jazz",
+        is_active=True,
+    )
+    view_model = LocalLibraryViewModelSpy(active_folder)
+    scan_view_model = LocalLibraryScanViewModelSpy(
+        feedbacks=[
+            LocalLibraryScanFeedback(
+                status_message='Escaneando la biblioteca "Jazz"...',
+                status_tone="info",
+                song_count_label="Escaneando...",
+            ),
+            LocalLibraryScanFeedback(
+                status_message='Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
+                status_tone="success",
+                song_count_label="2 MP3 detectados",
+                last_action_message='Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
+            ),
+        ]
+    )
+    song_count_updates: list[str] = []
+    recorded_actions: list[str] = []
+    controller = LocalLibraryController(
+        page=page,
+        view_model=view_model,
+        scan_view_model=scan_view_model,
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=recorded_actions.append,
+        on_active_folder_changed=lambda _name: None,
+        on_song_count_changed=song_count_updates.append,
+    )
+
+    controller._handleScanLibraryRequested()
+
+    assert scan_view_model.request_calls == 1
+    assert scan_view_model.received_active_folder == active_folder
+    assert song_count_updates == ["Escaneando...", "2 MP3 detectados"]
+    assert recorded_actions[-1] == 'Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).'
+    assert page.status_messages[0] == ('Escaneando la biblioteca "Jazz"...', "info")
+    assert page.status_messages[-1] == (
+        'Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
+        "success",
+    )
 
 
 def test_ignored_terms_controller_uses_view_model_lookup_for_editing_selected_term() -> None:

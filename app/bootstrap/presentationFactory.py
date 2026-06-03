@@ -36,6 +36,7 @@ class PresentationFactory:
         controller = AppShellController(
             window,
             local_folder_view_model=service_registry.localFolderViewModel,
+            local_library_scan_view_model=service_registry.localLibraryScanViewModel,
             youtube_playlist_view_model=service_registry.youtubePlaylistViewModel,
             ignored_terms_view_model=service_registry.ignoredTermsViewModel,
         )
