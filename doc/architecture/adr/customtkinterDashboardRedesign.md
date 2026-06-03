@@ -1,5 +1,13 @@
 # CustomTkinter Dashboard Redesign
 
+## Estado
+
+Historico
+
+## Regla de vigencia
+
+Si entra en conflicto con la documentacion canónica, prevalece la documentacion canónica.
+
 ## Objetivo
 
 Documentar el rediseño completo de AppMusic hacia una interfaz de escritorio moderna basada en `CustomTkinter`.

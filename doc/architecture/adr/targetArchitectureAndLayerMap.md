@@ -2,6 +2,14 @@
 
 ## Estado
 
+Historico
+
+## Regla de vigencia
+
+Si entra en conflicto con la documentacion canónica, prevalece la documentacion canónica.
+
+## Estado
+
 Aprobada
 
 ## Fecha

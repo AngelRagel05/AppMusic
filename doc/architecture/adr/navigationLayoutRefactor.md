@@ -1,5 +1,13 @@
 # Navigation Layout Refactor
 
+## Estado
+
+Historico
+
+## Regla de vigencia
+
+Si entra en conflicto con la documentacion canónica, prevalece la documentacion canónica.
+
 ## Decision
 
 La pantalla principal deja de ser una vista unica con todas las secciones apiladas.

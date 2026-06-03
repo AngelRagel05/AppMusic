@@ -88,7 +88,8 @@ UI -> ViewModel/Controller -> UseCase -> Domain -> Repository/Infrastructure
 
 ## Documentos relacionados
 
-* [targetArchitectureAndLayerMap.md](./targetArchitectureAndLayerMap.md)
-* [presentationUiPureStructure.md](./presentationUiPureStructure.md)
-* [infrastructureAdapterReorganization.md](./infrastructureAdapterReorganization.md)
-* [compositionRootModularFactories.md](./compositionRootModularFactories.md)
+* [dependencyMap.md](./dependencyMap.md)
+* [domainModulesOverview.md](./domainModulesOverview.md)
+* [presentationStructure.md](./presentationStructure.md)
+* [testingStrategy.md](./testingStrategy.md)
+* [externalIntegrations.md](./externalIntegrations.md)

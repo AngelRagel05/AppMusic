@@ -30,5 +30,7 @@ widgets -> SQLAlchemy / pygame / yt-dlp / Mutagen / FFmpeg
 
 Estas reglas se refuerzan con:
 
-* [layerDependencyRules.md](./layerDependencyRules.md)
+* [layerDependencyRules.md](./adr/layerDependencyRules.md)
 * [tests/unit/testDependencyRules.py](../../tests/unit/testDependencyRules.py)
+
+La ADR historica asociada vive en `doc/architecture/adr/layerDependencyRules.md`.

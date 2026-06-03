@@ -1,5 +1,13 @@
 # Tkinter Migration
 
+## Estado
+
+Historico
+
+## Regla de vigencia
+
+Si entra en conflicto con la documentacion canónica, prevalece la documentacion canónica.
+
 ## Objetivo
 
 Documentar la migracion completa de la capa de interfaz al stack actual basado en `Tkinter`.

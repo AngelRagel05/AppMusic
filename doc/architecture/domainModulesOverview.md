@@ -55,7 +55,7 @@ Para estado y acciones de reproduccion cuando la reproduccion deje de ser solo u
 
 ## Documento detallado
 
-La definicion detallada y el mapa completo estan en:
+El detalle historico de la migracion vive en:
 
-* [domainModuleMap.md](./domainModuleMap.md)
-* [domainModularReorganization.md](./domainModularReorganization.md)
+* `doc/architecture/adr/domainModuleMap.md`
+* `doc/architecture/adr/domainModularReorganization.md`

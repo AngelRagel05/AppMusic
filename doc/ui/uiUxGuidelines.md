@@ -22,10 +22,10 @@ Debe inspirarse en aplicaciones como Spotify Desktop, Plexamp, Discord Desktop y
 
 ## Sistema de estilos
 
-Los estilos base compartidos deben centralizarse en:
+Los estilos base compartidos deben centralizarse en la capa visual vigente:
 
 ```txt
-app/presentation/uiTheme/
+app/presentation/styles/
 ```
 
 Los widgets deben reutilizar helpers visuales comunes y mantener la paleta compartida.
@@ -33,7 +33,7 @@ Los widgets deben reutilizar helpers visuales comunes y mantener la paleta compa
 La estructura minima esperada es:
 
 ```txt
-app/presentation/uiTheme/
+app/presentation/styles/
 ├─ themePalette.py
 ├─ widgetFactory.py
 ├─ windowStyler.py

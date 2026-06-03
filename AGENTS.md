@@ -64,10 +64,12 @@ Estructura base:
 ```txt
 app/
 ├─ main.py
+├─ bootstrap/
 ├─ presentation/
 ├─ application/
 ├─ domain/
 ├─ infrastructure/
+├─ shared/
 ├─ workers/
 ├─ config/
 └─ utils/
@@ -132,6 +134,12 @@ No debe depender de frameworks de UI, ORM ni infraestructura.
 
 Contiene implementaciones concretas para base de datos, archivos, red, metadata, audio y servicios externos.
 
+### shared
+
+Contiene utilidades transversales, excepciones compartidas y constantes comunes.
+
+No debe convertirse en una capa comodin para mezclar negocio, UI e infraestructura.
+
 ### workers
 
 Contiene tareas en segundo plano para evitar bloquear la UI.
@@ -191,6 +199,20 @@ scanMusicFolder.py
 editSongMetadata.py
 downloadSong
 songTitle
+```
+
+Regla explicita:
+
+* cualquier archivo y carpeta creada manualmente dentro del proyecto debe ir en `camelCase`
+* solo se permiten excepciones cuando el nombre lo crea Python o lo impone el ecosistema o una herramienta externa
+
+Ejemplos de excepciones validas:
+
+```txt
+__init__.py
+__pycache__/
+archivo.pyc
+.pytest_cache/
 ```
 
 ### PascalCase
@@ -281,11 +303,11 @@ Reglas operativas:
 * No introducir HTML/CSS web ni paradigmas de React, Tailwind o Bootstrap
 * Respetar espaciados consistentes y una jerarquia tipografica clara
 * Mantener sidebar, paneles, tablas y barras persistentes con estructura entendible para usuario final
-* Todo componente visual dentro de `app/presentation/ui/` debe vivir en su propia carpeta con su modulo principal y, si hace falta, helpers locales estrictamente visuales
+* Todo componente visual dentro de `app/presentation/features/<feature>/ui/`, `app/presentation/windows/` o `app/presentation/widgets/` debe vivir en su propia carpeta con su modulo principal y, si hace falta, helpers locales estrictamente visuales
 * Cuando varios componentes formen parte de una misma pantalla o feature, deben agruparse dentro de una carpeta padre con nombre de feature, no reutilizar el nombre de uno de sus hijos
-* Los helpers no visuales no deben vivir dentro de `app/presentation/ui/`; deben ir fuera de UI dentro de `presentation` segun su responsabilidad
+* Los helpers no visuales no deben vivir dentro de las carpetas de `ui/`; deben ir fuera de UI dentro de `presentation` segun su responsabilidad
 
-La guia completa de UI/UX debe mantenerse en `doc/ui/ui_ux_guidelines.md`.
+La guia completa de UI/UX debe mantenerse en `doc/ui/uiUxGuidelines.md`.
 
 ### Repositories
 
@@ -332,9 +354,9 @@ Los tests deben ser claros y centrados en comportamiento.
 
 Nombrado:
 
-```txt
-test_nombre_del_comportamiento.py
-```
+* los archivos de test del proyecto siguen la misma convencion general de `camelCase`
+* la funcion o comportamiento descrito dentro del test puede seguir lenguaje natural claro
+* quedan exentos solo los nombres generados por Python o impuestos por tooling externo
 
 ---
 
@@ -366,19 +388,19 @@ Toda la documentacion de base de datos debe vivir dentro de `doc/bbdd/`.
 
 La IA debe mantener al menos estos documentos cuando se disene o cambie la base de datos:
 
-* `er_model.md`
-* `relational_model.md`
+* `erModel.md`
+* `relationalModel.md`
 * `tables/` para detalle de tablas si el proyecto crece
 
 El contenido esperado es:
 
-* `er_model.md`
+* `erModel.md`
   * modelo entidad-relacion conceptual
   * entidades
   * relaciones
   * cardinalidades
   * restricciones o notas de negocio relevantes
-* `relational_model.md`
+* `relationalModel.md`
   * modelo relacional completo
   * tablas
   * columnas

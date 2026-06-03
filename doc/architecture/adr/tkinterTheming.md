@@ -1,5 +1,13 @@
 # Tkinter Theming
 
+## Estado
+
+Historico
+
+## Regla de vigencia
+
+Si entra en conflicto con la documentacion canónica, prevalece la documentacion canónica.
+
 ## Objetivo
 
 Definir como escalar el sistema visual de `Tkinter` cuando el proyecto tenga muchas pantallas con identidad distinta.

@@ -1,5 +1,13 @@
 # Refactor de controladores y soporte de terminos ignorados
 
+## Estado
+
+Historico
+
+## Regla de vigencia
+
+Si entra en conflicto con la documentacion canónica, prevalece la documentacion canónica.
+
 ## Objetivo
 
 Reducir duplicidad y acoplamiento sin cambiar el comportamiento actual de la UI.

@@ -1,5 +1,13 @@
 # Presentation MVC
 
+## Estado
+
+Historico
+
+## Regla de vigencia
+
+Si entra en conflicto con la documentacion canónica, prevalece la documentacion canónica.
+
 ## Objetivo
 
 Definir como se aplica MVC en la capa `presentation/` del proyecto.
@@ -90,4 +98,4 @@ Se mantiene un MVC ligero en `presentation`, pero organizado por feature:
 
 La ADR de referencia para esta organizacion es:
 
-* `doc/architecture/featureModularPresentationTkinter.md`
+* `doc/architecture/adr/featureModularPresentationTkinter.md`

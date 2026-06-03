@@ -1,5 +1,13 @@
 # UI Component Structure
 
+## Estado
+
+Historico
+
+## Regla de vigencia
+
+Si entra en conflicto con la documentacion canónica, prevalece la documentacion canónica.
+
 ## Objetivo
 
 Definir una convencion simple y explicita para organizar componentes visuales en `app/presentation/ui/`.

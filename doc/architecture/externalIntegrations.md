@@ -64,5 +64,5 @@ Uso actual:
 
 ## Documentos relacionados
 
-* [infrastructureAdapterReorganization.md](./infrastructureAdapterReorganization.md)
-* [layerDependencyRules.md](./layerDependencyRules.md)
+* `doc/architecture/adr/infrastructureAdapterReorganization.md`
+* `doc/architecture/adr/layerDependencyRules.md`

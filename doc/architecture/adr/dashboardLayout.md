@@ -1,5 +1,13 @@
 # Dashboard Layout
 
+## Estado
+
+Historico
+
+## Regla de vigencia
+
+Si entra en conflicto con la documentacion canónica, prevalece la documentacion canónica.
+
 ## Objetivo
 
 Definir el patron visual de la pantalla principal para que se sienta como una app moderna de
