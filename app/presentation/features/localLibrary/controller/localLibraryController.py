@@ -39,8 +39,7 @@ class LocalLibraryController:
         self._page.onDeleteFolderRequested(self._handleDeleteFolderById)
 
     def load(self) -> None:
-        local_folders = self._view_model.load_folders()
-        active_folder = self._view_model.load_active_folder()
+        local_folders, active_folder = self._view_model.refreshState()
         self._page.showFolders(local_folders)
         self._page.showActiveFolder(active_folder)
         active_folder_name = (
@@ -83,7 +82,7 @@ class LocalLibraryController:
 
         self._editing_folder_id = None
         self._page.clearForm()
-        self.load()
+        self._renderState()
         self._page.showStatusMessage(message, tone="success")
         self._on_action_recorded(message)
 
@@ -94,7 +93,7 @@ class LocalLibraryController:
             self._page.showStatusMessage(str(exc), tone="error")
             return
 
-        self.load()
+        self._renderState()
         self._page.showStatusMessage(
             f'Ahora estas trabajando con la biblioteca "{local_folder.display_name}".',
             tone="success",
@@ -104,7 +103,7 @@ class LocalLibraryController:
         )
 
     def _handleEditFolderById(self, local_folder_id: int) -> None:
-        selected_folder = self._selectedFolderById(local_folder_id)
+        selected_folder = self._view_model.find_folder_by_id(local_folder_id)
         if selected_folder is None:
             self._page.showStatusMessage(
                 "La biblioteca seleccionada no existe.",
@@ -122,7 +121,7 @@ class LocalLibraryController:
         )
 
     def _handleDeleteFolderById(self, local_folder_id: int) -> None:
-        selected_folder = self._selectedFolderById(local_folder_id)
+        selected_folder = self._view_model.find_folder_by_id(local_folder_id)
         if selected_folder is None:
             self._page.showStatusMessage(
                 "La biblioteca seleccionada no existe.",
@@ -139,7 +138,7 @@ class LocalLibraryController:
         if self._editing_folder_id == selected_folder.id:
             self._editing_folder_id = None
             self._page.clearForm()
-        self.load()
+        self._renderState()
         self._page.showStatusMessage(
             f'Biblioteca "{selected_folder.display_name}" eliminada correctamente.',
             tone="success",
@@ -148,12 +147,14 @@ class LocalLibraryController:
             f'Biblioteca "{selected_folder.display_name}" eliminada.'
         )
 
-    def _selectedFolderById(self, local_folder_id: int):
-        return next(
-            (
-                local_folder
-                for local_folder in self._view_model.load_folders()
-                if local_folder.id == local_folder_id
-            ),
-            None,
+    def _renderState(self) -> None:
+        localFolders = self._view_model.load_folders()
+        activeFolder = self._view_model.load_active_folder()
+        self._page.showFolders(localFolders)
+        self._page.showActiveFolder(activeFolder)
+        activeFolderName = (
+            activeFolder.display_name if activeFolder is not None else "Sin biblioteca"
         )
+        self._on_active_folder_changed(activeFolderName)
+        self._on_song_count_changed("Sin escanear")
+        self._on_state_changed()

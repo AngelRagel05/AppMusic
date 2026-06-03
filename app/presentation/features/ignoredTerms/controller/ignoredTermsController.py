@@ -30,8 +30,7 @@ class IgnoredTermsController:
         self._page.onDeleteTermRequested(self._handleDeleteTermById)
 
     def load(self) -> None:
-        ignored_terms = self._view_model.load_terms()
-        self._page.showTerms(ignored_terms)
+        self._page.showTerms(self._view_model.refreshState())
 
     def _handleSaveTerm(self) -> None:
         try:
@@ -60,12 +59,12 @@ class IgnoredTermsController:
 
         self._editing_term_id = None
         self._page.clearTermInput()
-        self.load()
+        self._renderState()
         self._page.showStatusMessage(message, tone="success")
         self._on_action_recorded(message)
 
     def _handleEditTermById(self, ignored_term_id: int) -> None:
-        selected_term = self._selectedTermById(ignored_term_id)
+        selected_term = self._view_model.find_term_by_id(ignored_term_id)
         if selected_term is None:
             self._page.showStatusMessage(
                 "El termino seleccionado no existe.",
@@ -85,7 +84,7 @@ class IgnoredTermsController:
         )
 
     def _handleDeleteTermById(self, ignored_term_id: int) -> None:
-        selected_term = self._selectedTermById(ignored_term_id)
+        selected_term = self._view_model.find_term_by_id(ignored_term_id)
         if selected_term is None:
             self._page.showStatusMessage(
                 "El termino seleccionado no existe.",
@@ -102,19 +101,12 @@ class IgnoredTermsController:
         if self._editing_term_id == selected_term.id:
             self._editing_term_id = None
             self._page.clearTermInput()
-        self.load()
+        self._renderState()
         self._page.showStatusMessage(
             f'Termino "{selected_term.term}" eliminado correctamente.',
             tone="success",
         )
         self._on_action_recorded(f'Termino "{selected_term.term}" eliminado.')
 
-    def _selectedTermById(self, ignored_term_id: int):
-        return next(
-            (
-                ignored_term
-                for ignored_term in self._view_model.load_terms()
-                if ignored_term.id == ignored_term_id
-            ),
-            None,
-        )
+    def _renderState(self) -> None:
+        self._page.showTerms(self._view_model.load_terms())
