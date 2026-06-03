@@ -104,11 +104,11 @@ def test_update_changes_existing_library_path(tmp_path: Path) -> None:
     updated_folder = repository.update(
         created_folder.id or 0,
         str(renamed_folder),
-        renamed_folder.name,
+        "Coleccion renombrada",
     )
 
     assert updated_folder.path == str(renamed_folder)
-    assert updated_folder.display_name == renamed_folder.name
+    assert updated_folder.display_name == "Coleccion renombrada"
 
 
 def test_delete_removes_existing_library(tmp_path: Path) -> None:

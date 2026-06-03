@@ -30,6 +30,7 @@ class LocalLibraryPageSpy:
         self.editRequested = PageCallbackPort()
         self.deleteRequested = PageCallbackPort()
         self.folder_path = ""
+        self.folder_display_name = ""
         self.save_mode = None
         self.status_messages: list[tuple[str, str]] = []
 
@@ -60,11 +61,18 @@ class LocalLibraryPageSpy:
     def setFolderPath(self, path: str) -> None:
         self.folder_path = path
 
+    def folderDisplayName(self) -> str:
+        return self.folder_display_name
+
+    def setFolderDisplayName(self, display_name: str) -> None:
+        self.folder_display_name = display_name
+
     def setSaveMode(self, isEditing: bool) -> None:
         self.save_mode = isEditing
 
     def clearForm(self) -> None:
         self.folder_path = ""
+        self.folder_display_name = ""
 
     def showStatusMessage(self, message: str, tone: str = "info") -> None:
         self.status_messages.append((message, tone))
@@ -78,15 +86,18 @@ class LocalLibraryViewModelSpy:
         self.selected_folder = selected_folder
         self.find_calls: list[int] = []
         self.activate_calls: list[int] = []
+        self.update_calls: list[tuple[int, str, str]] = []
 
     def refreshState(self):
         return [], None
 
     def load_folders(self):
-        raise AssertionError("load_folders no debe usarse para buscar por id")
+        if self.selected_folder is None:
+            return []
+        return [self.selected_folder]
 
     def load_active_folder(self):
-        return None
+        return self.selected_folder if self.selected_folder and self.selected_folder.is_active else None
 
     def find_folder_by_id(self, local_folder_id: int):
         self.find_calls.append(local_folder_id)
@@ -94,6 +105,10 @@ class LocalLibraryViewModelSpy:
 
     def activate_folder(self, local_folder_id: int):
         self.activate_calls.append(local_folder_id)
+        return self.selected_folder
+
+    def update_folder(self, local_folder_id: int, path: str, display_name: str):
+        self.update_calls.append((local_folder_id, path, display_name))
         return self.selected_folder
 
     def delete_folder(self, _local_folder_id: int) -> None:
@@ -273,6 +288,7 @@ def test_local_library_controller_uses_view_model_lookup_for_editing_selected_fo
 
     assert view_model.find_calls == [7]
     assert page.folder_path == r"C:\Music\Jazz"
+    assert page.folder_display_name == "Jazz"
     assert page.save_mode is True
     assert shown_pages == [("localLibrary", True)]
     assert page.status_messages[-1] == ('Editando la biblioteca "Jazz".', "info")
@@ -302,6 +318,33 @@ def test_local_library_controller_does_not_reactivate_active_folder() -> None:
     assert view_model.find_calls == [7]
     assert view_model.activate_calls == []
     assert page.status_messages[-1] == ('La biblioteca "Jazz" ya esta activa.', "info")
+
+
+def test_local_library_controller_sends_visible_name_when_updating_folder() -> None:
+    page = LocalLibraryPageSpy()
+    page.folder_path = r"C:\Music\Jazz"
+    page.folder_display_name = "Jazz personalizada"
+    selected_folder = LocalFolderDto(
+        id=7,
+        path=r"C:\Music\Jazz",
+        display_name="Jazz",
+        is_active=False,
+    )
+    view_model = LocalLibraryViewModelSpy(selected_folder)
+    controller = LocalLibraryController(
+        page=page,
+        view_model=view_model,
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=lambda _message: None,
+        on_active_folder_changed=lambda _name: None,
+        on_song_count_changed=lambda _value: None,
+    )
+    controller._editing_folder_id = 7
+
+    controller._handleSaveFolder()
+
+    assert view_model.update_calls == [(7, r"C:\Music\Jazz", "Jazz personalizada")]
 
 
 def test_ignored_terms_controller_uses_view_model_lookup_for_editing_selected_term() -> None:

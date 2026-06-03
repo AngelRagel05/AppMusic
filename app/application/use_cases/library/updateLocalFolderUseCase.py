@@ -15,7 +15,10 @@ class UpdateLocalFolderUseCase:
 
     def execute(self, input_dto: UpdateLocalFolderInputDto) -> LocalFolderDto:
         validateLocalFolderId(input_dto.local_folder_id)
-        normalized_data = normalizeLocalFolderData(input_dto.path)
+        normalized_data = normalizeLocalFolderData(
+            input_dto.path,
+            input_dto.display_name,
+        )
         local_folder = self._repository.update(
             input_dto.local_folder_id,
             normalized_data.path,

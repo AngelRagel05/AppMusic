@@ -7,3 +7,4 @@ from dataclasses import dataclass
 class UpdateLocalFolderInputDto:
     local_folder_id: int
     path: str
+    display_name: str

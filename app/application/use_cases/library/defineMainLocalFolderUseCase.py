@@ -15,7 +15,10 @@ class DefineMainLocalFolderUseCase:
         self._repository = repository
 
     def execute(self, input_dto: DefineMainLocalFolderInputDto) -> LocalFolderDto:
-        normalized_data = normalizeLocalFolderData(input_dto.path)
+        normalized_data = normalizeLocalFolderData(
+            input_dto.path,
+            input_dto.display_name,
+        )
         local_folder = self._repository.save_as_active(
             path=normalized_data.path,
             display_name=normalized_data.display_name,

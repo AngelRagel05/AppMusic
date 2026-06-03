@@ -65,7 +65,8 @@ class LocalLibraryController:
         try:
             if self._editing_folder_id is None:
                 local_folder = self._view_model.define_main_folder(
-                    self._page.folderPath()
+                    self._page.folderPath(),
+                    self._page.folderDisplayName(),
                 )
                 message = (
                     f'Biblioteca "{local_folder.display_name}" guardada y activada correctamente.'
@@ -74,6 +75,7 @@ class LocalLibraryController:
                 local_folder = self._view_model.update_folder(
                     self._editing_folder_id,
                     self._page.folderPath(),
+                    self._page.folderDisplayName(),
                 )
                 message = f'Biblioteca "{local_folder.display_name}" actualizada correctamente.'
         except ValueError as exc:
@@ -128,6 +130,7 @@ class LocalLibraryController:
 
         self._editing_folder_id = selected_folder.id
         self._page.setFolderPath(selected_folder.path)
+        self._page.setFolderDisplayName(selected_folder.display_name)
         self._page.setSaveMode(True)
         self._show_page("localLibrary", True)
         self._page.showStatusMessage(

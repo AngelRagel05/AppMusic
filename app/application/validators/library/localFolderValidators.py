@@ -18,7 +18,7 @@ def validateLocalFolderId(local_folder_id: int) -> None:
         raise ValidationError(msg)
 
 
-def normalizeLocalFolderData(path: str) -> NormalizedLocalFolderData:
+def normalizeLocalFolderData(path: str, display_name: str = "") -> NormalizedLocalFolderData:
     normalized_path = path.strip()
     if not normalized_path:
         msg = "La carpeta principal no puede estar vacia."
@@ -34,8 +34,8 @@ def normalizeLocalFolderData(path: str) -> NormalizedLocalFolderData:
         raise ValidationError(msg)
 
     resolved_path = str(folder_path.resolve())
-    display_name = folder_path.resolve().name or resolved_path
+    normalized_display_name = display_name.strip() or folder_path.resolve().name or resolved_path
     return NormalizedLocalFolderData(
         path=resolved_path,
-        display_name=display_name,
+        display_name=normalized_display_name,
     )

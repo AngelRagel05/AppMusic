@@ -66,16 +66,20 @@ class LocalFolderViewModel:
         self.refreshState()
         return localFolder
 
-    def define_main_folder(self, path: str) -> LocalFolderDto:
+    def define_main_folder(self, path: str, display_name: str = "") -> LocalFolderDto:
         localFolder = self._define_main_use_case.execute(
-            DefineMainLocalFolderInputDto(path=path)
+            DefineMainLocalFolderInputDto(path=path, display_name=display_name)
         )
         self.refreshState()
         return localFolder
 
-    def update_folder(self, local_folder_id: int, path: str) -> LocalFolderDto:
+    def update_folder(self, local_folder_id: int, path: str, display_name: str) -> LocalFolderDto:
         localFolder = self._update_use_case.execute(
-            UpdateLocalFolderInputDto(local_folder_id=local_folder_id, path=path)
+            UpdateLocalFolderInputDto(
+                local_folder_id=local_folder_id,
+                path=path,
+                display_name=display_name,
+            )
         )
         self.refreshState()
         return localFolder

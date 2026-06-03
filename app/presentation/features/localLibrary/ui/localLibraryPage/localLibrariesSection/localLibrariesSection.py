@@ -159,9 +159,16 @@ class LocalLibrariesSection(ctk.CTkFrame):
     def folderPath(self) -> str:
         return self.folderInput.get()
 
+    def folderDisplayName(self) -> str:
+        return self.folderNameInput.get()
+
     def setFolderPath(self, path: str) -> None:
         self.folderInput.delete(0, "end")
         self.folderInput.insert(0, path)
+
+    def setFolderDisplayName(self, display_name: str) -> None:
+        self.folderNameInput.delete(0, "end")
+        self.folderNameInput.insert(0, display_name)
 
     def setSaveMode(self, is_editing: bool) -> None:
         if is_editing:
@@ -179,6 +186,7 @@ class LocalLibrariesSection(ctk.CTkFrame):
     def clearForm(self) -> None:
         self.folderInput.delete(0, "end")
         self.setSaveMode(False)
+        self.folderNameInput.delete(0, "end")
 
     def showStatusMessage(self, message: str, tone: str = "info") -> None:
         self.statusLabel.configure(text=message)
@@ -270,6 +278,13 @@ class LocalLibrariesSection(ctk.CTkFrame):
             placeholder_text=r"C:\Music\Rap",
         )
         self.folderInput.pack(fill="x", padx=20)
+        self.folderNameInput = createEntry(
+            card,
+            theme=self._theme,
+            width=420,
+            placeholder_text="Nombre visible de la biblioteca",
+        )
+        self.folderNameInput.pack(fill="x", padx=20, pady=(12, 0))
 
         actions = createFrame(card, theme=self._theme, fg_color="transparent")
         actions.pack(fill="x", padx=20, pady=(16, 20))

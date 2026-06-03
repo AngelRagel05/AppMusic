@@ -60,8 +60,14 @@ class LocalLibraryPage(ctk.CTkFrame):
     def folderPath(self) -> str:
         return self.section.folderPath()
 
+    def folderDisplayName(self) -> str:
+        return self.section.folderDisplayName()
+
     def setFolderPath(self, path: str) -> None:
         self.section.setFolderPath(path)
+
+    def setFolderDisplayName(self, display_name: str) -> None:
+        self.section.setFolderDisplayName(display_name)
 
     def setSaveMode(self, isEditing: bool) -> None:
         self.section.setSaveMode(isEditing)

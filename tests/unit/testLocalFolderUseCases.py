@@ -247,11 +247,29 @@ def test_update_local_folder_use_case_updates_selected_library(tmp_path: Path) -
         UpdateLocalFolderInputDto(
             local_folder_id=created_folder.id,
             path=str(renamed_folder),
+            display_name="Coleccion renombrada",
         )
     )
 
     assert updated_folder.path == str(renamed_folder.resolve())
-    assert updated_folder.display_name == "renamed"
+    assert updated_folder.display_name == "Coleccion renombrada"
+
+
+def test_define_main_local_folder_use_case_uses_custom_visible_name_when_provided(
+    tmp_path: Path,
+) -> None:
+    repository = InMemoryLocalFolderRepository()
+    use_case = DefineMainLocalFolderUseCase(repository)
+
+    local_folder = use_case.execute(
+        DefineMainLocalFolderInputDto(
+            path=str(tmp_path),
+            display_name="Mi biblioteca principal",
+        )
+    )
+
+    assert local_folder.path == str(tmp_path.resolve())
+    assert local_folder.display_name == "Mi biblioteca principal"
 
 
 def test_delete_local_folder_use_case_removes_selected_library(tmp_path: Path) -> None:
