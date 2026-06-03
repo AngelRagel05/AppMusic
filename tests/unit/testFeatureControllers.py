@@ -1,0 +1,359 @@
+from __future__ import annotations
+
+from app.application.dto.ignoredTermDto import IgnoredTermDto
+from app.application.dto.localFolderDto import LocalFolderDto
+from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
+from app.presentation.features.ignoredTerms.controller.ignoredTermsController import (
+    IgnoredTermsController,
+)
+from app.presentation.features.localLibrary.controller.localLibraryController import (
+    LocalLibraryController,
+)
+from app.presentation.features.youtubePlaylists.controller.youtubePlaylistsController import (
+    YoutubePlaylistsController,
+)
+
+
+class PageCallbackPort:
+    def __init__(self) -> None:
+        self.callback = None
+
+    def connect(self, callback) -> None:
+        self.callback = callback
+
+
+class LocalLibraryPageSpy:
+    def __init__(self) -> None:
+        self.browseRequested = PageCallbackPort()
+        self.saveRequested = PageCallbackPort()
+        self.activateRequested = PageCallbackPort()
+        self.editRequested = PageCallbackPort()
+        self.deleteRequested = PageCallbackPort()
+        self.folder_path = ""
+        self.save_mode = None
+        self.status_messages: list[tuple[str, str]] = []
+
+    def onBrowseFolderRequested(self, callback) -> None:
+        self.browseRequested.connect(callback)
+
+    def onSaveFolderRequested(self, callback) -> None:
+        self.saveRequested.connect(callback)
+
+    def onActivateFolderRequested(self, callback) -> None:
+        self.activateRequested.connect(callback)
+
+    def onEditFolderRequested(self, callback) -> None:
+        self.editRequested.connect(callback)
+
+    def onDeleteFolderRequested(self, callback) -> None:
+        self.deleteRequested.connect(callback)
+
+    def showFolders(self, _localFolders) -> None:
+        return None
+
+    def showActiveFolder(self, _activeFolder) -> None:
+        return None
+
+    def folderPath(self) -> str:
+        return self.folder_path
+
+    def setFolderPath(self, path: str) -> None:
+        self.folder_path = path
+
+    def setSaveMode(self, isEditing: bool) -> None:
+        self.save_mode = isEditing
+
+    def clearForm(self) -> None:
+        self.folder_path = ""
+
+    def showStatusMessage(self, message: str, tone: str = "info") -> None:
+        self.status_messages.append((message, tone))
+
+    def focusPrimaryInput(self) -> None:
+        return None
+
+
+class LocalLibraryViewModelSpy:
+    def __init__(self, selected_folder: LocalFolderDto | None) -> None:
+        self.selected_folder = selected_folder
+        self.find_calls: list[int] = []
+        self.activate_calls: list[int] = []
+
+    def refreshState(self):
+        return [], None
+
+    def load_folders(self):
+        raise AssertionError("load_folders no debe usarse para buscar por id")
+
+    def load_active_folder(self):
+        return None
+
+    def find_folder_by_id(self, local_folder_id: int):
+        self.find_calls.append(local_folder_id)
+        return self.selected_folder
+
+    def activate_folder(self, local_folder_id: int):
+        self.activate_calls.append(local_folder_id)
+        return self.selected_folder
+
+    def delete_folder(self, _local_folder_id: int) -> None:
+        return None
+
+
+class IgnoredTermsPageSpy:
+    def __init__(self) -> None:
+        self.saveRequested = PageCallbackPort()
+        self.editRequested = PageCallbackPort()
+        self.deleteRequested = PageCallbackPort()
+        self.term_text = ""
+        self.term_scope = ""
+        self.term_language = ""
+        self.save_mode = None
+        self.status_messages: list[tuple[str, str]] = []
+
+    def onSaveTermRequested(self, callback) -> None:
+        self.saveRequested.connect(callback)
+
+    def onEditTermRequested(self, callback) -> None:
+        self.editRequested.connect(callback)
+
+    def onDeleteTermRequested(self, callback) -> None:
+        self.deleteRequested.connect(callback)
+
+    def showTerms(self, _ignoredTerms) -> None:
+        return None
+
+    def termText(self) -> str:
+        return self.term_text
+
+    def termScope(self) -> str:
+        return self.term_scope
+
+    def termLanguage(self) -> str:
+        return self.term_language
+
+    def clearTermInput(self) -> None:
+        self.term_text = ""
+
+    def setTermText(self, value: str) -> None:
+        self.term_text = value
+
+    def setTermScope(self, value: str) -> None:
+        self.term_scope = value
+
+    def setTermLanguage(self, value: str) -> None:
+        self.term_language = value
+
+    def setSaveMode(self, isEditing: bool) -> None:
+        self.save_mode = isEditing
+
+    def showStatusMessage(self, message: str, tone: str = "info") -> None:
+        self.status_messages.append((message, tone))
+
+    def focusPrimaryInput(self) -> None:
+        return None
+
+
+class IgnoredTermsViewModelSpy:
+    def __init__(self, selected_term: IgnoredTermDto | None) -> None:
+        self.selected_term = selected_term
+        self.find_calls: list[int] = []
+
+    def refreshState(self):
+        return []
+
+    def load_terms(self):
+        raise AssertionError("load_terms no debe usarse para buscar por id")
+
+    def find_term_by_id(self, term_id: int):
+        self.find_calls.append(term_id)
+        return self.selected_term
+
+
+class YoutubePlaylistsPageSpy:
+    def __init__(self) -> None:
+        self.saveRequested = PageCallbackPort()
+        self.activateRequested = PageCallbackPort()
+        self.editRequested = PageCallbackPort()
+        self.deleteRequested = PageCallbackPort()
+        self.playlist_title = ""
+        self.playlist_url = ""
+        self.save_mode = None
+        self.status_messages: list[tuple[str, str]] = []
+
+    def onSavePlaylistRequested(self, callback) -> None:
+        self.saveRequested.connect(callback)
+
+    def onActivatePlaylistRequested(self, callback) -> None:
+        self.activateRequested.connect(callback)
+
+    def onEditPlaylistRequested(self, callback) -> None:
+        self.editRequested.connect(callback)
+
+    def onDeletePlaylistRequested(self, callback) -> None:
+        self.deleteRequested.connect(callback)
+
+    def showPlaylists(self, _playlists) -> None:
+        return None
+
+    def showActivePlaylist(self, _playlist) -> None:
+        return None
+
+    def playlistTitle(self) -> str:
+        return self.playlist_title
+
+    def playlistUrl(self) -> str:
+        return self.playlist_url
+
+    def setPlaylistTitle(self, value: str) -> None:
+        self.playlist_title = value
+
+    def setPlaylistUrl(self, value: str) -> None:
+        self.playlist_url = value
+
+    def setSaveMode(self, isEditing: bool) -> None:
+        self.save_mode = isEditing
+
+    def clearForm(self) -> None:
+        self.playlist_title = ""
+        self.playlist_url = ""
+
+    def showStatusMessage(self, message: str, tone: str = "info") -> None:
+        self.status_messages.append((message, tone))
+
+    def focusPrimaryInput(self) -> None:
+        return None
+
+
+class YoutubePlaylistsViewModelSpy:
+    def __init__(self, selected_playlist: YoutubePlaylistDto | None) -> None:
+        self.selected_playlist = selected_playlist
+        self.find_calls: list[int] = []
+        self.activate_calls: list[int] = []
+
+    def refreshState(self):
+        return [], None
+
+    def load_playlists(self):
+        raise AssertionError("load_playlists no debe usarse para buscar por id")
+
+    def load_active_playlist(self):
+        return None
+
+    def find_playlist_by_id(self, youtube_playlist_id: int):
+        self.find_calls.append(youtube_playlist_id)
+        return self.selected_playlist
+
+    def activate_playlist(self, youtube_playlist_id: int):
+        self.activate_calls.append(youtube_playlist_id)
+        return self.selected_playlist
+
+
+def test_local_library_controller_uses_view_model_lookup_for_editing_selected_folder() -> None:
+    page = LocalLibraryPageSpy()
+    selected_folder = LocalFolderDto(
+        id=7,
+        path=r"C:\Music\Jazz",
+        display_name="Jazz",
+        is_active=False,
+    )
+    view_model = LocalLibraryViewModelSpy(selected_folder)
+    shown_pages: list[tuple[str, bool]] = []
+    controller = LocalLibraryController(
+        page=page,
+        view_model=view_model,
+        show_page=lambda page_name, focus_input: shown_pages.append((page_name, focus_input)),
+        on_state_changed=lambda: None,
+        on_action_recorded=lambda _message: None,
+        on_active_folder_changed=lambda _name: None,
+        on_song_count_changed=lambda _value: None,
+    )
+
+    controller._handleEditFolderById(7)
+
+    assert view_model.find_calls == [7]
+    assert page.folder_path == r"C:\Music\Jazz"
+    assert page.save_mode is True
+    assert shown_pages == [("localLibrary", True)]
+    assert page.status_messages[-1] == ('Editando la biblioteca "Jazz".', "info")
+
+
+def test_local_library_controller_does_not_reactivate_active_folder() -> None:
+    page = LocalLibraryPageSpy()
+    active_folder = LocalFolderDto(
+        id=7,
+        path=r"C:\Music\Jazz",
+        display_name="Jazz",
+        is_active=True,
+    )
+    view_model = LocalLibraryViewModelSpy(active_folder)
+    controller = LocalLibraryController(
+        page=page,
+        view_model=view_model,
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=lambda _message: None,
+        on_active_folder_changed=lambda _name: None,
+        on_song_count_changed=lambda _value: None,
+    )
+
+    controller._handleActivateFolderById(7)
+
+    assert view_model.find_calls == [7]
+    assert view_model.activate_calls == []
+    assert page.status_messages[-1] == ('La biblioteca "Jazz" ya esta activa.', "info")
+
+
+def test_ignored_terms_controller_uses_view_model_lookup_for_editing_selected_term() -> None:
+    page = IgnoredTermsPageSpy()
+    selected_term = IgnoredTermDto(
+        id=4,
+        term="live",
+        scope="title",
+        language="global",
+        is_active=True,
+    )
+    view_model = IgnoredTermsViewModelSpy(selected_term)
+    shown_pages: list[tuple[str, bool]] = []
+    controller = IgnoredTermsController(
+        page=page,
+        view_model=view_model,
+        show_page=lambda page_name, focus_input: shown_pages.append((page_name, focus_input)),
+        on_action_recorded=lambda _message: None,
+    )
+
+    controller._handleEditTermById(4)
+
+    assert view_model.find_calls == [4]
+    assert page.term_text == "live"
+    assert page.term_scope == "title"
+    assert page.term_language == "global"
+    assert page.save_mode is True
+    assert shown_pages == [("ignoredTerms", True)]
+    assert page.status_messages[-1] == ('Editando el termino "live".', "info")
+
+
+def test_youtube_playlists_controller_does_not_reactivate_active_playlist() -> None:
+    page = YoutubePlaylistsPageSpy()
+    active_playlist = YoutubePlaylistDto(
+        id=9,
+        title="Favoritas",
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        is_active=True,
+    )
+    view_model = YoutubePlaylistsViewModelSpy(active_playlist)
+    controller = YoutubePlaylistsController(
+        page=page,
+        view_model=view_model,
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=lambda _message: None,
+        on_active_playlist_changed=lambda _title: None,
+    )
+
+    controller._handleActivatePlaylistById(9)
+
+    assert view_model.find_calls == [9]
+    assert view_model.activate_calls == []
+    assert page.status_messages[-1] == ('La playlist "Favoritas" ya esta activa.', "info")
