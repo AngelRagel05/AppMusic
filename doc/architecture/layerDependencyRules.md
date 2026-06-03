@@ -35,7 +35,7 @@ widgets -> SQLAlchemy / pygame / yt-dlp / Mutagen / FFmpeg
 
 ## Verificacion
 
-Estas reglas quedan respaldadas por `tests/test_dependency_rules.py`, que revisa imports de forma automatica para:
+Estas reglas quedan respaldadas por `tests/unit/testDependencyRules.py`, que revisa imports de forma automatica para:
 
 * impedir `presentation -> infrastructure`
 * impedir `domain -> infrastructure`

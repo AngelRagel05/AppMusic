@@ -42,4 +42,4 @@ Actualmente queda preparado pero sin suites reales.
 
 ## Documento relacionado
 
-* [test_levels_classification.md](./test_levels_classification.md)
+* [testLevelsClassification.md](./testLevelsClassification.md)

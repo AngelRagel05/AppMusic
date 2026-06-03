@@ -90,4 +90,4 @@ Se mantiene un MVC ligero en `presentation`, pero organizado por feature:
 
 La ADR de referencia para esta organizacion es:
 
-* `doc/architecture/feature_modular_presentation_tkinter.md`
+* `doc/architecture/featureModularPresentationTkinter.md`

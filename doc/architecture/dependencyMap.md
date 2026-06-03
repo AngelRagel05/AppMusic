@@ -30,5 +30,5 @@ widgets -> SQLAlchemy / pygame / yt-dlp / Mutagen / FFmpeg
 
 Estas reglas se refuerzan con:
 
-* [layer_dependency_rules.md](./layer_dependency_rules.md)
-* [tests/unit/test_dependency_rules.py](../../tests/unit/test_dependency_rules.py)
+* [layerDependencyRules.md](./layerDependencyRules.md)
+* [tests/unit/testDependencyRules.py](../../tests/unit/testDependencyRules.py)

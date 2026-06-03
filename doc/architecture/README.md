@@ -2,11 +2,11 @@
 
 ## Documentos base
 
-* [architecture_overview.md](./architecture_overview.md): vista general del sistema y de sus capas
-* [dependency_map.md](./dependency_map.md): reglas de dependencia permitidas y prohibidas
-* [domain_modules_overview.md](./domain_modules_overview.md): mapa actual y previsto de modulos del dominio
-* [testing_strategy.md](./testing_strategy.md): estrategia de testing por nivel
-* [external_integrations.md](./external_integrations.md): integraciones externas actuales y previstas
+* [architectureOverview.md](./architectureOverview.md): vista general del sistema y de sus capas
+* [dependencyMap.md](./dependencyMap.md): reglas de dependencia permitidas y prohibidas
+* [domainModulesOverview.md](./domainModulesOverview.md): mapa actual y previsto de modulos del dominio
+* [testingStrategy.md](./testingStrategy.md): estrategia de testing por nivel
+* [externalIntegrations.md](./externalIntegrations.md): integraciones externas actuales y previstas
 
 ## ADRs y decisiones detalladas
 

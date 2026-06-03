@@ -57,5 +57,5 @@ Para estado y acciones de reproduccion cuando la reproduccion deje de ser solo u
 
 La definicion detallada y el mapa completo estan en:
 
-* [domain_module_map.md](./domain_module_map.md)
-* [domain_modular_reorganization.md](./domain_modular_reorganization.md)
+* [domainModuleMap.md](./domainModuleMap.md)
+* [domainModularReorganization.md](./domainModularReorganization.md)
