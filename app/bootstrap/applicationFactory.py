@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from app.application.use_cases import (
     ActivateLocalFolderUseCase,
     ActivateYoutubePlaylistUseCase,
-    BootstrapDatabaseUseCase,
     CreateIgnoredTermUseCase,
     DeleteIgnoredTermUseCase,
     DeleteLocalFolderUseCase,
@@ -21,98 +18,96 @@ from app.application.use_cases import (
     UpdateLocalFolderUseCase,
     UpdateYoutubePlaylistUseCase,
 )
+from app.bootstrap.persistenceFactory import PersistenceFactory
+from app.bootstrap.presentationFactory import DesktopApplication, PresentationFactory
 from app.bootstrap.serviceRegistry import ServiceRegistry
-from app.infrastructure.persistence import (
-    DatabaseBootstrapper,
-    SessionLocal,
-    engine,
-    get_session,
-    IgnoredTermSqlAlchemyRepository,
-    LocalFolderSqlAlchemyRepository,
-    YoutubePlaylistSqlAlchemyRepository,
-)
-from app.presentation.styles import BASE_THEME, configureRootWindow
 from app.presentation.viewmodels import (
     IgnoredTermsViewModel,
     LocalFolderViewModel,
     YoutubePlaylistViewModel,
 )
-from app.presentation.windows.appShell import AppShellController
-from app.presentation.windows.mainWindow import MainWindow
-
-
-@dataclass
-class DesktopApplication:
-    window: MainWindow
-    controller: AppShellController
-    serviceRegistry: ServiceRegistry
-
-    def run(self) -> int:
-        self.controller.initialize()
-        self.window.show()
-
-        try:
-            self.window.mainloop()
-            return 0
-        finally:
-            self.serviceRegistry.session.close()
 
 
 class ApplicationFactory:
+    def __init__(
+        self,
+        persistence_factory: PersistenceFactory | None = None,
+        presentation_factory: PresentationFactory | None = None,
+    ) -> None:
+        self._persistence_factory = persistence_factory or PersistenceFactory()
+        self._presentation_factory = presentation_factory or PresentationFactory()
+
     def bootstrapDatabase(self) -> None:
-        BootstrapDatabaseUseCase(DatabaseBootstrapper(engine, SessionLocal)).execute()
+        self._persistence_factory.bootstrapDatabase()
 
     def createServiceRegistry(self) -> ServiceRegistry:
-        session = get_session()
-
-        ignoredTermRepository = IgnoredTermSqlAlchemyRepository(session)
-        localFolderRepository = LocalFolderSqlAlchemyRepository(session)
-        youtubePlaylistRepository = YoutubePlaylistSqlAlchemyRepository(session)
+        persistence_registry = self._persistence_factory.createRegistry()
 
         ignoredTermsViewModel = IgnoredTermsViewModel(
-            list_use_case=ListIgnoredTermsUseCase(ignoredTermRepository),
-            create_use_case=CreateIgnoredTermUseCase(ignoredTermRepository),
-            update_use_case=UpdateIgnoredTermUseCase(ignoredTermRepository),
-            delete_use_case=DeleteIgnoredTermUseCase(ignoredTermRepository),
+            list_use_case=ListIgnoredTermsUseCase(
+                persistence_registry.ignoredTermRepository
+            ),
+            create_use_case=CreateIgnoredTermUseCase(
+                persistence_registry.ignoredTermRepository
+            ),
+            update_use_case=UpdateIgnoredTermUseCase(
+                persistence_registry.ignoredTermRepository
+            ),
+            delete_use_case=DeleteIgnoredTermUseCase(
+                persistence_registry.ignoredTermRepository
+            ),
         )
         localFolderViewModel = LocalFolderViewModel(
-            list_use_case=ListLocalFoldersUseCase(localFolderRepository),
-            get_active_use_case=GetActiveLocalFolderUseCase(localFolderRepository),
-            activate_use_case=ActivateLocalFolderUseCase(localFolderRepository),
-            define_main_use_case=DefineMainLocalFolderUseCase(localFolderRepository),
-            update_use_case=UpdateLocalFolderUseCase(localFolderRepository),
-            delete_use_case=DeleteLocalFolderUseCase(localFolderRepository),
+            list_use_case=ListLocalFoldersUseCase(
+                persistence_registry.localFolderRepository
+            ),
+            get_active_use_case=GetActiveLocalFolderUseCase(
+                persistence_registry.localFolderRepository
+            ),
+            activate_use_case=ActivateLocalFolderUseCase(
+                persistence_registry.localFolderRepository
+            ),
+            define_main_use_case=DefineMainLocalFolderUseCase(
+                persistence_registry.localFolderRepository
+            ),
+            update_use_case=UpdateLocalFolderUseCase(
+                persistence_registry.localFolderRepository
+            ),
+            delete_use_case=DeleteLocalFolderUseCase(
+                persistence_registry.localFolderRepository
+            ),
         )
         youtubePlaylistViewModel = YoutubePlaylistViewModel(
-            list_use_case=ListYoutubePlaylistsUseCase(youtubePlaylistRepository),
-            get_active_use_case=GetActiveYoutubePlaylistUseCase(youtubePlaylistRepository),
-            activate_use_case=ActivateYoutubePlaylistUseCase(youtubePlaylistRepository),
-            define_main_use_case=DefineMainYoutubePlaylistUseCase(
-                youtubePlaylistRepository
+            list_use_case=ListYoutubePlaylistsUseCase(
+                persistence_registry.youtubePlaylistRepository
             ),
-            update_use_case=UpdateYoutubePlaylistUseCase(youtubePlaylistRepository),
-            delete_use_case=DeleteYoutubePlaylistUseCase(youtubePlaylistRepository),
+            get_active_use_case=GetActiveYoutubePlaylistUseCase(
+                persistence_registry.youtubePlaylistRepository
+            ),
+            activate_use_case=ActivateYoutubePlaylistUseCase(
+                persistence_registry.youtubePlaylistRepository
+            ),
+            define_main_use_case=DefineMainYoutubePlaylistUseCase(
+                persistence_registry.youtubePlaylistRepository
+            ),
+            update_use_case=UpdateYoutubePlaylistUseCase(
+                persistence_registry.youtubePlaylistRepository
+            ),
+            delete_use_case=DeleteYoutubePlaylistUseCase(
+                persistence_registry.youtubePlaylistRepository
+            ),
         )
 
         return ServiceRegistry(
-            session=session,
+            session=persistence_registry.session,
             ignoredTermsViewModel=ignoredTermsViewModel,
             localFolderViewModel=localFolderViewModel,
             youtubePlaylistViewModel=youtubePlaylistViewModel,
         )
 
     def createDesktopApplication(self, appName: str) -> DesktopApplication:
-        serviceRegistry = self.createServiceRegistry()
-        window = MainWindow()
-        configureRootWindow(window.window, appName, theme=BASE_THEME)
-        controller = AppShellController(
-            window,
-            local_folder_view_model=serviceRegistry.localFolderViewModel,
-            youtube_playlist_view_model=serviceRegistry.youtubePlaylistViewModel,
-            ignored_terms_view_model=serviceRegistry.ignoredTermsViewModel,
-        )
-        return DesktopApplication(
-            window=window,
-            controller=controller,
-            serviceRegistry=serviceRegistry,
+        service_registry = self.createServiceRegistry()
+        return self._presentation_factory.createDesktopApplication(
+            app_name=appName,
+            service_registry=service_registry,
         )
