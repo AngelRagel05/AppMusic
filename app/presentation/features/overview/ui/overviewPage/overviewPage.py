@@ -17,6 +17,9 @@ class OverviewPage(ctk.CTkFrame):
         self.dashboard = DashboardView(content, self._theme)
         self.dashboard.pack(fill="both", expand=True)
 
+    def onScanLibraryRequested(self, callback) -> None:
+        self.dashboard.scanLibraryButton.clicked.connect(callback)
+
     def setActiveFolderName(self, name: str) -> None:
         self.dashboard.setActiveFolderName(name)
 

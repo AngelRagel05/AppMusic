@@ -28,11 +28,6 @@ class AppShell(ctk.CTkFrame):
         self.youtubePlaylistsPage = YoutubePlaylistsPage(self.pagesHost)
         self.ignoredTermsPage = IgnoredTermsPage(self.pagesHost)
 
-        self.heroSection = self.overviewPage.dashboard
-        self.localLibrariesSection = self.localLibraryPage.section
-        self.youtubePlaylistsSection = self.youtubePlaylistsPage.section
-        self.ignoredTermsSection = self.ignoredTermsPage.section
-
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         self.sidebar.grid(row=0, column=0, sticky="nsw")
@@ -55,13 +50,13 @@ class AppShell(ctk.CTkFrame):
         )
         self.sidebar.ignoredTermsRequested.connect(lambda: self.showPage("ignoredTerms"))
 
-        self.overviewPage.dashboard.scanLibraryButton.clicked.connect(
+        self.overviewPage.onScanLibraryRequested(
             lambda: self.showPage("localLibrary", focus_input=True)
         )
-        self.localLibraryPage.header.primaryActionRequested.connect(
+        self.localLibraryPage.onPrimaryActionRequested(
             lambda: self.showPage("localLibrary", focus_input=True)
         )
-        self.youtubePlaylistsPage.header.primaryActionRequested.connect(
+        self.youtubePlaylistsPage.onPrimaryActionRequested(
             lambda: self.showPage("youtubePlaylists", focus_input=True)
         )
 
@@ -77,9 +72,8 @@ class AppShell(ctk.CTkFrame):
         page = page_map[page_name]
         page.tkraise()
         self.sidebar.setActiveSection(page_name)
-        section = getattr(page, "section", None)
-        if focus_input and section is not None and hasattr(section, "focusPrimaryInput"):
-            section.focusPrimaryInput()
+        if focus_input and hasattr(page, "focusPrimaryInput"):
+            page.focusPrimaryInput()
 
     def setActiveFolderName(self, name: str) -> None:
         self.overviewPage.setActiveFolderName(name)

@@ -24,20 +24,26 @@ class AppShellController:
         self._view = view
         self._last_action_message = "Todavia no hay acciones registradas"
         self._local_library_controller = LocalLibraryController(
-            view=view,
+            page=view.page.localLibraryPage,
             view_model=local_folder_view_model,
+            show_page=view.page.showPage,
             on_state_changed=self._updateSyncStatus,
             on_action_recorded=self._recordLastAction,
+            on_active_folder_changed=self._view.page.setActiveFolderName,
+            on_song_count_changed=self._view.page.setSongCount,
         )
         self._youtube_playlists_controller = YoutubePlaylistsController(
-            view=view,
+            page=view.page.youtubePlaylistsPage,
             view_model=youtube_playlist_view_model,
+            show_page=view.page.showPage,
             on_state_changed=self._updateSyncStatus,
             on_action_recorded=self._recordLastAction,
+            on_active_playlist_changed=self._view.page.setActivePlaylistTitle,
         )
         self._ignored_terms_controller = IgnoredTermsController(
-            view=view,
+            page=view.page.ignoredTermsPage,
             view_model=ignored_terms_view_model,
+            show_page=view.page.showPage,
             on_action_recorded=self._recordLastAction,
         )
 

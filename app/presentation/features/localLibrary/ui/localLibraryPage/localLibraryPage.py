@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import customtkinter as ctk
+
+from app.application.dto.localFolderDto import LocalFolderDto
 
 from app.presentation.features.localLibrary.ui.localLibraryPage.localLibrariesSection.localLibrariesSection import (
     LocalLibrariesSection,
@@ -28,6 +32,48 @@ class LocalLibraryPage(ctk.CTkFrame):
 
         self.header.pack(fill="x")
         self.section.pack(fill="both", expand=True, pady=(28, 0))
+
+    def onPrimaryActionRequested(self, callback: Callable[[], None]) -> None:
+        self.header.primaryActionRequested.connect(callback)
+
+    def onBrowseFolderRequested(self, callback: Callable[[], None]) -> None:
+        self.section.browseFolderButton.clicked.connect(callback)
+
+    def onSaveFolderRequested(self, callback: Callable[[], None]) -> None:
+        self.section.saveFolderButton.clicked.connect(callback)
+
+    def onActivateFolderRequested(self, callback: Callable[[int], None]) -> None:
+        self.section.activateRequested.connect(callback)
+
+    def onEditFolderRequested(self, callback: Callable[[int], None]) -> None:
+        self.section.editRequested.connect(callback)
+
+    def onDeleteFolderRequested(self, callback: Callable[[int], None]) -> None:
+        self.section.deleteRequested.connect(callback)
+
+    def showFolders(self, localFolders: list[LocalFolderDto]) -> None:
+        self.section.showFolders(localFolders)
+
+    def showActiveFolder(self, activeFolder: LocalFolderDto | None) -> None:
+        self.section.showActiveFolder(activeFolder)
+
+    def folderPath(self) -> str:
+        return self.section.folderPath()
+
+    def setFolderPath(self, path: str) -> None:
+        self.section.setFolderPath(path)
+
+    def setSaveMode(self, isEditing: bool) -> None:
+        self.section.setSaveMode(isEditing)
+
+    def clearForm(self) -> None:
+        self.section.clearForm()
+
+    def showStatusMessage(self, message: str, tone: str = "info") -> None:
+        self.section.showStatusMessage(message, tone=tone)
+
+    def focusPrimaryInput(self) -> None:
+        self.section.focusPrimaryInput()
 
     def setActiveFolderName(self, name: str) -> None:
         self.header.setActiveFolderName(name)
