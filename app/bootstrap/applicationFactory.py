@@ -28,20 +28,18 @@ from app.infrastructure.repositories import (
     LocalFolderSqlAlchemyRepository,
     YoutubePlaylistSqlAlchemyRepository,
 )
-from app.presentation.controllers.mainWindowController import MainWindowController
-from app.presentation.ui.mainScreen.mainWindow.mainWindow import MainWindow
+from app.presentation.features.ignoredTerms.viewmodel import IgnoredTermsViewModel
+from app.presentation.features.localLibrary.viewmodel import LocalFolderViewModel
+from app.presentation.features.youtubePlaylists.viewmodel import YoutubePlaylistViewModel
+from app.presentation.shell.appShell import AppShellController
+from app.presentation.shell.mainWindow import MainWindow
 from app.presentation.uiTheme import BASE_THEME, configureRootWindow
-from app.presentation.viewmodels import (
-    IgnoredTermsViewModel,
-    LocalFolderViewModel,
-    YoutubePlaylistViewModel,
-)
 
 
 @dataclass
 class DesktopApplication:
     window: MainWindow
-    controller: MainWindowController
+    controller: AppShellController
     serviceRegistry: ServiceRegistry
 
     def run(self) -> int:
@@ -102,7 +100,7 @@ class ApplicationFactory:
         serviceRegistry = self.createServiceRegistry()
         window = MainWindow()
         configureRootWindow(window.window, appName, theme=BASE_THEME)
-        controller = MainWindowController(
+        controller = AppShellController(
             window,
             local_folder_view_model=serviceRegistry.localFolderViewModel,
             youtube_playlist_view_model=serviceRegistry.youtubePlaylistViewModel,

@@ -42,38 +42,67 @@ La regla sigue siendo estricta:
 Ejemplo valido:
 
 ```txt
-app/presentation/ui/mainScreen/
-├─ appLayout/
-│  └─ appLayout.py
-├─ sidebar/
-│  ├─ sidebar/
-│  │  └─ sidebar.py
-│  ├─ brandPanel/
-│  │  └─ brandPanel.py
-│  ├─ navigationMenu/
-│  │  └─ navigationMenu.py
-│  ├─ contextSummary/
-│  │  └─ contextSummary.py
-│  └─ navigationFooter/
-│     └─ navigationFooter.py
+app/presentation/
+├─ shell/
+│  ├─ appShell/
+│  │  └─ appShell.py
+│  ├─ mainWindow/
+│  │  └─ mainWindow.py
+│  └─ sidebar/
+│     ├─ sidebar/
+│     │  └─ sidebar.py
+│     ├─ brandPanel/
+│     │  └─ brandPanel.py
+│     ├─ navigationMenu/
+│     │  └─ navigationMenu.py
+│     ├─ contextSummary/
+│     │  └─ contextSummary.py
+│     └─ navigationFooter/
+│        └─ navigationFooter.py
 ├─ shared/
-│  └─ pageHeader/
-│     └─ pageHeader.py
-└─ pages/
-   ├─ overviewPage/
-   │  └─ overviewPage.py
-   ├─ libraryLocalPage/
-   │  ├─ libraryLocalPage.py
-   │  └─ localLibrariesSection/
-   │     └─ localLibrariesSection.py
-   ├─ playlistYouTubePage/
-   │  ├─ playlistYouTubePage.py
-   │  └─ youtubePlaylistsSection/
-   │     └─ youtubePlaylistsSection.py
-   └─ filtersPage/
-      ├─ filtersPage.py
-      └─ ignoredTermsSection/
-         └─ ignoredTermsSection.py
+│  └─ widgets/
+│     ├─ pageHeader/
+│     │  └─ pageHeader.py
+│     ├─ statCard/
+│     │  └─ statCard.py
+│     └─ statusBadge/
+│        └─ statusBadge.py
+└─ features/
+   ├─ overview/
+   │  └─ ui/
+   │     └─ overviewPage/
+   │        ├─ overviewPage.py
+   │        └─ dashboardView.py
+   ├─ localLibrary/
+   │  ├─ controller/
+   │  │  └─ localLibraryController.py
+   │  ├─ viewmodel/
+   │  │  └─ localFolderViewModel.py
+   │  └─ ui/
+   │     └─ localLibraryPage/
+   │        ├─ localLibraryPage.py
+   │        └─ localLibrariesSection/
+   │           └─ localLibrariesSection.py
+   ├─ youtubePlaylists/
+   │  ├─ controller/
+   │  │  └─ youtubePlaylistsController.py
+   │  ├─ viewmodel/
+   │  │  └─ youtubePlaylistViewModel.py
+   │  └─ ui/
+   │     └─ youtubePlaylistsPage/
+   │        ├─ youtubePlaylistsPage.py
+   │        └─ youtubePlaylistsSection/
+   │           └─ youtubePlaylistsSection.py
+   └─ ignoredTerms/
+      ├─ controller/
+      │  └─ ignoredTermsController.py
+      ├─ viewmodel/
+      │  └─ ignoredTermsViewModel.py
+      └─ ui/
+         └─ ignoredTermsPage/
+            ├─ ignoredTermsPage.py
+            └─ ignoredTermsSection/
+               └─ ignoredTermsSection.py
 ```
 
 ---

@@ -36,9 +36,9 @@ BASE_THEME: ThemeTokens = {
 
 PAGE_THEME_OVERRIDES: dict[str, ThemeTokens] = {
     "overview": {},
-    "libraries": {},
-    "playlists": {},
-    "filters": {},
+    "localLibrary": {},
+    "youtubePlaylists": {},
+    "ignoredTerms": {},
 }
 
 
