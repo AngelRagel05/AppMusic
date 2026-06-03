@@ -14,6 +14,8 @@ Piezas actuales:
 
 * `LocalFolder`
 * `LocalFolderRepository`
+* `LocalSong`
+* `LocalSongRepository`
 
 ### `playlists`
 

@@ -159,6 +159,13 @@ Restricciones:
 * `download_id` es nullable porque una cancion puede no venir de descarga
 * `track_number_album` debe cumplir `>= 0` cuando tenga valor
 
+Notas de carga actual:
+
+* el escaneo local registra la cancion a partir del archivo `.mp3`
+* `file_path` y `file_name` salen del filesystem
+* `title`, `artist`, `album`, `release_year`, `track_number_album` y `duration_seconds` se rellenan desde metadata leida con `Mutagen`
+* si un archivo no contiene tags legibles, la aplicacion usa valores de fallback seguros
+
 ### `youtube_playlist`
 
 Representa una playlist de YouTube guardada en la app.

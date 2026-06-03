@@ -6,6 +6,9 @@ from app.infrastructure.persistence.repositories.ignoredTermSqlAlchemyRepository
 from app.infrastructure.persistence.repositories.localFolderSqlAlchemyRepository import (
     LocalFolderSqlAlchemyRepository,
 )
+from app.infrastructure.persistence.repositories.localSongSqlAlchemyRepository import (
+    LocalSongSqlAlchemyRepository,
+)
 from app.infrastructure.persistence.repositories.sqlAlchemyRepository import (
     SqlAlchemyRepository,
 )
@@ -16,6 +19,7 @@ from app.infrastructure.persistence.repositories.youtubePlaylistSqlAlchemyReposi
 __all__ = [
     "IgnoredTermSqlAlchemyRepository",
     "LocalFolderSqlAlchemyRepository",
+    "LocalSongSqlAlchemyRepository",
     "SqlAlchemyRepository",
     "YoutubePlaylistSqlAlchemyRepository",
 ]

@@ -31,8 +31,15 @@ Estado actual:
 
 Estado actual:
 
-* existe `app/infrastructure/metadata/` como espacio reservado
-* todavia no hay adaptadores funcionales relevantes implementados en codigo productivo
+* `app/infrastructure/metadata/` ya contiene `MutagenLocalSongMetadataReader`
+* el escaneo local usa `Mutagen` para poblar `title`, `artist`, `album`, `release_year`, `track_number_album` y `duration_seconds`
+
+### Filesystem
+
+Estado actual:
+
+* existe `app/infrastructure/filesystem/`
+* `LocalMusicScanner` recorre recursivamente la carpeta activa y detecta archivos `.mp3`
 
 ### Audio
 
@@ -66,3 +73,5 @@ Uso actual:
 
 * `doc/architecture/adr/infrastructureAdapterReorganization.md`
 * `doc/architecture/adr/layerDependencyRules.md`
+* `doc/architecture/adr/scanLocalFolderV1Scope.md`
+* `doc/architecture/adr/localSongMetadataExtraction.md`

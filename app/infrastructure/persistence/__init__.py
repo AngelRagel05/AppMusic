@@ -18,6 +18,7 @@ from app.infrastructure.persistence.database import (
 from app.infrastructure.persistence.repositories import (
     IgnoredTermSqlAlchemyRepository,
     LocalFolderSqlAlchemyRepository,
+    LocalSongSqlAlchemyRepository,
     SqlAlchemyRepository,
     YoutubePlaylistSqlAlchemyRepository,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "LocalFolder",
     "LocalFolderSqlAlchemyRepository",
     "LocalSong",
+    "LocalSongSqlAlchemyRepository",
     "PlaylistComparison",
     "PlaylistComparisonResult",
     "SessionLocal",

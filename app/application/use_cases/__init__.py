@@ -27,6 +27,9 @@ from app.application.use_cases.library.getActiveLocalFolderUseCase import (
 from app.application.use_cases.library.listLocalFoldersUseCase import (
     ListLocalFoldersUseCase,
 )
+from app.application.use_cases.library.scanLocalFolderUseCase import (
+    ScanLocalFolderUseCase,
+)
 from app.application.use_cases.library.updateLocalFolderUseCase import (
     UpdateLocalFolderUseCase,
 )
@@ -67,6 +70,7 @@ __all__ = [
     "ListLocalFoldersUseCase",
     "ListYoutubePlaylistsUseCase",
     "ListIgnoredTermsUseCase",
+    "ScanLocalFolderUseCase",
     "UpdateLocalFolderUseCase",
     "UpdateIgnoredTermUseCase",
     "UpdateYoutubePlaylistUseCase",

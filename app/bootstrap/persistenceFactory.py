@@ -9,6 +9,7 @@ from app.infrastructure.persistence import (
     DatabaseBootstrapper,
     IgnoredTermSqlAlchemyRepository,
     LocalFolderSqlAlchemyRepository,
+    LocalSongSqlAlchemyRepository,
     SessionLocal,
     YoutubePlaylistSqlAlchemyRepository,
     engine,
@@ -21,6 +22,7 @@ class PersistenceRegistry:
     session: Session
     ignoredTermRepository: IgnoredTermSqlAlchemyRepository
     localFolderRepository: LocalFolderSqlAlchemyRepository
+    localSongRepository: LocalSongSqlAlchemyRepository
     youtubePlaylistRepository: YoutubePlaylistSqlAlchemyRepository
 
 
@@ -34,5 +36,6 @@ class PersistenceFactory:
             session=session,
             ignoredTermRepository=IgnoredTermSqlAlchemyRepository(session),
             localFolderRepository=LocalFolderSqlAlchemyRepository(session),
+            localSongRepository=LocalSongSqlAlchemyRepository(session),
             youtubePlaylistRepository=YoutubePlaylistSqlAlchemyRepository(session),
         )

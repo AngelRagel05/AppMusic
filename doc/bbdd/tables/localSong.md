@@ -21,10 +21,10 @@ Es la fuente local que se compara contra los items de YouTube.
 | `file_name` | texto | si | - | Nombre del archivo |
 | `title` | texto | si | - | Titulo de la cancion |
 | `artist` | texto | si | - | Artista principal |
-| `album` | texto | no | - | Album |
-| `release_year` | entero | no | - | Año de lanzamiento |
-| `track_number_album` | entero | no | - | Numero de pista dentro del album |
-| `duration_seconds` | decimal | no | - | Duracion en segundos |
+| `album` | texto | si | - | Album; si no hay tag se guarda vacio |
+| `release_year` | entero | si | - | Año de lanzamiento; si no hay tag se guarda `0` |
+| `track_number_album` | entero | si | - | Numero de pista dentro del album; si no hay tag se guarda `0` |
+| `duration_seconds` | decimal | si | - | Duracion en segundos; si no puede calcularse se guarda `0.0` |
 | `created_at` | fecha-hora | si | - | Fecha de creacion |
 | `updated_at` | fecha-hora | si | - | Fecha de ultima actualizacion |
 
@@ -76,3 +76,12 @@ erDiagram
 
 * `file_path` debe ser unico para impedir duplicados fisicos.
 * En la carpeta local no deben existir canciones repetidas como regla de negocio.
+* Durante el escaneo local, `file_path` y `file_name` se obtienen del filesystem.
+* `title`, `artist`, `album`, `release_year`, `track_number_album` y `duration_seconds` se intentan extraer con `Mutagen`.
+* Si el MP3 no tiene tags o falla la lectura de metadata, la app usa fallback seguro:
+  * `title`: nombre del archivo sin extension
+  * `artist`: cadena vacia
+  * `album`: cadena vacia
+  * `release_year`: `0`
+  * `track_number_album`: `0`
+  * `duration_seconds`: `0.0`
