@@ -10,12 +10,12 @@ Definir como se aplica MVC en la capa `presentation/` del proyecto.
 
 La capa de presentacion debe organizarse asi:
 
-* `app/presentation/ui/`
-  contiene vistas y componentes visuales
-* `app/presentation/controllers/`
-  contiene controladores de pantalla y coordinacion de eventos
-* `app/presentation/viewmodels/`
-  actua como fachada de presentacion hacia los use cases de `application`
+* `app/presentation/shell/`
+  contiene ventana principal, layout y navegacion global
+* `app/presentation/shared/`
+  contiene tema, widgets y soporte visual reutilizable
+* `app/presentation/features/`
+  contiene modulos funcionales de presentacion agrupados por feature
 
 ---
 
@@ -59,28 +59,35 @@ No se introduce un ORM ni entidades de dominio dentro de `presentation`.
 
 ---
 
-## Ejemplo actual
+## Estructura objetivo
 
 ```txt
 app/presentation/
-├─ controllers/
-│  └─ mainWindowController.py
-├─ ui/
-│  └─ mainScreen/
-│     ├─ appLayout/
-│     ├─ mainWindow/
-│     ├─ sidebar/
-│     ├─ shared/
-│     └─ pages/
-└─ viewmodels/
+├─ shell/
+│  ├─ mainWindow/
+│  └─ appShell/
+├─ shared/
+│  ├─ theme/
+│  ├─ widgets/
+│  └─ events/
+└─ features/
+   ├─ overview/
+   ├─ localLibrary/
+   ├─ youtubePlaylists/
+   └─ ignoredTerms/
 ```
 
 ---
 
 ## Decision tecnica
 
-Se elimina el uso de `presenters/` en favor de un MVC mas explicito:
+Se mantiene un MVC ligero en `presentation`, pero organizado por feature:
 
-* la logica de eventos vive en `controllers/`
-* la logica de renderizado queda encapsulada en cada vista o subcomponente visual
-* `MainWindow` deja de coordinar casos de uso directamente
+* `shell/` resuelve composicion, ventana y navegacion
+* cada feature agrupa su `ui`, su `controller` y su `viewmodel`
+* `shared/` centraliza solo elementos reutilizables de presentacion
+* `MainWindow` y el layout global no deben coordinar casos de uso directamente
+
+La ADR de referencia para esta organizacion es:
+
+* `doc/architecture/feature_modular_presentation_tkinter.md`
