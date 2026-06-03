@@ -3,13 +3,13 @@ from __future__ import annotations
 from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.application.dto.localFolderDto import LocalFolderDto
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
-from app.presentation.features.ignoredTerms.viewmodel.ignoredTermsViewModel import (
+from app.presentation.viewmodels.ignoredTerms.ignoredTermsViewModel import (
     IgnoredTermsViewModel,
 )
-from app.presentation.features.localLibrary.viewmodel.localFolderViewModel import (
+from app.presentation.viewmodels.localLibrary.localFolderViewModel import (
     LocalFolderViewModel,
 )
-from app.presentation.features.youtubePlaylists.viewmodel.youtubePlaylistViewModel import (
+from app.presentation.viewmodels.youtubePlaylists.youtubePlaylistViewModel import (
     YoutubePlaylistViewModel,
 )
 

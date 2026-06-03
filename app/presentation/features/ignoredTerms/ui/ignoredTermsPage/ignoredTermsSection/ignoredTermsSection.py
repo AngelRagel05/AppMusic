@@ -5,8 +5,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from app.application.dto.ignoredTermDto import IgnoredTermDto
-from app.presentation.shared.widgets.statusBadge.statusBadge import StatusBadge
-from app.presentation.shared.theme import (
+from app.presentation.styles import (
     ActionButton,
     Signal,
     clearChildren,
@@ -17,6 +16,7 @@ from app.presentation.shared.theme import (
     createScrollableFrame,
     setStatusLabelTone,
 )
+from app.presentation.widgets.statusBadge.statusBadge import StatusBadge
 
 SCOPE_OPTIONS = ("title", "artist", "album")
 LANGUAGE_OPTIONS = ("global", "es", "en")

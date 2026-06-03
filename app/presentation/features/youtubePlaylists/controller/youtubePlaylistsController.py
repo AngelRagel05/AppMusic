@@ -5,7 +5,7 @@ from collections.abc import Callable
 from app.presentation.features.youtubePlaylists.ui.youtubePlaylistsPage.youtubePlaylistsPage import (
     YoutubePlaylistsPage,
 )
-from app.presentation.features.youtubePlaylists.viewmodel.youtubePlaylistViewModel import (
+from app.presentation.viewmodels.youtubePlaylists.youtubePlaylistViewModel import (
     YoutubePlaylistViewModel,
 )
 

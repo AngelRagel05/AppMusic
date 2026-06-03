@@ -9,8 +9,8 @@ from app.application.dto.localFolderDto import LocalFolderDto
 from app.presentation.features.localLibrary.ui.localLibraryPage.localLibrariesSection.localLibrariesSection import (
     LocalLibrariesSection,
 )
-from app.presentation.shared.widgets.pageHeader.pageHeader import PageHeader
-from app.presentation.shared.theme import createFrame, getPageTheme
+from app.presentation.styles import createFrame, getPageTheme
+from app.presentation.widgets.pageHeader.pageHeader import PageHeader
 
 
 class LocalLibraryPage(ctk.CTkFrame):

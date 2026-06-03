@@ -5,7 +5,7 @@ from collections.abc import Callable
 from app.presentation.features.ignoredTerms.ui.ignoredTermsPage.ignoredTermsPage import (
     IgnoredTermsPage,
 )
-from app.presentation.features.ignoredTerms.viewmodel.ignoredTermsViewModel import (
+from app.presentation.viewmodels.ignoredTerms.ignoredTermsViewModel import (
     IgnoredTermsViewModel,
 )
 

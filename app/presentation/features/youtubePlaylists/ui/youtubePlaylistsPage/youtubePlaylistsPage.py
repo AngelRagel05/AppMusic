@@ -9,8 +9,8 @@ from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
 from app.presentation.features.youtubePlaylists.ui.youtubePlaylistsPage.youtubePlaylistsSection.youtubePlaylistsSection import (
     YoutubePlaylistsSection,
 )
-from app.presentation.shared.widgets.pageHeader.pageHeader import PageHeader
-from app.presentation.shared.theme import createFrame, getPageTheme
+from app.presentation.styles import createFrame, getPageTheme
+from app.presentation.widgets.pageHeader.pageHeader import PageHeader
 
 
 class YoutubePlaylistsPage(ctk.CTkFrame):

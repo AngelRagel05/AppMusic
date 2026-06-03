@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from tkinter import filedialog
 
-from app.presentation.features.localLibrary.viewmodel.localFolderViewModel import (
+from app.presentation.viewmodels.localLibrary.localFolderViewModel import (
     LocalFolderViewModel,
 )
 from app.presentation.features.localLibrary.ui.localLibraryPage.localLibraryPage import (

@@ -3,8 +3,7 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from app.application.dto.localFolderDto import LocalFolderDto
-from app.presentation.shared.widgets.statusBadge.statusBadge import StatusBadge
-from app.presentation.shared.theme import (
+from app.presentation.styles import (
     ActionButton,
     Signal,
     bindRecursive,
@@ -15,6 +14,7 @@ from app.presentation.shared.theme import (
     createScrollableFrame,
     setStatusLabelTone,
 )
+from app.presentation.widgets.statusBadge.statusBadge import StatusBadge
 
 
 class _LocalFolderRow(ctk.CTkFrame):

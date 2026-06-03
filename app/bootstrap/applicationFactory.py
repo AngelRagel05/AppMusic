@@ -31,12 +31,14 @@ from app.infrastructure.persistence import (
     LocalFolderSqlAlchemyRepository,
     YoutubePlaylistSqlAlchemyRepository,
 )
-from app.presentation.features.ignoredTerms.viewmodel import IgnoredTermsViewModel
-from app.presentation.features.localLibrary.viewmodel import LocalFolderViewModel
-from app.presentation.features.youtubePlaylists.viewmodel import YoutubePlaylistViewModel
-from app.presentation.shell.appShell import AppShellController
-from app.presentation.shell.mainWindow import MainWindow
-from app.presentation.shared.theme import BASE_THEME, configureRootWindow
+from app.presentation.styles import BASE_THEME, configureRootWindow
+from app.presentation.viewmodels import (
+    IgnoredTermsViewModel,
+    LocalFolderViewModel,
+    YoutubePlaylistViewModel,
+)
+from app.presentation.windows.appShell import AppShellController
+from app.presentation.windows.mainWindow import MainWindow
 
 
 @dataclass

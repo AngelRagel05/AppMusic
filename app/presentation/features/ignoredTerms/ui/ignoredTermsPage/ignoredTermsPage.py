@@ -9,8 +9,8 @@ from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.presentation.features.ignoredTerms.ui.ignoredTermsPage.ignoredTermsSection.ignoredTermsSection import (
     IgnoredTermsSection,
 )
-from app.presentation.shared.widgets.pageHeader.pageHeader import PageHeader
-from app.presentation.shared.theme import createFrame, getPageTheme
+from app.presentation.styles import createFrame, getPageTheme
+from app.presentation.widgets.pageHeader.pageHeader import PageHeader
 
 
 class IgnoredTermsPage(ctk.CTkFrame):
