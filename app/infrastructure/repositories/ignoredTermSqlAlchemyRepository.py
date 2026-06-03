@@ -6,8 +6,8 @@ from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.domain.entities.ignoredTerm import IgnoredTerm
-from app.domain.repositories.ignoredTermRepository import IgnoredTermRepository
+from app.domain.filters.entities.ignoredTerm import IgnoredTerm
+from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
 from app.infrastructure.database.models import IgnoredTerm as IgnoredTermModel
 
 

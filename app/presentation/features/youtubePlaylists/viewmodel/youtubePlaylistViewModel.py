@@ -13,22 +13,12 @@ from app.application.dto.updateYoutubePlaylistInputDto import (
     UpdateYoutubePlaylistInputDto,
 )
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
-from app.application.use_cases.activateYoutubePlaylistUseCase import (
+from app.application.use_cases import (
     ActivateYoutubePlaylistUseCase,
-)
-from app.application.use_cases.deleteYoutubePlaylistUseCase import (
-    DeleteYoutubePlaylistUseCase,
-)
-from app.application.use_cases.defineMainYoutubePlaylistUseCase import (
     DefineMainYoutubePlaylistUseCase,
-)
-from app.application.use_cases.getActiveYoutubePlaylistUseCase import (
+    DeleteYoutubePlaylistUseCase,
     GetActiveYoutubePlaylistUseCase,
-)
-from app.application.use_cases.listYoutubePlaylistsUseCase import (
     ListYoutubePlaylistsUseCase,
-)
-from app.application.use_cases.updateYoutubePlaylistUseCase import (
     UpdateYoutubePlaylistUseCase,
 )
 

@@ -14,26 +14,18 @@ from app.application.dto.defineMainYoutubePlaylistInputDto import (
 from app.application.dto.updateYoutubePlaylistInputDto import (
     UpdateYoutubePlaylistInputDto,
 )
-from app.application.use_cases.activateYoutubePlaylistUseCase import (
+from app.application.use_cases import (
     ActivateYoutubePlaylistUseCase,
-)
-from app.application.use_cases.deleteYoutubePlaylistUseCase import (
-    DeleteYoutubePlaylistUseCase,
-)
-from app.application.use_cases.defineMainYoutubePlaylistUseCase import (
     DefineMainYoutubePlaylistUseCase,
-)
-from app.application.use_cases.getActiveYoutubePlaylistUseCase import (
+    DeleteYoutubePlaylistUseCase,
     GetActiveYoutubePlaylistUseCase,
-)
-from app.application.use_cases.listYoutubePlaylistsUseCase import (
     ListYoutubePlaylistsUseCase,
-)
-from app.application.use_cases.updateYoutubePlaylistUseCase import (
     UpdateYoutubePlaylistUseCase,
 )
-from app.domain.entities.youtubePlaylist import YoutubePlaylist
-from app.domain.repositories.youtubePlaylistRepository import YoutubePlaylistRepository
+from app.domain.playlists.entities.youtubePlaylist import YoutubePlaylist
+from app.domain.playlists.repositories.youtubePlaylistRepository import (
+    YoutubePlaylistRepository,
+)
 
 
 class InMemoryYoutubePlaylistRepository(YoutubePlaylistRepository):

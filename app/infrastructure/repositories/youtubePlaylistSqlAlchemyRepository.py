@@ -3,8 +3,10 @@ from __future__ import annotations
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from app.domain.entities.youtubePlaylist import YoutubePlaylist
-from app.domain.repositories.youtubePlaylistRepository import YoutubePlaylistRepository
+from app.domain.playlists.entities.youtubePlaylist import YoutubePlaylist
+from app.domain.playlists.repositories.youtubePlaylistRepository import (
+    YoutubePlaylistRepository,
+)
 from app.infrastructure.database.models import YoutubePlaylist as YoutubePlaylistModel
 
 

@@ -5,11 +5,10 @@ from collections.abc import Sequence
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from app.domain.repositories.baseRepository import BaseRepository
 from app.infrastructure.database.base import Base
 
 
-class SqlAlchemyRepository[ModelType: Base, IdType](BaseRepository[ModelType, IdType]):
+class SqlAlchemyRepository[ModelType: Base, IdType]:
     def __init__(self, session: Session, model_type: type[ModelType]) -> None:
         self._session = session
         self._model_type = model_type

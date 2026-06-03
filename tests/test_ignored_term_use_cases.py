@@ -4,12 +4,14 @@ import pytest
 from app.application.dto.createIgnoredTermInputDto import CreateIgnoredTermInputDto
 from app.application.dto.deleteIgnoredTermInputDto import DeleteIgnoredTermInputDto
 from app.application.dto.updateIgnoredTermInputDto import UpdateIgnoredTermInputDto
-from app.application.use_cases.createIgnoredTermUseCase import CreateIgnoredTermUseCase
-from app.application.use_cases.deleteIgnoredTermUseCase import DeleteIgnoredTermUseCase
-from app.application.use_cases.listIgnoredTermsUseCase import ListIgnoredTermsUseCase
-from app.application.use_cases.updateIgnoredTermUseCase import UpdateIgnoredTermUseCase
-from app.domain.entities.ignoredTerm import IgnoredTerm
-from app.domain.repositories.ignoredTermRepository import IgnoredTermRepository
+from app.application.use_cases import (
+    CreateIgnoredTermUseCase,
+    DeleteIgnoredTermUseCase,
+    ListIgnoredTermsUseCase,
+    UpdateIgnoredTermUseCase,
+)
+from app.domain.filters.entities.ignoredTerm import IgnoredTerm
+from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
 
 
 class InMemoryIgnoredTermRepository(IgnoredTermRepository):

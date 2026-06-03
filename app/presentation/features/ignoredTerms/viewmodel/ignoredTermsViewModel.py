@@ -4,10 +4,12 @@ from app.application.dto.createIgnoredTermInputDto import CreateIgnoredTermInput
 from app.application.dto.deleteIgnoredTermInputDto import DeleteIgnoredTermInputDto
 from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.application.dto.updateIgnoredTermInputDto import UpdateIgnoredTermInputDto
-from app.application.use_cases.createIgnoredTermUseCase import CreateIgnoredTermUseCase
-from app.application.use_cases.deleteIgnoredTermUseCase import DeleteIgnoredTermUseCase
-from app.application.use_cases.listIgnoredTermsUseCase import ListIgnoredTermsUseCase
-from app.application.use_cases.updateIgnoredTermUseCase import UpdateIgnoredTermUseCase
+from app.application.use_cases import (
+    CreateIgnoredTermUseCase,
+    DeleteIgnoredTermUseCase,
+    ListIgnoredTermsUseCase,
+    UpdateIgnoredTermUseCase,
+)
 
 
 class IgnoredTermsViewModel:

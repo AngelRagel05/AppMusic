@@ -3,8 +3,8 @@ from __future__ import annotations
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from app.domain.entities.localFolder import LocalFolder
-from app.domain.repositories.localFolderRepository import LocalFolderRepository
+from app.domain.library.entities.localFolder import LocalFolder
+from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
 from app.infrastructure.database.models import LocalFolder as LocalFolderModel
 
 

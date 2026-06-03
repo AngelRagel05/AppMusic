@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from app.application.ignoredTermSupport import (
-    mapIgnoredTermToDto,
+from app.application.ignoredTermSupport import mapIgnoredTermToDto
+from app.application.validators.filters.ignoredTermValidators import (
     normalizeIgnoredTermData,
     validateIgnoredTermId,
 )
-from app.domain.entities.ignoredTerm import IgnoredTerm
+from app.domain.filters.entities.ignoredTerm import IgnoredTerm
 
 
 def test_normalize_ignored_term_data_trims_and_lowercases_values() -> None:

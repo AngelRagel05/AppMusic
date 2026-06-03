@@ -7,18 +7,14 @@ from app.application.dto.defineMainLocalFolderInputDto import (
 )
 from app.application.dto.localFolderDto import LocalFolderDto
 from app.application.dto.updateLocalFolderInputDto import UpdateLocalFolderInputDto
-from app.application.use_cases.activateLocalFolderUseCase import (
+from app.application.use_cases import (
     ActivateLocalFolderUseCase,
-)
-from app.application.use_cases.deleteLocalFolderUseCase import DeleteLocalFolderUseCase
-from app.application.use_cases.defineMainLocalFolderUseCase import (
     DefineMainLocalFolderUseCase,
-)
-from app.application.use_cases.getActiveLocalFolderUseCase import (
+    DeleteLocalFolderUseCase,
     GetActiveLocalFolderUseCase,
+    ListLocalFoldersUseCase,
+    UpdateLocalFolderUseCase,
 )
-from app.application.use_cases.listLocalFoldersUseCase import ListLocalFoldersUseCase
-from app.application.use_cases.updateLocalFolderUseCase import UpdateLocalFolderUseCase
 
 
 class LocalFolderViewModel:
