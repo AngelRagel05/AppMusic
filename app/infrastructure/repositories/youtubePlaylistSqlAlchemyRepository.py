@@ -4,7 +4,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.domain.entities.youtubePlaylist import YoutubePlaylist
-from app.domain.services.youtubePlaylistRepository import YoutubePlaylistRepository
+from app.domain.repositories.youtubePlaylistRepository import YoutubePlaylistRepository
 from app.infrastructure.database.models import YoutubePlaylist as YoutubePlaylistModel
 
 

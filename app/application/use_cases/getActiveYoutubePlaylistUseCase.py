@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
-from app.domain.services.youtubePlaylistRepository import YoutubePlaylistRepository
+from app.domain.repositories.youtubePlaylistRepository import YoutubePlaylistRepository
 
 
 class GetActiveYoutubePlaylistUseCase:

@@ -4,7 +4,7 @@ from app.application.dto.activateYoutubePlaylistInputDto import (
     ActivateYoutubePlaylistInputDto,
 )
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
-from app.domain.services.youtubePlaylistRepository import YoutubePlaylistRepository
+from app.domain.repositories.youtubePlaylistRepository import YoutubePlaylistRepository
 
 
 class ActivateYoutubePlaylistUseCase:

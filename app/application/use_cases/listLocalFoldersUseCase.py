@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.application.dto.localFolderDto import LocalFolderDto
-from app.domain.services.localFolderRepository import LocalFolderRepository
+from app.domain.repositories.localFolderRepository import LocalFolderRepository
 
 
 class ListLocalFoldersUseCase:

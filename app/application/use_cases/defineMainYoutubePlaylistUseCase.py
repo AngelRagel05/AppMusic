@@ -6,7 +6,7 @@ from app.application.dto.defineMainYoutubePlaylistInputDto import (
     DefineMainYoutubePlaylistInputDto,
 )
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
-from app.domain.services.youtubePlaylistRepository import YoutubePlaylistRepository
+from app.domain.repositories.youtubePlaylistRepository import YoutubePlaylistRepository
 
 CANONICAL_YOUTUBE_PLAYLIST_URL = "https://www.youtube.com/playlist?list={playlist_id}"
 VALID_YOUTUBE_HOSTS = {

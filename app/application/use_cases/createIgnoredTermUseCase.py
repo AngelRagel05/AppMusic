@@ -6,7 +6,7 @@ from app.application.ignoredTermSupport import (
     mapIgnoredTermToDto,
     normalizeIgnoredTermData,
 )
-from app.domain.services.ignoredTermRepository import IgnoredTermRepository
+from app.domain.repositories.ignoredTermRepository import IgnoredTermRepository
 
 
 class CreateIgnoredTermUseCase:

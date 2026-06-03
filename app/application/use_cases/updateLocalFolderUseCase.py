@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.application.dto.localFolderDto import LocalFolderDto
 from app.application.dto.updateLocalFolderInputDto import UpdateLocalFolderInputDto
-from app.domain.services.localFolderRepository import LocalFolderRepository
+from app.domain.repositories.localFolderRepository import LocalFolderRepository
 
 
 class UpdateLocalFolderUseCase:

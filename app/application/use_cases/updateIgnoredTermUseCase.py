@@ -7,7 +7,7 @@ from app.application.ignoredTermSupport import (
     normalizeIgnoredTermData,
     validateIgnoredTermId,
 )
-from app.domain.services.ignoredTermRepository import IgnoredTermRepository
+from app.domain.repositories.ignoredTermRepository import IgnoredTermRepository
 
 
 class UpdateIgnoredTermUseCase:

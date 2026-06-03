@@ -33,7 +33,7 @@ from app.application.use_cases.updateYoutubePlaylistUseCase import (
     UpdateYoutubePlaylistUseCase,
 )
 from app.domain.entities.youtubePlaylist import YoutubePlaylist
-from app.domain.services.youtubePlaylistRepository import YoutubePlaylistRepository
+from app.domain.repositories.youtubePlaylistRepository import YoutubePlaylistRepository
 
 
 class InMemoryYoutubePlaylistRepository(YoutubePlaylistRepository):

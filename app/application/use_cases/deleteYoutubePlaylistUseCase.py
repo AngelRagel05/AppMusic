@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.application.dto.deleteYoutubePlaylistInputDto import DeleteYoutubePlaylistInputDto
-from app.domain.services.youtubePlaylistRepository import YoutubePlaylistRepository
+from app.domain.repositories.youtubePlaylistRepository import YoutubePlaylistRepository
 
 
 class DeleteYoutubePlaylistUseCase:

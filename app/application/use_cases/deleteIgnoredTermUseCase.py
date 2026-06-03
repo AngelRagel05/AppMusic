@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.application.dto.deleteIgnoredTermInputDto import DeleteIgnoredTermInputDto
 from app.application.ignoredTermSupport import validateIgnoredTermId
-from app.domain.services.ignoredTermRepository import IgnoredTermRepository
+from app.domain.repositories.ignoredTermRepository import IgnoredTermRepository
 
 
 class DeleteIgnoredTermUseCase:

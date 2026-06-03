@@ -6,7 +6,7 @@ from app.application.dto.defineMainLocalFolderInputDto import (
     DefineMainLocalFolderInputDto,
 )
 from app.application.dto.localFolderDto import LocalFolderDto
-from app.domain.services.localFolderRepository import LocalFolderRepository
+from app.domain.repositories.localFolderRepository import LocalFolderRepository
 
 
 class DefineMainLocalFolderUseCase:

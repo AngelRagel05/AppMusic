@@ -23,7 +23,7 @@ from app.application.use_cases.getActiveLocalFolderUseCase import (
 from app.application.use_cases.listLocalFoldersUseCase import ListLocalFoldersUseCase
 from app.application.use_cases.updateLocalFolderUseCase import UpdateLocalFolderUseCase
 from app.domain.entities.localFolder import LocalFolder
-from app.domain.services.localFolderRepository import LocalFolderRepository
+from app.domain.repositories.localFolderRepository import LocalFolderRepository
 
 
 class InMemoryLocalFolderRepository(LocalFolderRepository):

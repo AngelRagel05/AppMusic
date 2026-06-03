@@ -9,7 +9,7 @@ from app.application.use_cases.deleteIgnoredTermUseCase import DeleteIgnoredTerm
 from app.application.use_cases.listIgnoredTermsUseCase import ListIgnoredTermsUseCase
 from app.application.use_cases.updateIgnoredTermUseCase import UpdateIgnoredTermUseCase
 from app.domain.entities.ignoredTerm import IgnoredTerm
-from app.domain.services.ignoredTermRepository import IgnoredTermRepository
+from app.domain.repositories.ignoredTermRepository import IgnoredTermRepository
 
 
 class InMemoryIgnoredTermRepository(IgnoredTermRepository):

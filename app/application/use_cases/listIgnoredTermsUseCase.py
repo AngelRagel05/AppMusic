@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.application.ignoredTermSupport import mapIgnoredTermToDto
-from app.domain.services.ignoredTermRepository import IgnoredTermRepository
+from app.domain.repositories.ignoredTermRepository import IgnoredTermRepository
 
 
 class ListIgnoredTermsUseCase:

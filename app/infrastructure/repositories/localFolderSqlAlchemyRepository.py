@@ -4,7 +4,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.domain.entities.localFolder import LocalFolder
-from app.domain.services.localFolderRepository import LocalFolderRepository
+from app.domain.repositories.localFolderRepository import LocalFolderRepository
 from app.infrastructure.database.models import LocalFolder as LocalFolderModel
 
 
