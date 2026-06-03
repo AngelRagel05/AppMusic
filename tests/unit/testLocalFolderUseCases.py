@@ -37,6 +37,11 @@ class InMemoryLocalFolderRepository(LocalFolderRepository):
         return list(self._folders)
 
     def save_as_active(self, path: str, display_name: str) -> LocalFolder:
+        for folder in self._folders:
+            if folder.path == path:
+                msg = "Esta carpeta ya esta guardada."
+                raise ValueError(msg)
+
         self._folders = [
             LocalFolder(
                 id=folder.id,
@@ -48,21 +53,6 @@ class InMemoryLocalFolderRepository(LocalFolderRepository):
             )
             for folder in self._folders
         ]
-
-        for index, folder in enumerate(self._folders):
-            if folder.path != path:
-                continue
-
-            updated_folder = LocalFolder(
-                id=folder.id,
-                path=path,
-                display_name=display_name,
-                is_active=True,
-                created_at=folder.created_at,
-                updated_at=folder.updated_at,
-            )
-            self._folders[index] = updated_folder
-            return updated_folder
 
         local_folder = LocalFolder(
             id=self._next_id,
@@ -108,7 +98,7 @@ class InMemoryLocalFolderRepository(LocalFolderRepository):
     def update(self, local_folder_id: int, path: str, display_name: str) -> LocalFolder:
         for existing_folder in self._folders:
             if existing_folder.path == path and existing_folder.id != local_folder_id:
-                msg = "Ya existe una biblioteca guardada con esa ruta."
+                msg = "Esta carpeta ya esta guardada."
                 raise ValueError(msg)
 
         for index, folder in enumerate(self._folders):
@@ -203,6 +193,16 @@ def test_define_main_local_folder_use_case_deactivates_previous_folder(tmp_path:
 
     assert active_folder is not None
     assert active_folder.path == str(second_folder.resolve())
+
+
+def test_define_main_local_folder_use_case_rejects_duplicate_saved_path(tmp_path: Path) -> None:
+    repository = InMemoryLocalFolderRepository()
+    use_case = DefineMainLocalFolderUseCase(repository)
+
+    use_case.execute(DefineMainLocalFolderInputDto(path=str(tmp_path)))
+
+    with pytest.raises(ValueError, match="ya esta guardada"):
+        use_case.execute(DefineMainLocalFolderInputDto(path=str(tmp_path)))
 
 
 def test_activate_local_folder_use_case_switches_active_library(tmp_path: Path) -> None:

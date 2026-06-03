@@ -50,6 +50,20 @@ def test_save_as_active_persists_folder_and_marks_it_active(tmp_path: Path) -> N
     assert session.query(LocalFolderModel).count() == 1
 
 
+def test_save_as_active_rejects_duplicate_saved_path(tmp_path: Path) -> None:
+    session = create_session()
+    repository = LocalFolderSqlAlchemyRepository(session)
+
+    repository.save_as_active(str(tmp_path), tmp_path.name)
+
+    try:
+        repository.save_as_active(str(tmp_path), "Otro nombre")
+    except ValueError as exc:
+        assert "ya esta guardada" in str(exc)
+    else:
+        raise AssertionError("Se esperaba ValueError al guardar una ruta duplicada")
+
+
 def test_save_as_active_deactivates_previous_active_folder(tmp_path: Path) -> None:
     session = create_session()
     repository = LocalFolderSqlAlchemyRepository(session)

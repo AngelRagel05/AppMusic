@@ -30,23 +30,22 @@ class LocalFolderSqlAlchemyRepository(LocalFolderRepository):
         return self._to_entity(model)
 
     def save_as_active(self, path: str, display_name: str) -> LocalFolder:
-        self._session.query(LocalFolderModel).update({LocalFolderModel.is_active: False})
-
         statement: Select[tuple[LocalFolderModel]] = select(LocalFolderModel).where(
             LocalFolderModel.path == path
         )
         model = self._session.scalar(statement)
 
-        if model is None:
-            model = LocalFolderModel(
-                path=path,
-                display_name=display_name,
-                is_active=True,
-            )
-            self._session.add(model)
-        else:
-            model.display_name = display_name
-            model.is_active = True
+        if model is not None:
+            msg = "Esta carpeta ya esta guardada."
+            raise ValueError(msg)
+
+        self._session.query(LocalFolderModel).update({LocalFolderModel.is_active: False})
+        model = LocalFolderModel(
+            path=path,
+            display_name=display_name,
+            is_active=True,
+        )
+        self._session.add(model)
 
         self._session.commit()
         self._session.refresh(model)
@@ -82,7 +81,7 @@ class LocalFolderSqlAlchemyRepository(LocalFolderRepository):
         )
         duplicate_model = self._session.scalar(duplicate_statement)
         if duplicate_model is not None:
-            msg = "Ya existe una biblioteca guardada con esa ruta."
+            msg = "Esta carpeta ya esta guardada."
             raise ValueError(msg)
 
         model.path = path

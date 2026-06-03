@@ -23,6 +23,7 @@ La politica queda asi:
 * la UI expone un campo de nombre visible
 * `create` y `update` aceptan `display_name`
 * si el usuario lo deja vacio, se mantiene el fallback automatico al nombre de la carpeta
+* si la ruta ya existe, `create` y `update` fallan con el mensaje `Esta carpeta ya esta guardada.`
 
 ## Consecuencias
 
