@@ -58,4 +58,6 @@ select = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-addopts = "-q"
+python_files = ["test*.py"]
+addopts = "-q --basetemp=.pytestTmp"
+cache_dir = ".pytestCache"
