@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.bootstrap import ApplicationFactory
 from app.config.settings import get_settings
-from app.utils.logging import configure_logging
+from app.shared.utils import configure_logging
 
 
 def main() -> int:

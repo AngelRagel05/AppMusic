@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.shared.exceptions import ValidationError
+
 
 @dataclass(frozen=True)
 class NormalizedIgnoredTermData:
@@ -13,7 +15,7 @@ class NormalizedIgnoredTermData:
 def validateIgnoredTermId(term_id: int) -> None:
     if term_id <= 0:
         msg = "El identificador del termino ignorado no es valido."
-        raise ValueError(msg)
+        raise ValidationError(msg)
 
 
 def normalizeIgnoredTermData(
@@ -24,17 +26,17 @@ def normalizeIgnoredTermData(
     normalized_term = term.strip().lower()
     if not normalized_term:
         msg = "El termino ignorado no puede estar vacio."
-        raise ValueError(msg)
+        raise ValidationError(msg)
 
     normalized_scope = scope.strip().lower()
     if not normalized_scope:
         msg = "El ambito del termino ignorado no puede estar vacio."
-        raise ValueError(msg)
+        raise ValidationError(msg)
 
     normalized_language = language.strip().lower()
     if not normalized_language:
         msg = "El idioma del termino ignorado no puede estar vacio."
-        raise ValueError(msg)
+        raise ValidationError(msg)
 
     return NormalizedIgnoredTermData(
         term=normalized_term,

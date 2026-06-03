@@ -14,6 +14,7 @@ from app.application.validators.playlists.youtubePlaylistValidators import (
     normalizeYoutubePlaylistData,
     validateYoutubePlaylistId,
 )
+from app.shared.exceptions import ValidationError
 
 
 def test_normalize_local_folder_data_resolves_existing_folder(tmp_path) -> None:
@@ -24,7 +25,7 @@ def test_normalize_local_folder_data_resolves_existing_folder(tmp_path) -> None:
 
 
 def test_validate_local_folder_id_rejects_non_positive_values() -> None:
-    with pytest.raises(ValueError, match="biblioteca seleccionada"):
+    with pytest.raises(ValidationError, match="biblioteca seleccionada"):
         validateLocalFolderId(0)
 
 
@@ -40,7 +41,7 @@ def test_normalize_youtube_playlist_data_builds_canonical_url() -> None:
 
 
 def test_validate_youtube_playlist_id_rejects_non_positive_values() -> None:
-    with pytest.raises(ValueError, match="playlist seleccionada"):
+    with pytest.raises(ValidationError, match="playlist seleccionada"):
         validateYoutubePlaylistId(0)
 
 
@@ -57,5 +58,5 @@ def test_normalize_ignored_term_data_trims_and_lowercases_values() -> None:
 
 
 def test_validate_ignored_term_id_rejects_non_positive_values() -> None:
-    with pytest.raises(ValueError, match="identificador"):
+    with pytest.raises(ValidationError, match="identificador"):
         validateIgnoredTermId(0)

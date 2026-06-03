@@ -12,4 +12,3 @@ def configure_logging(level: str) -> None:
         level=level.upper(),
         format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
     )
-

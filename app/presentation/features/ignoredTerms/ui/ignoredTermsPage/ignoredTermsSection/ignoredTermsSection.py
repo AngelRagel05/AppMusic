@@ -5,6 +5,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from app.application.dto.ignoredTermDto import IgnoredTermDto
+from app.shared.constants.ignoredTerms import LANGUAGE_OPTIONS, SCOPE_OPTIONS
 from app.presentation.styles import (
     ActionButton,
     Signal,
@@ -17,9 +18,6 @@ from app.presentation.styles import (
     setStatusLabelTone,
 )
 from app.presentation.widgets.statusBadge.statusBadge import StatusBadge
-
-SCOPE_OPTIONS = ("title", "artist", "album")
-LANGUAGE_OPTIONS = ("global", "es", "en")
 
 
 class _IgnoredTermRow(ctk.CTkFrame):
