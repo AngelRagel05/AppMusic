@@ -20,6 +20,7 @@ from app.presentation.widgets.statusBadge.statusBadge import StatusBadge
 class _YoutubePlaylistRow(ctk.CTkFrame):
     def __init__(self, parent, youtube_playlist: YoutubePlaylistDto, theme) -> None:
         self._theme = theme
+        self._is_active = youtube_playlist.is_active
         super().__init__(
             parent,
             fg_color=self._theme["panel"],
@@ -62,7 +63,8 @@ class _YoutubePlaylistRow(ctk.CTkFrame):
         actions.grid(row=1, column=0, sticky="ew", padx=18, pady=(0, 18))
 
         activateButton = ActionButton(actions, "Activar", variant="ghost", theme=self._theme)
-        activateButton.clicked.connect(lambda: self.activated.emit(self._youtube_playlist_id))
+        activateButton.clicked.connect(self._emit_activate)
+        activateButton.setEnabled(not self._is_active)
         activateButton.widget.pack(side="left")
 
         editButton = ActionButton(actions, "Editar", variant="secondary", theme=self._theme)
@@ -76,6 +78,8 @@ class _YoutubePlaylistRow(ctk.CTkFrame):
         bindRecursive(self, "<Double-Button-1>", self._emit_activate)
 
     def _emit_activate(self, _event) -> None:
+        if self._is_active:
+            return
         self.activated.emit(self._youtube_playlist_id)
 
 

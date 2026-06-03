@@ -87,6 +87,21 @@ class LocalLibraryController:
         self._on_action_recorded(message)
 
     def _handleActivateFolderById(self, selected_folder_id: int) -> None:
+        selected_folder = self._view_model.find_folder_by_id(selected_folder_id)
+        if selected_folder is None:
+            self._page.showStatusMessage(
+                "La biblioteca seleccionada no existe.",
+                tone="error",
+            )
+            return
+
+        if selected_folder.is_active:
+            self._page.showStatusMessage(
+                f'La biblioteca "{selected_folder.display_name}" ya esta activa.',
+                tone="info",
+            )
+            return
+
         try:
             local_folder = self._view_model.activate_folder(selected_folder_id)
         except (TypeError, ValueError) as exc:

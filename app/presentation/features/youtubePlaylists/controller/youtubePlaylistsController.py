@@ -75,6 +75,21 @@ class YoutubePlaylistsController:
         self._on_action_recorded(message)
 
     def _handleActivatePlaylistById(self, selected_playlist_id: int) -> None:
+        selected_playlist = self._view_model.find_playlist_by_id(selected_playlist_id)
+        if selected_playlist is None:
+            self._page.showStatusMessage(
+                "La playlist seleccionada no existe.",
+                tone="error",
+            )
+            return
+
+        if selected_playlist.is_active:
+            self._page.showStatusMessage(
+                f'La playlist "{selected_playlist.title}" ya esta activa.',
+                tone="info",
+            )
+            return
+
         try:
             youtube_playlist = self._view_model.activate_playlist(selected_playlist_id)
         except (TypeError, ValueError) as exc:

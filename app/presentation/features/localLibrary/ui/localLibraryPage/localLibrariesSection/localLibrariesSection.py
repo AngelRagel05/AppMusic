@@ -20,6 +20,7 @@ from app.presentation.widgets.statusBadge.statusBadge import StatusBadge
 class _LocalFolderRow(ctk.CTkFrame):
     def __init__(self, parent, local_folder: LocalFolderDto, theme) -> None:
         self._theme = theme
+        self._is_active = local_folder.is_active
         super().__init__(
             parent,
             fg_color=self._theme["panel"],
@@ -67,7 +68,8 @@ class _LocalFolderRow(ctk.CTkFrame):
             variant="ghost",
             theme=self._theme,
         )
-        activateButton.clicked.connect(lambda: self.activated.emit(self._local_folder_id))
+        activateButton.clicked.connect(self._emit_activate)
+        activateButton.setEnabled(not self._is_active)
         activateButton.widget.pack(side="left")
 
         editButton = ActionButton(actions, "Editar", variant="secondary", theme=self._theme)
@@ -81,6 +83,8 @@ class _LocalFolderRow(ctk.CTkFrame):
         bindRecursive(self, "<Double-Button-1>", self._emit_activate)
 
     def _emit_activate(self, _event) -> None:
+        if self._is_active:
+            return
         self.activated.emit(self._local_folder_id)
 
 
