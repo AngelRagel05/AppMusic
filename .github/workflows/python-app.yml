@@ -43,4 +43,8 @@ jobs:
 
       - name: Ejecutar tests si existen
         run: |
-          if [ -d "tests" ]; then pytest; else echo "No hay tests todavía"; fi
+          if find tests -name "test_*.py" -o -name "*_test.py" | grep -q .; then
+            pytest
+          else
+            echo "No hay tests todavía"
+          fi
