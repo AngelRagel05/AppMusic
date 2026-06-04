@@ -185,7 +185,7 @@ class YoutubePlaylistsSection(ctk.CTkFrame):
         setStatusLabelTone(self.statusLabel, tone, theme=self._theme)
 
     def focusPrimaryInput(self) -> None:
-        self.playlistTitleInput.focus_set()
+        self.playlistUrlInput.focus_set()
 
     def _buildStatusCard(self, parent):
         card = createFrame(
@@ -263,20 +263,20 @@ class YoutubePlaylistsSection(ctk.CTkFrame):
         )
         self.formHelper.pack(anchor="w", padx=20, pady=(0, 14))
 
-        self.playlistTitleInput = createEntry(
-            card,
-            theme=self._theme,
-            width=420,
-            placeholder_text="Nombre visible de la playlist",
-        )
-        self.playlistTitleInput.pack(fill="x", padx=20)
         self.playlistUrlInput = createEntry(
             card,
             theme=self._theme,
             width=420,
             placeholder_text="https://www.youtube.com/playlist?list=...",
         )
-        self.playlistUrlInput.pack(fill="x", padx=20, pady=(12, 0))
+        self.playlistUrlInput.pack(fill="x", padx=20)
+        self.playlistTitleInput = createEntry(
+            card,
+            theme=self._theme,
+            width=420,
+            placeholder_text="Nombre visible de la playlist",
+        )
+        self.playlistTitleInput.pack(fill="x", padx=20, pady=(12, 0))
 
         actions = createFrame(card, theme=self._theme, fg_color="transparent")
         actions.pack(fill="x", padx=20, pady=(16, 20))
