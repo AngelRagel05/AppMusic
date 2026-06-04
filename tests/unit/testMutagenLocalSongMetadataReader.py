@@ -61,3 +61,39 @@ def test_readMetadata_returns_fallback_values_when_mutagen_fails(monkeypatch) ->
     assert metadata.release_year == 0
     assert metadata.track_number_album == 0
     assert metadata.duration_seconds == 0.0
+
+
+def test_readMetadata_reads_track_number_from_id3_when_easy_metadata_does_not_expose_it(
+    monkeypatch,
+) -> None:
+    reader = MutagenLocalSongMetadataReader()
+
+    class FakeAudioFile:
+        def get(self, key: str, default):
+            values = {
+                "title": ["Papercut"],
+                "artist": ["Linkin Park"],
+                "album": ["Hybrid Theory"],
+                "date": ["2000"],
+                "tracknumber": [],
+            }
+            return values.get(key, default)
+
+    class FakeTrackTag:
+        text = ["1/12"]
+
+    monkeypatch.setattr(
+        "app.infrastructure.metadata.mutagenLocalSongMetadataReader.MutagenFile",
+        lambda _filePath, easy=True: FakeAudioFile(),
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.metadata.mutagenLocalSongMetadataReader.MP3",
+        lambda _filePath: SimpleNamespace(
+            info=SimpleNamespace(length=184.0),
+            tags={"TRCK": FakeTrackTag()},
+        ),
+    )
+
+    metadata = reader.readMetadata(r"C:\Music\LinkinPark\papercut.mp3")
+
+    assert metadata.track_number_album == 1

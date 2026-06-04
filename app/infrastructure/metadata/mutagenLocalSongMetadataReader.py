@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 from mutagen import File as MutagenFile
 from mutagen import MutagenError
@@ -33,7 +34,7 @@ class MutagenLocalSongMetadataReader:
         releaseYear = self._parseYear(
             self._firstValue(audioFile, "date") or self._firstValue(audioFile, "originaldate")
         )
-        trackNumberAlbum = self._parseTrackNumber(self._firstValue(audioFile, "tracknumber"))
+        trackNumberAlbum = self._readTrackNumber(audioFile, mp3File)
         durationSeconds = float(getattr(getattr(mp3File, "info", None), "length", 0.0) or 0.0)
 
         return LocalSongMetadataDto(
@@ -65,5 +66,26 @@ class MutagenLocalSongMetadataReader:
     def _parseTrackNumber(self, value: str) -> int:
         if not value:
             return 0
-        prefix = value.split("/", maxsplit=1)[0].strip()
-        return int(prefix) if prefix.isdigit() else 0
+        match = re.match(r"^\s*(\d+)", value)
+        if match is None:
+            return 0
+        return int(match.group(1))
+
+    def _readTrackNumber(self, audioFile, mp3File) -> int:
+        easyTrackNumber = self._parseTrackNumber(self._firstValue(audioFile, "tracknumber"))
+        if easyTrackNumber > 0:
+            return easyTrackNumber
+
+        tags = getattr(mp3File, "tags", None)
+        if tags is None:
+            return 0
+
+        id3TrackTag = tags.get("TRCK")
+        if id3TrackTag is None:
+            return 0
+
+        rawValues = getattr(id3TrackTag, "text", [])
+        if not rawValues:
+            return 0
+
+        return self._parseTrackNumber(str(rawValues[0]))
