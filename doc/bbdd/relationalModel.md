@@ -30,6 +30,7 @@ erDiagram
         int download_id FK
         string file_path UK
         string file_name
+        boolean is_available
         string title
         string artist
         string album
@@ -145,6 +146,7 @@ Columnas clave:
 * `local_folder_id`
 * `download_id` nullable
 * `file_path`
+* `is_available`
 * `title`
 * `artist`
 * `album`
@@ -163,6 +165,9 @@ Notas de carga actual:
 
 * el escaneo local registra la cancion a partir del archivo `.mp3`
 * `file_path` y `file_name` salen del filesystem
+* `is_available` queda en `true` cuando el archivo aparece en el ultimo escaneo exitoso de la carpeta
+* si un registro persistido deja de aparecer y no se puede reconciliar como movido, `is_available` pasa a `false`
+* si aparece una ruta nueva con el mismo `file_name` y la misma metadata basica de una cancion ausente, se interpreta como movimiento y se actualiza `file_path`
 * `title`, `artist`, `album`, `release_year`, `track_number_album` y `duration_seconds` se rellenan desde metadata leida con `Mutagen`
 * si un archivo no contiene tags legibles, la aplicacion usa valores de fallback seguros
 

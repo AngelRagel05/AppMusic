@@ -41,6 +41,7 @@ def test_save_persists_local_song() -> None:
     assert local_song.id is not None
     assert local_song.file_name == "song.mp3"
     assert local_song.local_folder_id == folder.id
+    assert local_song.is_available is True
     assert local_song.title == "Song"
     assert local_song.artist == "Artist"
     assert local_song.album == "Album"
@@ -70,6 +71,7 @@ def test_get_by_file_path_returns_saved_local_song() -> None:
     local_song = repository.get_by_file_path(r"C:\Music\Rap\song.mp3")
 
     assert local_song is not None
+    assert local_song.is_available is True
     assert local_song.title == "Song"
 
 
@@ -147,5 +149,46 @@ def test_save_updates_existing_song_when_file_path_already_exists() -> None:
     )
 
     assert updated_song.id == first_song.id
+    assert updated_song.is_available is True
     assert updated_song.title == "Song remaster"
     assert updated_song.release_year == 2025
+
+
+def test_save_updates_song_availability_state() -> None:
+    session = create_session()
+    folder = create_local_folder(session)
+    repository = LocalSongSqlAlchemyRepository(session)
+
+    first_song = repository.save(
+        LocalSong(
+            local_folder_id=folder.id,
+            file_path=r"C:\Music\Rap\song.mp3",
+            file_name="song.mp3",
+            is_available=True,
+            title="Song",
+            artist="Artist",
+            album="Album",
+            release_year=2024,
+            track_number_album=1,
+            duration_seconds=180.5,
+        )
+    )
+
+    updated_song = repository.save(
+        LocalSong(
+            id=first_song.id,
+            local_folder_id=folder.id,
+            file_path=r"C:\Music\Rap\song.mp3",
+            file_name="song.mp3",
+            is_available=False,
+            title="Song",
+            artist="Artist",
+            album="Album",
+            release_year=2024,
+            track_number_album=1,
+            duration_seconds=180.5,
+        )
+    )
+
+    assert updated_song.id == first_song.id
+    assert updated_song.is_available is False

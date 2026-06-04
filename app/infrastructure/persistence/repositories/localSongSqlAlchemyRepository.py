@@ -51,6 +51,7 @@ class LocalSongSqlAlchemyRepository(LocalSongRepository):
                 download_id=local_song.download_id,
                 file_path=local_song.file_path,
                 file_name=local_song.file_name,
+                is_available=local_song.is_available,
                 title=local_song.title,
                 artist=local_song.artist,
                 album=local_song.album,
@@ -64,6 +65,7 @@ class LocalSongSqlAlchemyRepository(LocalSongRepository):
             model.download_id = local_song.download_id
             model.file_path = local_song.file_path
             model.file_name = local_song.file_name
+            model.is_available = local_song.is_available
             model.title = local_song.title
             model.artist = local_song.artist
             model.album = local_song.album
@@ -82,6 +84,7 @@ class LocalSongSqlAlchemyRepository(LocalSongRepository):
             download_id=model.download_id,
             file_path=model.file_path,
             file_name=model.file_name,
+            is_available=model.is_available,
             title=model.title,
             artist=model.artist,
             album=model.album,

@@ -74,3 +74,10 @@ def test_local_song_has_non_negative_check_constraints() -> None:
 
     assert "track_number_album >= 0" in check_constraints
     assert "duration_seconds >= 0" in check_constraints
+
+
+def test_local_song_contains_availability_column() -> None:
+    table = Base.metadata.tables["local_song"]
+
+    assert "is_available" in table.columns.keys()
+    assert table.columns["is_available"].nullable is False

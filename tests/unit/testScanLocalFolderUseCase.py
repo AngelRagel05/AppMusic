@@ -18,19 +18,44 @@ class LocalSongRepositorySpy:
     def __init__(self, existing_paths: set[str] | None = None) -> None:
         self.existing_paths = existing_paths or set()
         self.saved_songs: list[LocalSong] = []
+        self.persisted_songs_by_id = {
+            index: LocalSong(id=index, file_path=file_path, file_name="known.mp3")
+            for index, file_path in enumerate(self.existing_paths, start=1)
+        }
 
     def list_by_folder(self, _local_folder_id: int) -> list[LocalSong]:
-        return []
+        return list(self.persisted_songs_by_id.values())
 
     def get_by_file_path(self, file_path: str) -> LocalSong | None:
-        if file_path in self.existing_paths:
-            return LocalSong(id=1, file_path=file_path, file_name="known.mp3")
+        for local_song in self.persisted_songs_by_id.values():
+            if local_song.file_path == file_path:
+                return local_song
         return None
 
     def save(self, local_song: LocalSong) -> LocalSong:
         self.saved_songs.append(local_song)
         self.existing_paths.add(local_song.file_path)
-        return local_song
+        persistedSong = local_song
+
+        if local_song.id is None:
+            nextId = len(self.persisted_songs_by_id) + 1
+            persistedSong = LocalSong(
+                id=nextId,
+                local_folder_id=local_song.local_folder_id,
+                download_id=local_song.download_id,
+                file_path=local_song.file_path,
+                file_name=local_song.file_name,
+                is_available=local_song.is_available,
+                title=local_song.title,
+                artist=local_song.artist,
+                album=local_song.album,
+                release_year=local_song.release_year,
+                track_number_album=local_song.track_number_album,
+                duration_seconds=local_song.duration_seconds,
+            )
+
+        self.persisted_songs_by_id[persistedSong.id or 0] = persistedSong
+        return persistedSong
 
 
 class LocalMusicScannerSpy:
@@ -99,16 +124,21 @@ def test_execute_creates_only_new_local_songs_and_returns_summary() -> None:
     assert result.scanned_file_count == 2
     assert result.created_song_count == 1
     assert result.existing_song_count == 1
-    assert len(song_repository.saved_songs) == 1
-    assert metadata_reader.received_file_paths == [r"C:\Music\Jazz\new.mp3"]
-    assert song_repository.saved_songs[0].file_path == r"C:\Music\Jazz\new.mp3"
-    assert song_repository.saved_songs[0].file_name == "new.mp3"
-    assert song_repository.saved_songs[0].title == "New Song"
-    assert song_repository.saved_songs[0].artist == "Miles Davis"
-    assert song_repository.saved_songs[0].album == "Kind of Blue"
-    assert song_repository.saved_songs[0].release_year == 1959
-    assert song_repository.saved_songs[0].track_number_album == 1
-    assert song_repository.saved_songs[0].duration_seconds == 320.5
+    assert result.missing_song_count == 0
+    assert result.moved_song_count == 0
+    assert len(song_repository.saved_songs) == 2
+    assert metadata_reader.received_file_paths == [
+        r"C:\Music\Jazz\known.mp3",
+        r"C:\Music\Jazz\new.mp3",
+    ]
+    assert song_repository.saved_songs[1].file_path == r"C:\Music\Jazz\new.mp3"
+    assert song_repository.saved_songs[1].file_name == "new.mp3"
+    assert song_repository.saved_songs[1].title == "New Song"
+    assert song_repository.saved_songs[1].artist == "Miles Davis"
+    assert song_repository.saved_songs[1].album == "Kind of Blue"
+    assert song_repository.saved_songs[1].release_year == 1959
+    assert song_repository.saved_songs[1].track_number_album == 1
+    assert song_repository.saved_songs[1].duration_seconds == 320.5
 
 
 def test_execute_fails_when_there_is_no_active_local_folder() -> None:
@@ -147,12 +177,25 @@ def test_execute_returns_zero_counts_when_folder_has_no_mp3_files() -> None:
     assert result.scanned_file_count == 0
     assert result.created_song_count == 0
     assert result.existing_song_count == 0
+    assert result.missing_song_count == 0
+    assert result.moved_song_count == 0
 
 
-def test_execute_does_not_duplicate_songs_on_rescan_when_all_mp3_are_already_registered() -> None:
+def test_execute_updates_metadata_for_existing_songs_without_creating_duplicates() -> None:
     existingPath = r"C:\Music\Jazz\known.mp3"
     song_repository = LocalSongRepositorySpy(existing_paths={existingPath})
-    metadata_reader = LocalSongMetadataReaderSpy()
+    metadata_reader = LocalSongMetadataReaderSpy(
+        {
+            existingPath: LocalSongMetadataDto(
+                title="Known Song",
+                artist="John Coltrane",
+                album="Blue Train",
+                release_year=1957,
+                track_number_album=1,
+                duration_seconds=610.2,
+            )
+        }
+    )
     use_case = ScanLocalFolderUseCase(
         LocalFolderRepositorySpy(
             LocalFolder(
@@ -172,5 +215,113 @@ def test_execute_does_not_duplicate_songs_on_rescan_when_all_mp3_are_already_reg
     assert result.scanned_file_count == 1
     assert result.created_song_count == 0
     assert result.existing_song_count == 1
-    assert song_repository.saved_songs == []
-    assert metadata_reader.received_file_paths == []
+    assert result.missing_song_count == 0
+    assert result.moved_song_count == 0
+    assert metadata_reader.received_file_paths == [existingPath]
+    assert len(song_repository.saved_songs) == 1
+    assert song_repository.saved_songs[0].id == 1
+    assert song_repository.saved_songs[0].title == "Known Song"
+    assert song_repository.saved_songs[0].artist == "John Coltrane"
+    assert song_repository.saved_songs[0].album == "Blue Train"
+    assert song_repository.saved_songs[0].release_year == 1957
+    assert song_repository.saved_songs[0].track_number_album == 1
+    assert song_repository.saved_songs[0].duration_seconds == 610.2
+
+
+def test_execute_marks_missing_songs_when_they_disappear_from_disk() -> None:
+    missingPath = r"C:\Music\Jazz\missing.mp3"
+    presentPath = r"C:\Music\Jazz\present.mp3"
+    song_repository = LocalSongRepositorySpy(existing_paths={missingPath, presentPath})
+    use_case = ScanLocalFolderUseCase(
+        LocalFolderRepositorySpy(
+            LocalFolder(
+                id=7,
+                path=r"C:\Music\Jazz",
+                display_name="Jazz",
+                is_active=True,
+            )
+        ),
+        song_repository,
+        LocalMusicScannerSpy([presentPath]),
+        LocalSongMetadataReaderSpy(
+            {
+                presentPath: LocalSongMetadataDto(
+                    title="Present Song",
+                    artist="Bill Evans",
+                    album="Portrait in Jazz",
+                    release_year=1960,
+                    track_number_album=2,
+                    duration_seconds=315.0,
+                )
+            }
+        ),
+    )
+
+    result = use_case.execute()
+    missingSong = next(song for song in song_repository.saved_songs if song.file_path == missingPath)
+
+    assert result.scanned_file_count == 1
+    assert result.created_song_count == 0
+    assert result.existing_song_count == 1
+    assert result.missing_song_count == 1
+    assert result.moved_song_count == 0
+    assert missingSong.is_available is False
+
+
+def test_execute_reconciles_moved_song_without_creating_duplicate() -> None:
+    oldPath = r"C:\Music\Jazz\Old Folder\moved.mp3"
+    newPath = r"C:\Music\Jazz\New Folder\moved.mp3"
+    song_repository = LocalSongRepositorySpy(existing_paths={oldPath})
+    originalSong = song_repository.get_by_file_path(oldPath)
+    if originalSong is None:
+        raise AssertionError("Se esperaba una cancion local persistida para la prueba.")
+    song_repository.persisted_songs_by_id[originalSong.id or 0] = LocalSong(
+        id=originalSong.id,
+        local_folder_id=7,
+        file_path=oldPath,
+        file_name="moved.mp3",
+        is_available=True,
+        title="So What",
+        artist="Miles Davis",
+        album="Kind of Blue",
+        release_year=1959,
+        track_number_album=1,
+        duration_seconds=545.2,
+    )
+    use_case = ScanLocalFolderUseCase(
+        LocalFolderRepositorySpy(
+            LocalFolder(
+                id=7,
+                path=r"C:\Music\Jazz",
+                display_name="Jazz",
+                is_active=True,
+            )
+        ),
+        song_repository,
+        LocalMusicScannerSpy([newPath]),
+        LocalSongMetadataReaderSpy(
+            {
+                newPath: LocalSongMetadataDto(
+                    title="So What",
+                    artist="Miles Davis",
+                    album="Kind of Blue",
+                    release_year=1959,
+                    track_number_album=1,
+                    duration_seconds=545.2,
+                )
+            }
+        ),
+    )
+
+    result = use_case.execute()
+    persistedSongs = song_repository.list_by_folder(7)
+
+    assert result.scanned_file_count == 1
+    assert result.created_song_count == 0
+    assert result.existing_song_count == 0
+    assert result.missing_song_count == 0
+    assert result.moved_song_count == 1
+    assert len(persistedSongs) == 1
+    assert persistedSongs[0].id == originalSong.id
+    assert persistedSongs[0].file_path == newPath
+    assert persistedSongs[0].is_available is True

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, inspect, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.infrastructure.persistence.database.base import Base
@@ -25,10 +25,28 @@ class DatabaseBootstrapper:
 
     def bootstrap(self) -> None:
         Base.metadata.create_all(self._engine)
+        self._apply_schema_compatibility()
 
         with self._session_factory() as session:
             self._seed_ignored_terms(session, DEFAULT_IGNORED_TERMS)
             session.commit()
+
+    def _apply_schema_compatibility(self) -> None:
+        inspector = inspect(self._engine)
+        if "local_song" not in inspector.get_table_names():
+            return
+
+        localSongColumns = {column["name"] for column in inspector.get_columns("local_song")}
+        if "is_available" in localSongColumns:
+            return
+
+        with self._engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE local_song "
+                    "ADD COLUMN is_available BOOLEAN NOT NULL DEFAULT TRUE"
+                )
+            )
 
     def _seed_ignored_terms(
         self,

@@ -19,6 +19,7 @@ Es la fuente local que se compara contra los items de YouTube.
 | `download_id` | entero | no | FK | Descarga que origino la cancion |
 | `file_path` | texto | si | UNIQUE | Ruta completa del archivo |
 | `file_name` | texto | si | - | Nombre del archivo |
+| `is_available` | booleano | si | - | Indica si el archivo sigue presente en el ultimo escaneo de la carpeta |
 | `title` | texto | si | - | Titulo de la cancion |
 | `artist` | texto | si | - | Artista principal |
 | `album` | texto | si | - | Album; si no hay tag se guarda vacio |
@@ -44,6 +45,7 @@ erDiagram
         int download_id FK
         string file_path UK
         string file_name
+        boolean is_available
         string title
         string artist
         string album
@@ -77,6 +79,7 @@ erDiagram
 * `file_path` debe ser unico para impedir duplicados fisicos.
 * En la carpeta local no deben existir canciones repetidas como regla de negocio.
 * Durante el escaneo local, `file_path` y `file_name` se obtienen del filesystem.
+* `is_available` queda en `true` cuando el archivo aparece en el ultimo escaneo y en `false` cuando desaparece sin poder reconciliarse como movido.
 * `title`, `artist`, `album`, `release_year`, `track_number_album` y `duration_seconds` se intentan extraer con `Mutagen`.
 * Si el MP3 no tiene tags o falla la lectura de metadata, la app usa fallback seguro:
   * `title`: nombre del archivo sin extension
@@ -85,3 +88,6 @@ erDiagram
   * `release_year`: `0`
   * `track_number_album`: `0`
   * `duration_seconds`: `0.0`
+* La deteccion de movidas se hace de forma conservadora:
+  * la ruta nueva debe mantener el mismo `file_name`
+  * la metadata basica debe coincidir exactamente con la ultima persistida

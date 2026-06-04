@@ -138,6 +138,17 @@ En el modelo relacional deberia poder soportar como minimo:
 
 ## Datos relevantes por entidad
 
+### `local_song`
+
+En el modelo relacional deberia contemplar como minimo:
+
+* `file_path`
+* `file_name`
+* `is_available`
+* `title`
+* `artist`
+* `album`
+
 ### `youtube_playlist_item`
 
 En el modelo relacional deberia contemplar como minimo:

@@ -11,6 +11,7 @@ class LocalSong:
     download_id: int | None = None
     file_path: str = ""
     file_name: str = ""
+    is_available: bool = True
     title: str = ""
     artist: str = ""
     album: str = ""

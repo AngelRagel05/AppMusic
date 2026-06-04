@@ -142,6 +142,7 @@ class LocalSong(TimestampMixin, Base):
     )
     file_path: Mapped[str] = mapped_column(String(1024), unique=True, nullable=False)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_available: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     artist: Mapped[str] = mapped_column(String(255), nullable=False)
     album: Mapped[str] = mapped_column(String(255), nullable=False)
