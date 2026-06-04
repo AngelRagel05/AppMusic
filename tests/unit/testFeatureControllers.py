@@ -140,6 +140,22 @@ class LocalLibraryScanViewModelSpy:
             on_feedback(feedback)
 
 
+class LocalFolderMonitorWorkerSpy:
+    def __init__(self) -> None:
+        self.watch_calls: list[str | None] = []
+        self.stop_calls = 0
+        self.on_folder_changed = None
+        self.on_failed = None
+
+    def watch(self, folder_path, on_folder_changed, on_failed) -> None:
+        self.watch_calls.append(folder_path)
+        self.on_folder_changed = on_folder_changed
+        self.on_failed = on_failed
+
+    def stop(self) -> None:
+        self.stop_calls += 1
+
+
 class IgnoredTermsPageSpy:
     def __init__(self) -> None:
         self.saveRequested = PageCallbackPort()
@@ -303,6 +319,7 @@ def test_local_library_controller_uses_view_model_lookup_for_editing_selected_fo
         page=page,
         view_model=view_model,
         scan_view_model=LocalLibraryScanViewModelSpy(),
+        folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda page_name, focus_input: shown_pages.append((page_name, focus_input)),
         on_state_changed=lambda: None,
         on_action_recorded=lambda _message: None,
@@ -333,6 +350,7 @@ def test_local_library_controller_does_not_reactivate_active_folder() -> None:
         page=page,
         view_model=view_model,
         scan_view_model=LocalLibraryScanViewModelSpy(),
+        folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
         on_action_recorded=lambda _message: None,
@@ -362,6 +380,7 @@ def test_local_library_controller_sends_visible_name_when_updating_folder() -> N
         page=page,
         view_model=view_model,
         scan_view_model=LocalLibraryScanViewModelSpy(),
+        folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
         on_action_recorded=lambda _message: None,
@@ -399,12 +418,14 @@ def test_local_library_controller_delegates_scan_and_updates_song_count() -> Non
             ),
         ]
     )
+    folder_monitor_worker = LocalFolderMonitorWorkerSpy()
     song_count_updates: list[str] = []
     recorded_actions: list[str] = []
     controller = LocalLibraryController(
         page=page,
         view_model=view_model,
         scan_view_model=scan_view_model,
+        folder_monitor_worker=folder_monitor_worker,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
         on_action_recorded=recorded_actions.append,
@@ -423,6 +444,63 @@ def test_local_library_controller_delegates_scan_and_updates_song_count() -> Non
         'Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
         "success",
     )
+
+
+def test_local_library_controller_starts_auto_refresh_for_active_folder_on_load() -> None:
+    page = LocalLibraryPageSpy()
+    active_folder = LocalFolderDto(
+        id=7,
+        path=r"C:\Music\Jazz",
+        display_name="Jazz",
+        is_active=True,
+    )
+    view_model = LocalLibraryViewModelSpy(active_folder)
+    folder_monitor_worker = LocalFolderMonitorWorkerSpy()
+    controller = LocalLibraryController(
+        page=page,
+        view_model=view_model,
+        scan_view_model=LocalLibraryScanViewModelSpy(),
+        folder_monitor_worker=folder_monitor_worker,
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=lambda _message: None,
+        on_active_folder_changed=lambda _name: None,
+        on_song_count_changed=lambda _value: None,
+    )
+
+    controller.load()
+
+    assert folder_monitor_worker.watch_calls == [r"C:\Music\Jazz"]
+
+
+def test_local_library_controller_triggers_scan_when_auto_refresh_detects_change() -> None:
+    page = LocalLibraryPageSpy()
+    active_folder = LocalFolderDto(
+        id=7,
+        path=r"C:\Music\Jazz",
+        display_name="Jazz",
+        is_active=True,
+    )
+    scan_view_model = LocalLibraryScanViewModelSpy()
+    folder_monitor_worker = LocalFolderMonitorWorkerSpy()
+    controller = LocalLibraryController(
+        page=page,
+        view_model=LocalLibraryViewModelSpy(active_folder),
+        scan_view_model=scan_view_model,
+        folder_monitor_worker=folder_monitor_worker,
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=lambda _message: None,
+        on_active_folder_changed=lambda _name: None,
+        on_song_count_changed=lambda _value: None,
+    )
+    controller.load()
+    if folder_monitor_worker.on_folder_changed is None:
+        raise AssertionError("Se esperaba callback de auto-refresh registrado.")
+
+    folder_monitor_worker.on_folder_changed()
+
+    assert scan_view_model.request_calls == 1
 
 
 def test_ignored_terms_controller_uses_view_model_lookup_for_editing_selected_term() -> None:

@@ -33,6 +33,7 @@ Estado actual:
 
 * `app/infrastructure/metadata/` ya contiene `MutagenLocalSongMetadataReader`
 * el escaneo local usa `Mutagen` para poblar `title`, `artist`, `album`, `release_year`, `track_number_album` y `duration_seconds`
+* cada reescaneo relee esa metadata para mantener `local_song` sincronizada con los tags actuales del MP3
 
 ### Filesystem
 

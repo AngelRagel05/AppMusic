@@ -75,6 +75,43 @@ def test_requestScan_emits_start_and_success_feedback() -> None:
     )
 
 
+def test_requestScan_includes_missing_and_moved_counts_in_success_feedback() -> None:
+    feedbacks: list[LocalLibraryScanFeedback] = []
+    scheduled_callbacks: list[Callable[[], None]] = []
+    view_model = LocalLibraryScanViewModel(
+        ScanLocalFolderUseCaseSpy(
+            result=ScanLocalFolderResultDto(
+                local_folder_id=7,
+                local_folder_name="Jazz",
+                scanned_file_count=3,
+                created_song_count=1,
+                existing_song_count=1,
+                missing_song_count=1,
+                moved_song_count=1,
+            )
+        )
+    )
+
+    view_model.requestScan(
+        active_folder=LocalFolderDto(
+            id=7,
+            path=r"C:\Music\Jazz",
+            display_name="Jazz",
+            is_active=True,
+        ),
+        schedule_on_main_thread=scheduled_callbacks.append,
+        on_feedback=feedbacks.append,
+    )
+    runScheduledCallbacks(scheduled_callbacks)
+
+    assert feedbacks[1] == LocalLibraryScanFeedback(
+        status_message='Escaneo completado en "Jazz": 3 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas). Se han marcado 1 ausente, 1 movida detectada.',
+        status_tone="success",
+        song_count_label="3 MP3 detectados",
+        last_action_message='Escaneo completado en "Jazz": 3 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas). Se han marcado 1 ausente, 1 movida detectada.',
+    )
+
+
 def test_requestScan_emits_error_when_no_active_folder_exists() -> None:
     feedbacks: list[LocalLibraryScanFeedback] = []
     view_model = LocalLibraryScanViewModel(ScanLocalFolderUseCaseSpy())
@@ -90,6 +127,53 @@ def test_requestScan_emits_error_when_no_active_folder_exists() -> None:
             status_message="No hay una biblioteca local activa para escanear.",
             status_tone="error",
             song_count_label=None,
+            last_action_message=None,
+        )
+    ]
+
+
+def test_requestScan_automatic_does_not_emit_feedback_when_scan_is_already_running() -> None:
+    feedbacks: list[LocalLibraryScanFeedback] = []
+    scheduled_callbacks: list[Callable[[], None]] = []
+    view_model = LocalLibraryScanViewModel(
+        ScanLocalFolderUseCaseSpy(
+            result=ScanLocalFolderResultDto(
+                local_folder_id=7,
+                local_folder_name="Jazz",
+                scanned_file_count=2,
+                created_song_count=1,
+                existing_song_count=1,
+            )
+        )
+    )
+
+    view_model.requestScan(
+        active_folder=LocalFolderDto(
+            id=7,
+            path=r"C:\Music\Jazz",
+            display_name="Jazz",
+            is_active=True,
+        ),
+        schedule_on_main_thread=scheduled_callbacks.append,
+        on_feedback=feedbacks.append,
+    )
+    view_model.requestScan(
+        active_folder=LocalFolderDto(
+            id=7,
+            path=r"C:\Music\Jazz",
+            display_name="Jazz",
+            is_active=True,
+        ),
+        schedule_on_main_thread=scheduled_callbacks.append,
+        on_feedback=feedbacks.append,
+        automatic=True,
+    )
+
+    assert feedbacks == [
+        LocalLibraryScanFeedback(
+            status_message='Escaneando la biblioteca "Jazz"...',
+            status_tone="info",
+            song_count_label="Escaneando...",
             last_action_message=None,
         )
     ]

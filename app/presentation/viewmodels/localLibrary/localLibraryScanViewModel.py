@@ -27,8 +27,11 @@ class LocalLibraryScanViewModel:
         active_folder: LocalFolderDto | None,
         schedule_on_main_thread: Callable[[Callable[[], None]], None],
         on_feedback: Callable[[LocalLibraryScanFeedback], None],
+        automatic: bool = False,
     ) -> None:
         if self._scan_in_progress:
+            if automatic:
+                return
             on_feedback(
                 LocalLibraryScanFeedback(
                     status_message="Ya hay un escaneo de biblioteca en curso.",
@@ -38,6 +41,8 @@ class LocalLibraryScanViewModel:
             return
 
         if active_folder is None:
+            if automatic:
+                return
             on_feedback(
                 LocalLibraryScanFeedback(
                     status_message="No hay una biblioteca local activa para escanear.",
@@ -70,11 +75,22 @@ class LocalLibraryScanViewModel:
     ) -> None:
         self._scan_in_progress = False
         registeredSongCount = result.created_song_count + result.existing_song_count
+        reconciliationParts: list[str] = []
+        if result.missing_song_count > 0:
+            suffix = "ausente" if result.missing_song_count == 1 else "ausentes"
+            reconciliationParts.append(f"{result.missing_song_count} {suffix}")
+        if result.moved_song_count > 0:
+            suffix = "movida detectada" if result.moved_song_count == 1 else "movidas detectadas"
+            reconciliationParts.append(f"{result.moved_song_count} {suffix}")
+        reconciliationSummary = ""
+        if reconciliationParts:
+            reconciliationSummary = f" Se han marcado {', '.join(reconciliationParts)}."
         message = (
             f'Escaneo completado en "{result.local_folder_name}": '
             f"{result.scanned_file_count} MP3 detectados, "
             f"{registeredSongCount} canciones registradas "
             f"({result.created_song_count} nuevas y {result.existing_song_count} ya registradas)."
+            f"{reconciliationSummary}"
         )
         on_feedback(
             LocalLibraryScanFeedback(

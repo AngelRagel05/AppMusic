@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from tkinter import filedialog
+from typing import Protocol
 
 from app.presentation.viewmodels.localLibrary.localFolderViewModel import (
     LocalFolderViewModel,
@@ -15,12 +16,26 @@ from app.presentation.features.localLibrary.ui.localLibraryPage.localLibraryPage
 )
 
 
+class LocalFolderMonitorWorkerPort(Protocol):
+    def watch(
+        self,
+        folder_path: str | None,
+        on_folder_changed: Callable[[], None],
+        on_failed: Callable[[Exception], None],
+    ) -> None:
+        ...
+
+    def stop(self) -> None:
+        ...
+
+
 class LocalLibraryController:
     def __init__(
         self,
         page: LocalLibraryPage,
         view_model: LocalFolderViewModel,
         scan_view_model: LocalLibraryScanViewModel,
+        folder_monitor_worker: LocalFolderMonitorWorkerPort,
         show_page: Callable[[str, bool], None],
         on_state_changed: Callable[[], None],
         on_action_recorded: Callable[[str], None],
@@ -30,6 +45,7 @@ class LocalLibraryController:
         self._page = page
         self._view_model = view_model
         self._scan_view_model = scan_view_model
+        self._folder_monitor_worker = folder_monitor_worker
         self._show_page = show_page
         self._on_state_changed = on_state_changed
         self._on_action_recorded = on_action_recorded
@@ -54,6 +70,7 @@ class LocalLibraryController:
         )
         self._on_active_folder_changed(active_folder_name)
         self._on_song_count_changed("Sin escanear")
+        self._syncAutoRefreshMonitor(active_folder)
         self._on_state_changed()
 
     def activeFolder(self):
@@ -61,6 +78,9 @@ class LocalLibraryController:
 
     def requestScan(self) -> None:
         self._handleScanLibraryRequested()
+
+    def shutdown(self) -> None:
+        self._folder_monitor_worker.stop()
 
     def _handleBrowseFolder(self) -> None:
         selected_folder = filedialog.askdirectory(
@@ -192,6 +212,7 @@ class LocalLibraryController:
         )
         self._on_active_folder_changed(activeFolderName)
         self._on_song_count_changed("Sin escanear")
+        self._syncAutoRefreshMonitor(activeFolder)
         self._on_state_changed()
 
     def _renderScanFeedback(self, feedback: LocalLibraryScanFeedback) -> None:
@@ -200,3 +221,25 @@ class LocalLibraryController:
         self._page.showStatusMessage(feedback.status_message, tone=feedback.status_tone)
         if feedback.last_action_message is not None:
             self._on_action_recorded(feedback.last_action_message)
+
+    def _syncAutoRefreshMonitor(self, activeFolder) -> None:
+        folderPath = activeFolder.path if activeFolder is not None else None
+        self._folder_monitor_worker.watch(
+            folder_path=folderPath,
+            on_folder_changed=self._handleAutoRefreshRequested,
+            on_failed=self._handleAutoRefreshFailed,
+        )
+
+    def _handleAutoRefreshRequested(self) -> None:
+        self._scan_view_model.requestScan(
+            active_folder=self._view_model.load_active_folder(),
+            schedule_on_main_thread=lambda callback: self._page.after(0, callback),
+            on_feedback=self._renderScanFeedback,
+            automatic=True,
+        )
+
+    def _handleAutoRefreshFailed(self, error: Exception) -> None:
+        self._page.showStatusMessage(
+            f"Fallo en la monitorizacion automatica: {error}",
+            tone="error",
+        )

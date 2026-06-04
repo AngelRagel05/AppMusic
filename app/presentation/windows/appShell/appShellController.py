@@ -12,6 +12,7 @@ from app.presentation.viewmodels import (
     YoutubePlaylistViewModel,
 )
 from app.presentation.windows.mainWindow.mainWindow import MainWindow
+from app.workers import LocalFolderMonitorWorker
 
 
 class AppShellController:
@@ -20,6 +21,7 @@ class AppShellController:
         view: MainWindow,
         local_folder_view_model: LocalFolderViewModel,
         local_library_scan_view_model: LocalLibraryScanViewModel,
+        local_folder_monitor_worker: LocalFolderMonitorWorker,
         youtube_playlist_view_model: YoutubePlaylistViewModel,
         ignored_terms_view_model: IgnoredTermsViewModel,
     ) -> None:
@@ -29,6 +31,7 @@ class AppShellController:
             page=view.page.localLibraryPage,
             view_model=local_folder_view_model,
             scan_view_model=local_library_scan_view_model,
+            folder_monitor_worker=local_folder_monitor_worker,
             show_page=view.page.showPage,
             on_state_changed=self._updateSyncStatus,
             on_action_recorded=self._recordLastAction,
@@ -60,6 +63,9 @@ class AppShellController:
         self._youtube_playlists_controller.load()
         self._ignored_terms_controller.load()
         self._view.page.setLastAction(self._last_action_message)
+
+    def shutdown(self) -> None:
+        self._local_library_controller.shutdown()
 
     def _updateSyncStatus(self) -> None:
         active_folder = self._local_library_controller.activeFolder()
