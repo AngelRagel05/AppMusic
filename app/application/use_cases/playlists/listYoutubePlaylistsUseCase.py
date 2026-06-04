@@ -1,14 +1,22 @@
 from __future__ import annotations
 
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
+from app.domain.playlists.repositories.youtubePlaylistItemRepository import (
+    YoutubePlaylistItemRepository,
+)
 from app.domain.playlists.repositories.youtubePlaylistRepository import (
     YoutubePlaylistRepository,
 )
 
 
 class ListYoutubePlaylistsUseCase:
-    def __init__(self, repository: YoutubePlaylistRepository) -> None:
+    def __init__(
+        self,
+        repository: YoutubePlaylistRepository,
+        youtube_playlist_item_repository: YoutubePlaylistItemRepository,
+    ) -> None:
         self._repository = repository
+        self._youtube_playlist_item_repository = youtube_playlist_item_repository
 
     def execute(self) -> list[YoutubePlaylistDto]:
         return [
@@ -18,6 +26,9 @@ class ListYoutubePlaylistsUseCase:
                 external_playlist_id=youtube_playlist.external_playlist_id,
                 title=youtube_playlist.title,
                 is_active=youtube_playlist.is_active,
+                item_count=self._youtube_playlist_item_repository.count_by_playlist(
+                    youtube_playlist.id or 0
+                ),
             )
             for youtube_playlist in self._repository.list_all()
         ]

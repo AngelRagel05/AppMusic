@@ -189,6 +189,9 @@ class InMemoryYoutubePlaylistItemRepository(YoutubePlaylistItemRepository):
         self.replace_calls: list[tuple[int, list[YoutubePlaylistItem]]] = []
         self.delete_calls: list[int] = []
 
+    def count_by_playlist(self, youtube_playlist_id: int) -> int:
+        return len(self.items_by_playlist_id.get(youtube_playlist_id, []))
+
     def list_by_playlist(self, youtube_playlist_id: int) -> list[YoutubePlaylistItem]:
         return list(self.items_by_playlist_id.get(youtube_playlist_id, []))
 
@@ -319,7 +322,10 @@ def test_define_main_youtube_playlist_use_case_rejects_url_without_list_paramete
 
 def test_get_active_youtube_playlist_use_case_returns_none_when_no_playlist_is_active() -> None:
     repository = InMemoryYoutubePlaylistRepository()
-    use_case = GetActiveYoutubePlaylistUseCase(repository)
+    use_case = GetActiveYoutubePlaylistUseCase(
+        repository,
+        InMemoryYoutubePlaylistItemRepository(),
+    )
 
     assert use_case.execute() is None
 
@@ -327,7 +333,8 @@ def test_get_active_youtube_playlist_use_case_returns_none_when_no_playlist_is_a
 def test_list_youtube_playlists_use_case_returns_saved_playlists() -> None:
     repository = InMemoryYoutubePlaylistRepository()
     define_use_case = DefineMainYoutubePlaylistUseCase(repository)
-    list_use_case = ListYoutubePlaylistsUseCase(repository)
+    item_repository = InMemoryYoutubePlaylistItemRepository()
+    list_use_case = ListYoutubePlaylistsUseCase(repository, item_repository)
 
     define_use_case.execute(
         DefineMainYoutubePlaylistInputDto(
@@ -349,6 +356,60 @@ def test_list_youtube_playlists_use_case_returns_saved_playlists() -> None:
         "PLFIRST",
         "PLSECOND",
     }
+
+
+def test_list_youtube_playlists_use_case_includes_item_count_for_each_playlist() -> None:
+    repository = InMemoryYoutubePlaylistRepository()
+    item_repository = InMemoryYoutubePlaylistItemRepository()
+    first_playlist = repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PLFIRST",
+        external_playlist_id="PLFIRST",
+        title="Lista uno",
+    )
+    second_playlist = repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PLSECOND",
+        external_playlist_id="PLSECOND",
+        title="Lista dos",
+    )
+    item_repository.items_by_playlist_id[first_playlist.id or 0] = [
+        YoutubePlaylistItem(
+            id=1,
+            youtube_playlist_id=first_playlist.id or 0,
+            external_video_id="one",
+            position=1,
+            raw_title="Song One",
+            raw_channel_name="Artist One",
+            normalized_title="song one",
+            normalized_artist="artist one",
+        )
+    ]
+    item_repository.items_by_playlist_id[second_playlist.id or 0] = [
+        YoutubePlaylistItem(
+            id=2,
+            youtube_playlist_id=second_playlist.id or 0,
+            external_video_id="two",
+            position=1,
+            raw_title="Song Two",
+            raw_channel_name="Artist Two",
+            normalized_title="song two",
+            normalized_artist="artist two",
+        ),
+        YoutubePlaylistItem(
+            id=3,
+            youtube_playlist_id=second_playlist.id or 0,
+            external_video_id="three",
+            position=2,
+            raw_title="Song Three",
+            raw_channel_name="Artist Three",
+            normalized_title="song three",
+            normalized_artist="artist three",
+        ),
+    ]
+    use_case = ListYoutubePlaylistsUseCase(repository, item_repository)
+
+    youtube_playlists = use_case.execute()
+
+    assert [youtube_playlist.item_count for youtube_playlist in youtube_playlists] == [1, 2]
 
 
 def test_activate_youtube_playlist_use_case_switches_active_playlist() -> None:

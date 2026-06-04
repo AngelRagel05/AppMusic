@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Select, delete, select
+from sqlalchemy import Select, delete, func, select
 from sqlalchemy.orm import Session
 
 from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistItem
@@ -17,6 +17,12 @@ from app.infrastructure.persistence.database.models import (
 class YoutubePlaylistItemSqlAlchemyRepository(YoutubePlaylistItemRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def count_by_playlist(self, youtube_playlist_id: int) -> int:
+        statement = select(func.count(YoutubePlaylistItemModel.id)).where(
+            YoutubePlaylistItemModel.youtube_playlist_id == youtube_playlist_id
+        )
+        return int(self._session.scalar(statement) or 0)
 
     def list_by_playlist(self, youtube_playlist_id: int) -> list[YoutubePlaylistItem]:
         statement: Select[tuple[YoutubePlaylistItemModel]] = (

@@ -10,3 +10,4 @@ class YoutubePlaylistDto:
     external_playlist_id: str
     title: str
     is_active: bool
+    item_count: int = 0

@@ -7,6 +7,7 @@ from app.application.dto.importYoutubePlaylistItemsResultDto import (
 )
 from app.application.dto.importedYoutubePlaylistItemDto import ImportedYoutubePlaylistItemDto
 from app.application.dto.ignoredTermDto import IgnoredTermDto
+from app.application.dto.localSongDto import LocalSongDto
 from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
 from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.updateIgnoredTermInputDto import UpdateIgnoredTermInputDto
@@ -18,6 +19,7 @@ __all__ = [
     "ImportYoutubePlaylistItemsResultDto",
     "ImportedYoutubePlaylistItemDto",
     "IgnoredTermDto",
+    "LocalSongDto",
     "LocalSongMetadataDto",
     "ScanLocalFolderProgressDto",
     "UpdateIgnoredTermInputDto",

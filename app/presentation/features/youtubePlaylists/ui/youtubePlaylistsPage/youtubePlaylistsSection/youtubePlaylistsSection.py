@@ -53,6 +53,14 @@ class _YoutubePlaylistRow(ctk.CTkFrame):
             font=("Segoe UI", 13),
             wraplength=620,
         ).grid(row=1, column=0, sticky="w", pady=(6, 0))
+        item_count_suffix = "item" if youtube_playlist.item_count == 1 else "items"
+        createLabel(
+            content,
+            f"{youtube_playlist.item_count} {item_count_suffix}",
+            theme=self._theme,
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 12),
+        ).grid(row=2, column=0, sticky="w", pady=(8, 0))
 
         badgeTone = "success" if youtube_playlist.is_active else "idle"
         badgeText = "Activa" if youtube_playlist.is_active else "Guardada"
@@ -142,7 +150,10 @@ class YoutubePlaylistsSection(ctk.CTkFrame):
             return
 
         self.activePlaylistValue.configure(text=active_playlist.title)
-        self.activePlaylistMeta.configure(text="Playlist preparada para comparaciones y sincronización.")
+        item_count_suffix = "item importado" if active_playlist.item_count == 1 else "items importados"
+        self.activePlaylistMeta.configure(
+            text=f"Playlist preparada para comparaciones y sincronización. {active_playlist.item_count} {item_count_suffix}."
+        )
         self.activePlaylistUrl.configure(text=active_playlist.playlist_url)
         self.activePlaylistBadge.setStatus("Activa", "success")
         self.setPlaylistTitle(active_playlist.title)

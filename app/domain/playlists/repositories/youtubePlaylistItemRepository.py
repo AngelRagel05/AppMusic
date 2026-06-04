@@ -7,6 +7,10 @@ from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistIte
 
 class YoutubePlaylistItemRepository(ABC):
     @abstractmethod
+    def count_by_playlist(self, youtube_playlist_id: int) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
     def list_by_playlist(self, youtube_playlist_id: int) -> list[YoutubePlaylistItem]:
         raise NotImplementedError
 
