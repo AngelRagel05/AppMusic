@@ -105,7 +105,10 @@ class LocalLibraryViewModelSpy:
         self.update_calls: list[tuple[int, str, str]] = []
 
     def refreshState(self):
-        return [], None
+        if self.selected_folder is None:
+            return [], None
+        active_folder = self.selected_folder if self.selected_folder.is_active else None
+        return [self.selected_folder], active_folder
 
     def load_folders(self):
         if self.selected_folder is None:
