@@ -54,6 +54,7 @@ def test_requestScan_emits_start_and_success_feedback() -> None:
                 local_folder_name="Jazz",
                 scanned_file_count=2,
                 created_song_count=1,
+                updated_song_count=1,
                 existing_song_count=1,
             )
         )
@@ -90,10 +91,10 @@ def test_requestScan_emits_start_and_success_feedback() -> None:
         last_action_message=None,
     )
     assert feedbacks[3] == LocalLibraryScanFeedback(
-        status_message='Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
+        status_message='Escaneo completado en "Jazz": 2 MP3 detectados, 1 anadidas, 1 actualizadas y 0 eliminadas.',
         status_tone="success",
         song_count_label="2 MP3 detectados",
-        last_action_message='Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
+        last_action_message='Escaneo completado en "Jazz": 2 MP3 detectados, 1 anadidas, 1 actualizadas y 0 eliminadas.',
     )
 
 
@@ -107,7 +108,8 @@ def test_requestScan_includes_missing_and_moved_counts_in_success_feedback() -> 
                 local_folder_name="Jazz",
                 scanned_file_count=3,
                 created_song_count=1,
-                existing_song_count=1,
+                updated_song_count=1,
+                existing_song_count=0,
                 missing_song_count=1,
                 moved_song_count=1,
             )
@@ -127,10 +129,10 @@ def test_requestScan_includes_missing_and_moved_counts_in_success_feedback() -> 
     runScheduledCallbacks(scheduled_callbacks)
 
     assert feedbacks[1] == LocalLibraryScanFeedback(
-        status_message='Escaneo completado en "Jazz": 3 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas). Se han marcado 1 ausente, 1 movida detectada.',
+        status_message='Escaneo completado en "Jazz": 3 MP3 detectados, 1 anadidas, 1 actualizadas y 1 eliminadas. Ademas, se han detectado 1 movimiento detectado.',
         status_tone="success",
         song_count_label="3 MP3 detectados",
-        last_action_message='Escaneo completado en "Jazz": 3 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas). Se han marcado 1 ausente, 1 movida detectada.',
+        last_action_message='Escaneo completado en "Jazz": 3 MP3 detectados, 1 anadidas, 1 actualizadas y 1 eliminadas. Ademas, se han detectado 1 movimiento detectado.',
     )
 
 
@@ -164,6 +166,7 @@ def test_requestScan_automatic_does_not_emit_feedback_when_scan_is_already_runni
                 local_folder_name="Jazz",
                 scanned_file_count=2,
                 created_song_count=1,
+                updated_song_count=0,
                 existing_song_count=1,
             )
         )
@@ -199,3 +202,65 @@ def test_requestScan_automatic_does_not_emit_feedback_when_scan_is_already_runni
             last_action_message=None,
         )
     ]
+
+
+def test_requestScan_emits_clear_error_when_folder_does_not_exist() -> None:
+    feedbacks: list[LocalLibraryScanFeedback] = []
+    scheduled_callbacks: list[Callable[[], None]] = []
+    view_model = LocalLibraryScanViewModel(
+        ScanLocalFolderUseCaseSpy(
+            error=ValueError(
+                'La carpeta local "Jazz" no existe o ya no esta disponible: C:\\Music\\Missing.'
+            )
+        )
+    )
+
+    view_model.requestScan(
+        active_folder=LocalFolderDto(
+            id=7,
+            path=r"C:\Music\Missing",
+            display_name="Jazz",
+            is_active=True,
+        ),
+        schedule_on_main_thread=scheduled_callbacks.append,
+        on_feedback=feedbacks.append,
+    )
+    runScheduledCallbacks(scheduled_callbacks)
+
+    assert feedbacks[1] == LocalLibraryScanFeedback(
+        status_message='La carpeta local "Jazz" no existe o ya no esta disponible: C:\\Music\\Missing.',
+        status_tone="error",
+        song_count_label="Sin escanear",
+        last_action_message=None,
+    )
+
+
+def test_requestScan_emits_clear_error_when_folder_cannot_be_read() -> None:
+    feedbacks: list[LocalLibraryScanFeedback] = []
+    scheduled_callbacks: list[Callable[[], None]] = []
+    view_model = LocalLibraryScanViewModel(
+        ScanLocalFolderUseCaseSpy(
+            error=ValueError(
+                'No se puede leer la carpeta local "Jazz": C:\\Music\\Restricted. Revisa los permisos e intentalo de nuevo.'
+            )
+        )
+    )
+
+    view_model.requestScan(
+        active_folder=LocalFolderDto(
+            id=7,
+            path=r"C:\Music\Restricted",
+            display_name="Jazz",
+            is_active=True,
+        ),
+        schedule_on_main_thread=scheduled_callbacks.append,
+        on_feedback=feedbacks.append,
+    )
+    runScheduledCallbacks(scheduled_callbacks)
+
+    assert feedbacks[1] == LocalLibraryScanFeedback(
+        status_message='No se puede leer la carpeta local "Jazz": C:\\Music\\Restricted. Revisa los permisos e intentalo de nuevo.',
+        status_tone="error",
+        song_count_label="Sin escanear",
+        last_action_message=None,
+    )

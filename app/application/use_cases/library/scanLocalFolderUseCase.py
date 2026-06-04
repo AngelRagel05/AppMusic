@@ -43,7 +43,23 @@ class ScanLocalFolderUseCase:
         if activeLocalFolder is None or activeLocalFolder.id is None:
             raise ValueError("No hay una biblioteca local activa para escanear.")
 
-        discoveredFilePaths = self._local_music_scanner.scanMp3Files(activeLocalFolder.path)
+        try:
+            discoveredFilePaths = self._local_music_scanner.scanMp3Files(activeLocalFolder.path)
+        except FileNotFoundError as error:
+            raise ValueError(
+                f'La carpeta local "{activeLocalFolder.display_name}" no existe o ya no esta disponible: '
+                f"{activeLocalFolder.path}."
+            ) from error
+        except NotADirectoryError as error:
+            raise ValueError(
+                f'La ruta guardada para la biblioteca "{activeLocalFolder.display_name}" ya no es una carpeta valida: '
+                f"{activeLocalFolder.path}."
+            ) from error
+        except PermissionError as error:
+            raise ValueError(
+                f'No se puede leer la carpeta local "{activeLocalFolder.display_name}": '
+                f"{activeLocalFolder.path}. Revisa los permisos e intentalo de nuevo."
+            ) from error
         totalSongCount = len(discoveredFilePaths)
         discoveredFilePathSet = set(discoveredFilePaths)
         persistedSongs = self._local_song_repository.list_by_folder(activeLocalFolder.id)
@@ -54,6 +70,7 @@ class ScanLocalFolderUseCase:
             if song.id is not None and song.file_path not in discoveredFilePathSet
         }
         createdSongCount = 0
+        updatedSongCount = 0
         existingSongCount = 0
         missingSongCount = 0
         movedSongCount = 0
@@ -65,15 +82,17 @@ class ScanLocalFolderUseCase:
             existingSong = persistedSongsByPath.get(filePath)
             metadata = self._local_song_metadata_reader.readMetadata(filePath)
             if existingSong is not None:
-                self._local_song_repository.save(
-                    self._buildLocalSong(
-                        filePath=filePath,
-                        metadata=metadata,
-                        active_local_folder_id=activeLocalFolder.id,
-                        existing_song=existingSong,
-                    )
+                updatedSong = self._buildLocalSong(
+                    filePath=filePath,
+                    metadata=metadata,
+                    active_local_folder_id=activeLocalFolder.id,
+                    existing_song=existingSong,
                 )
-                existingSongCount += 1
+                self._local_song_repository.save(updatedSong)
+                if self._hasSongChanged(existingSong, updatedSong):
+                    updatedSongCount += 1
+                else:
+                    existingSongCount += 1
                 processedSongCount += 1
                 self._emitProgress(on_progress, processedSongCount, totalSongCount)
                 continue
@@ -84,16 +103,16 @@ class ScanLocalFolderUseCase:
                 missing_candidate_songs=missingCandidateSongsById.values(),
             )
             if movedSong is not None:
-                self._local_song_repository.save(
-                    self._buildLocalSong(
-                        filePath=filePath,
-                        metadata=metadata,
-                        active_local_folder_id=activeLocalFolder.id,
-                        existing_song=movedSong,
-                    )
+                updatedSong = self._buildLocalSong(
+                    filePath=filePath,
+                    metadata=metadata,
+                    active_local_folder_id=activeLocalFolder.id,
+                    existing_song=movedSong,
                 )
+                self._local_song_repository.save(updatedSong)
                 if movedSong.id is not None:
                     missingCandidateSongsById.pop(movedSong.id, None)
+                updatedSongCount += 1
                 movedSongCount += 1
                 processedSongCount += 1
                 self._emitProgress(on_progress, processedSongCount, totalSongCount)
@@ -137,6 +156,7 @@ class ScanLocalFolderUseCase:
             local_folder_name=activeLocalFolder.display_name,
             scanned_file_count=totalSongCount,
             created_song_count=createdSongCount,
+            updated_song_count=updatedSongCount,
             existing_song_count=existingSongCount,
             missing_song_count=missingSongCount,
             moved_song_count=movedSongCount,
@@ -216,4 +236,17 @@ class ScanLocalFolderUseCase:
             metadata.release_year,
             metadata.track_number_album,
             round(metadata.duration_seconds, 1),
+        )
+
+    def _hasSongChanged(self, persisted_song: LocalSong, scanned_song: LocalSong) -> bool:
+        return (
+            persisted_song.file_path != scanned_song.file_path
+            or persisted_song.file_name != scanned_song.file_name
+            or persisted_song.is_available != scanned_song.is_available
+            or persisted_song.title != scanned_song.title
+            or persisted_song.artist != scanned_song.artist
+            or persisted_song.album != scanned_song.album
+            or persisted_song.release_year != scanned_song.release_year
+            or persisted_song.track_number_album != scanned_song.track_number_album
+            or round(persisted_song.duration_seconds, 1) != round(scanned_song.duration_seconds, 1)
         )

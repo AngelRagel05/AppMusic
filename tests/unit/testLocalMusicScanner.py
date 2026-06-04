@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 from app.infrastructure.filesystem import LocalMusicScanner
 
@@ -25,12 +26,15 @@ def test_scanMp3Files_returns_absolute_mp3_paths_recursively(tmp_path: Path) -> 
     )
 
 
-def test_scanMp3Files_returns_empty_list_when_folder_does_not_exist(tmp_path: Path) -> None:
+def test_scanMp3Files_raises_file_not_found_when_folder_does_not_exist(tmp_path: Path) -> None:
     scanner = LocalMusicScanner()
 
-    discoveredFiles = scanner.scanMp3Files(str(tmp_path / "missing"))
-
-    assert discoveredFiles == []
+    try:
+        scanner.scanMp3Files(str(tmp_path / "missing"))
+    except FileNotFoundError as error:
+        assert str(error) == str(tmp_path / "missing")
+    else:
+        raise AssertionError("Se esperaba FileNotFoundError cuando la carpeta no existe.")
 
 
 def test_scanMp3Files_returns_empty_list_when_folder_has_no_mp3_files(tmp_path: Path) -> None:
@@ -59,3 +63,17 @@ def test_scanMp3Files_ignores_non_mp3_files_even_when_names_are_similar(tmp_path
     discoveredFiles = scanner.scanMp3Files(str(musicFolder))
 
     assert discoveredFiles == [str(validSong.resolve())]
+
+
+def test_scanMp3Files_raises_permission_error_when_root_folder_cannot_be_read(tmp_path: Path) -> None:
+    scanner = LocalMusicScanner()
+    musicFolder = tmp_path / "music"
+    musicFolder.mkdir()
+
+    with patch("app.infrastructure.filesystem.localMusicScanner.Path.iterdir", side_effect=PermissionError("denied")):
+        try:
+            scanner.scanMp3Files(str(musicFolder))
+        except PermissionError as error:
+            assert str(error) == str(musicFolder)
+        else:
+            raise AssertionError("Se esperaba PermissionError cuando la carpeta no puede leerse.")

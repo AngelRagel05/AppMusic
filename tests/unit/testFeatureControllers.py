@@ -421,10 +421,10 @@ def test_local_library_controller_delegates_scan_and_updates_song_count() -> Non
                 song_count_label="Escaneando...",
             ),
             LocalLibraryScanFeedback(
-                status_message='Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
+                status_message='Escaneo completado en "Jazz": 2 MP3 detectados, 1 anadidas, 1 actualizadas y 0 eliminadas.',
                 status_tone="success",
                 song_count_label="2 MP3 detectados",
-                last_action_message='Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
+                last_action_message='Escaneo completado en "Jazz": 2 MP3 detectados, 1 anadidas, 1 actualizadas y 0 eliminadas.',
             ),
         ]
     )
@@ -448,27 +448,20 @@ def test_local_library_controller_delegates_scan_and_updates_song_count() -> Non
     assert scan_view_model.request_calls == 1
     assert scan_view_model.received_active_folder == active_folder
     assert song_count_updates == ["Escaneando...", "2 MP3 detectados"]
-    assert recorded_actions[-1] == 'Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).'
+    assert recorded_actions[-1] == 'Escaneo completado en "Jazz": 2 MP3 detectados, 1 anadidas, 1 actualizadas y 0 eliminadas.'
     assert page.status_messages[0] == ('Escaneando la biblioteca "Jazz"...', "info")
     assert page.status_messages[-1] == (
-        'Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
+        'Escaneo completado en "Jazz": 2 MP3 detectados, 1 anadidas, 1 actualizadas y 0 eliminadas.',
         "success",
     )
 
 
-def test_local_library_controller_delegates_manual_refresh_of_scanned_songs() -> None:
+def test_local_library_controller_registers_only_primary_scan_action() -> None:
     page = LocalLibraryPageSpy()
-    active_folder = LocalFolderDto(
-        id=7,
-        path=r"C:\Music\Jazz",
-        display_name="Jazz",
-        is_active=True,
-    )
-    scan_view_model = LocalLibraryScanViewModelSpy()
     controller = LocalLibraryController(
         page=page,
-        view_model=LocalLibraryViewModelSpy(active_folder),
-        scan_view_model=scan_view_model,
+        view_model=LocalLibraryViewModelSpy(None),
+        scan_view_model=LocalLibraryScanViewModelSpy(),
         folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
@@ -478,13 +471,9 @@ def test_local_library_controller_delegates_manual_refresh_of_scanned_songs() ->
     )
 
     controller.bindEvents()
-    if page.secondaryActionRequested.callback is None:
-        raise AssertionError("Se esperaba callback secundario registrado.")
 
-    page.secondaryActionRequested.callback()
-
-    assert scan_view_model.request_calls == 1
-    assert scan_view_model.received_active_folder == active_folder
+    assert page.primaryActionRequested.callback is not None
+    assert page.secondaryActionRequested.callback is None
 
 
 def test_local_library_controller_starts_auto_refresh_for_active_folder_on_load() -> None:

@@ -9,8 +9,17 @@ from loguru import logger
 class LocalMusicScanner:
     def scanMp3Files(self, folderPath: str) -> list[str]:
         rootPath = Path(folderPath).expanduser().resolve()
-        if not rootPath.exists() or not rootPath.is_dir():
-            return []
+        if not rootPath.exists():
+            raise FileNotFoundError(folderPath)
+        if not rootPath.is_dir():
+            raise NotADirectoryError(folderPath)
+
+        try:
+            next(rootPath.iterdir(), None)
+        except PermissionError as error:
+            raise PermissionError(folderPath) from error
+        except OSError as error:
+            raise PermissionError(folderPath) from error
 
         discoveredFilePaths: list[str] = []
 

@@ -81,6 +81,7 @@ def test_scanLocalFolderUseCase_persists_multiple_mp3_into_sqlite_memory() -> No
 
     assert result.scanned_file_count == 2
     assert result.created_song_count == 2
+    assert result.updated_song_count == 0
     assert result.existing_song_count == 0
     assert result.missing_song_count == 0
     assert result.moved_song_count == 0
@@ -133,6 +134,7 @@ def test_scanLocalFolderUseCase_rescan_does_not_duplicate_rows_in_sqlite_memory(
     assert firstResult.created_song_count == 2
     assert secondResult.scanned_file_count == 2
     assert secondResult.created_song_count == 0
+    assert secondResult.updated_song_count == 0
     assert secondResult.existing_song_count == 2
     assert secondResult.missing_song_count == 0
     assert secondResult.moved_song_count == 0
@@ -188,7 +190,8 @@ def test_scanLocalFolderUseCase_rescan_refreshes_metadata_for_existing_rows() ->
 
     assert secondResult.scanned_file_count == 1
     assert secondResult.created_song_count == 0
-    assert secondResult.existing_song_count == 1
+    assert secondResult.updated_song_count == 1
+    assert secondResult.existing_song_count == 0
     assert secondResult.missing_song_count == 0
     assert secondResult.moved_song_count == 0
     assert len(persistedSongs) == 1
@@ -250,6 +253,7 @@ def test_scanLocalFolderUseCase_marks_missing_rows_when_a_file_disappears() -> N
     missingSong = next(song for song in persistedSongs if song.file_path.endswith("second.mp3"))
 
     assert secondResult.created_song_count == 0
+    assert secondResult.updated_song_count == 0
     assert secondResult.existing_song_count == 1
     assert secondResult.missing_song_count == 1
     assert secondResult.moved_song_count == 0
@@ -307,6 +311,7 @@ def test_scanLocalFolderUseCase_reconciles_moved_song_by_updating_its_path() -> 
     persistedSongs = local_song_repository.list_by_folder(1)
 
     assert secondResult.created_song_count == 0
+    assert secondResult.updated_song_count == 1
     assert secondResult.existing_song_count == 0
     assert secondResult.missing_song_count == 0
     assert secondResult.moved_song_count == 1

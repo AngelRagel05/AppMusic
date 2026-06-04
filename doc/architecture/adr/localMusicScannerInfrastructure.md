@@ -18,6 +18,7 @@ Su responsabilidad en v1 es:
 * detectar archivos con extension `.mp3` de forma case-insensitive
 * devolver rutas absolutas ya resueltas
 * ignorar archivos o subrutas no accesibles sin interrumpir todo el escaneo
+* fallar de forma explicita si la carpeta raiz ya no existe o no puede leerse
 
 `LocalMusicScanner` no:
 
@@ -30,4 +31,5 @@ Su responsabilidad en v1 es:
 
 * el descubrimiento de archivos queda encapsulado en `infrastructure`
 * el futuro `ScanLocalFolderUseCase` podra reutilizar este adaptador sin depender de `os.walk` o `pathlib`
-* la validacion de que la carpeta activa exista sigue siendo responsabilidad del flujo de aplicacion; el scanner mantiene un comportamiento tolerante y devuelve lista vacia si la ruta no es una carpeta utilizable
+* el flujo de aplicacion puede distinguir entre una carpeta vacia y una carpeta invalida o inaccesible
+* los errores de la carpeta raiz se convierten en mensajes claros para la UI, mientras que las subrutas inaccesibles se mantienen como warnings tolerados

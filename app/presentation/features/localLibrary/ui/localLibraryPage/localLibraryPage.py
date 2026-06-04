@@ -27,7 +27,7 @@ class LocalLibraryPage(ctk.CTkFrame):
             self._theme,
             subtitle="Gestiona la carpeta principal y el conjunto de bibliotecas guardadas",
         )
-        self.header.setActions("Actualizar canciones", "Escanear biblioteca")
+        self.header.setActions(None, "Sincronizar biblioteca")
         self.section = LocalLibrariesSection(content, self._theme)
 
         self.header.pack(fill="x")

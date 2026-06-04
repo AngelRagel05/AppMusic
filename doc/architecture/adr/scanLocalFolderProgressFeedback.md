@@ -30,6 +30,13 @@ La solucion:
 * emite progreso desde `ScanLocalFolderUseCase` al inicio y tras procesar cada MP3 detectado
 * propaga ese progreso a traves de `ScanLocalFolderWorker`
 * actualiza la UI con un contador visible `procesadas/total canciones`
+* resume el resultado final con contadores operativos de `anadidas`, `actualizadas` y `eliminadas`
+
+Para que el resumen sea fiable:
+
+* `anadidas` cuenta solo canciones nuevas persistidas por primera vez
+* `actualizadas` cuenta canciones ya conocidas cuya metadata, ruta o disponibilidad ha cambiado
+* `eliminadas` cuenta canciones marcadas como no disponibles porque ya no aparecen en disco
 
 Se prioriza el contador absoluto frente a un porcentaje porque comunica mejor el volumen real de trabajo durante escaneos largos.
 

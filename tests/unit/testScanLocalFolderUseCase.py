@@ -60,12 +60,15 @@ class LocalSongRepositorySpy:
 
 
 class LocalMusicScannerSpy:
-    def __init__(self, file_paths: list[str]) -> None:
+    def __init__(self, file_paths: list[str], error: Exception | None = None) -> None:
         self.file_paths = file_paths
+        self.error = error
         self.received_folder_path: str | None = None
 
     def scanMp3Files(self, folderPath: str) -> list[str]:
         self.received_folder_path = folderPath
+        if self.error is not None:
+            raise self.error
         return list(self.file_paths)
 
 
@@ -124,6 +127,7 @@ def test_execute_creates_only_new_local_songs_and_returns_summary() -> None:
     assert result.local_folder_name == "Jazz"
     assert result.scanned_file_count == 2
     assert result.created_song_count == 1
+    assert result.updated_song_count == 0
     assert result.existing_song_count == 1
     assert result.missing_song_count == 0
     assert result.moved_song_count == 0
@@ -158,6 +162,58 @@ def test_execute_fails_when_there_is_no_active_local_folder() -> None:
         raise AssertionError("Se esperaba ValueError cuando no hay biblioteca activa.")
 
 
+def test_execute_fails_with_clear_message_when_active_folder_does_not_exist() -> None:
+    use_case = ScanLocalFolderUseCase(
+        LocalFolderRepositorySpy(
+            LocalFolder(
+                id=7,
+                path=r"C:\Music\Missing",
+                display_name="Jazz",
+                is_active=True,
+            )
+        ),
+        LocalSongRepositorySpy(),
+        LocalMusicScannerSpy([], error=FileNotFoundError(r"C:\Music\Missing")),
+        LocalSongMetadataReaderSpy(),
+    )
+
+    try:
+        use_case.execute()
+    except ValueError as error:
+        assert (
+            str(error)
+            == 'La carpeta local "Jazz" no existe o ya no esta disponible: C:\\Music\\Missing.'
+        )
+    else:
+        raise AssertionError("Se esperaba ValueError cuando la carpeta activa no existe.")
+
+
+def test_execute_fails_with_clear_message_when_active_folder_cannot_be_read() -> None:
+    use_case = ScanLocalFolderUseCase(
+        LocalFolderRepositorySpy(
+            LocalFolder(
+                id=7,
+                path=r"C:\Music\Restricted",
+                display_name="Jazz",
+                is_active=True,
+            )
+        ),
+        LocalSongRepositorySpy(),
+        LocalMusicScannerSpy([], error=PermissionError(r"C:\Music\Restricted")),
+        LocalSongMetadataReaderSpy(),
+    )
+
+    try:
+        use_case.execute()
+    except ValueError as error:
+        assert (
+            str(error)
+            == 'No se puede leer la carpeta local "Jazz": C:\\Music\\Restricted. Revisa los permisos e intentalo de nuevo.'
+        )
+    else:
+        raise AssertionError("Se esperaba ValueError cuando la carpeta activa no puede leerse.")
+
+
 def test_execute_returns_zero_counts_when_folder_has_no_mp3_files() -> None:
     use_case = ScanLocalFolderUseCase(
         LocalFolderRepositorySpy(
@@ -177,6 +233,7 @@ def test_execute_returns_zero_counts_when_folder_has_no_mp3_files() -> None:
 
     assert result.scanned_file_count == 0
     assert result.created_song_count == 0
+    assert result.updated_song_count == 0
     assert result.existing_song_count == 0
     assert result.missing_song_count == 0
     assert result.moved_song_count == 0
@@ -215,7 +272,8 @@ def test_execute_updates_metadata_for_existing_songs_without_creating_duplicates
 
     assert result.scanned_file_count == 1
     assert result.created_song_count == 0
-    assert result.existing_song_count == 1
+    assert result.updated_song_count == 1
+    assert result.existing_song_count == 0
     assert result.missing_song_count == 0
     assert result.moved_song_count == 0
     assert metadata_reader.received_file_paths == [existingPath]
@@ -263,7 +321,8 @@ def test_execute_marks_missing_songs_when_they_disappear_from_disk() -> None:
 
     assert result.scanned_file_count == 1
     assert result.created_song_count == 0
-    assert result.existing_song_count == 1
+    assert result.updated_song_count == 1
+    assert result.existing_song_count == 0
     assert result.missing_song_count == 1
     assert result.moved_song_count == 0
     assert missingSong.is_available is False
@@ -319,6 +378,7 @@ def test_execute_reconciles_moved_song_without_creating_duplicate() -> None:
 
     assert result.scanned_file_count == 1
     assert result.created_song_count == 0
+    assert result.updated_song_count == 1
     assert result.existing_song_count == 0
     assert result.missing_song_count == 0
     assert result.moved_song_count == 1
@@ -356,3 +416,54 @@ def test_execute_emits_progress_for_each_processed_song() -> None:
         ScanLocalFolderProgressDto(processed_song_count=1, total_song_count=2),
         ScanLocalFolderProgressDto(processed_song_count=2, total_song_count=2),
     ]
+
+
+def test_execute_counts_existing_song_without_changes_as_not_updated() -> None:
+    existingPath = r"C:\Music\Jazz\known.mp3"
+    song_repository = LocalSongRepositorySpy(existing_paths={existingPath})
+    originalSong = song_repository.get_by_file_path(existingPath)
+    if originalSong is None:
+        raise AssertionError("Se esperaba una cancion local persistida para la prueba.")
+    song_repository.persisted_songs_by_id[originalSong.id or 0] = LocalSong(
+        id=originalSong.id,
+        local_folder_id=7,
+        file_path=existingPath,
+        file_name="known.mp3",
+        is_available=True,
+        title="Known Song",
+        artist="John Coltrane",
+        album="Blue Train",
+        release_year=1957,
+        track_number_album=1,
+        duration_seconds=610.2,
+    )
+    use_case = ScanLocalFolderUseCase(
+        LocalFolderRepositorySpy(
+            LocalFolder(
+                id=7,
+                path=r"C:\Music\Jazz",
+                display_name="Jazz",
+                is_active=True,
+            )
+        ),
+        song_repository,
+        LocalMusicScannerSpy([existingPath]),
+        LocalSongMetadataReaderSpy(
+            {
+                existingPath: LocalSongMetadataDto(
+                    title="Known Song",
+                    artist="John Coltrane",
+                    album="Blue Train",
+                    release_year=1957,
+                    track_number_album=1,
+                    duration_seconds=610.2,
+                )
+            }
+        ),
+    )
+
+    result = use_case.execute()
+
+    assert result.created_song_count == 0
+    assert result.updated_song_count == 0
+    assert result.existing_song_count == 1

@@ -12,7 +12,7 @@ Aprobada
 
 La UI ya tenia dos puntos visibles para iniciar el escaneo de biblioteca:
 
-* el boton `Escanear biblioteca` en `localLibrary`
+* la accion `Sincronizar biblioteca` en `localLibrary`
 * el boton de escaneo en `overview`
 
 Hacia falta conectarlos al mismo flujo sin meter logica de escaneo en widgets ni concentrarla en el controller.
@@ -32,7 +32,8 @@ El reparto queda asi:
 
 Ventajas:
 
-* ambos botones visibles reutilizan el mismo flujo
+* la accion principal de `localLibrary` expresa mejor que el flujo detecta altas, refresca cambios y marca bajas
+* los puntos visibles de entrada reutilizan el mismo flujo
 * el contador de canciones y la ultima accion se actualizan desde un feedback unico de presentacion
 * la logica de escaneo no vive en widgets
 * la v1 ya expone el minimo de resultado pedido: exito o error, MP3 detectados y canciones registradas

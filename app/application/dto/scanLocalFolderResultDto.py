@@ -10,5 +10,6 @@ class ScanLocalFolderResultDto:
     scanned_file_count: int
     created_song_count: int
     existing_song_count: int
+    updated_song_count: int = 0
     missing_song_count: int = 0
     moved_song_count: int = 0

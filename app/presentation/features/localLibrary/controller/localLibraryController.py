@@ -55,7 +55,6 @@ class LocalLibraryController:
 
     def bindEvents(self) -> None:
         self._page.onPrimaryActionRequested(self._handleScanLibraryRequested)
-        self._page.onSecondaryActionRequested(self._handleRefreshScannedSongsRequested)
         self._page.onBrowseFolderRequested(self._handleBrowseFolder)
         self._page.onSaveFolderRequested(self._handleSaveFolder)
         self._page.onActivateFolderRequested(self._handleActivateFolderById)
@@ -197,13 +196,6 @@ class LocalLibraryController:
         )
 
     def _handleScanLibraryRequested(self) -> None:
-        self._scan_view_model.requestScan(
-            active_folder=self._view_model.load_active_folder(),
-            schedule_on_main_thread=lambda callback: self._page.after(0, callback),
-            on_feedback=self._renderScanFeedback,
-        )
-
-    def _handleRefreshScannedSongsRequested(self) -> None:
         self._scan_view_model.requestScan(
             active_folder=self._view_model.load_active_folder(),
             schedule_on_main_thread=lambda callback: self._page.after(0, callback),
