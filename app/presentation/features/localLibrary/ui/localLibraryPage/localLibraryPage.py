@@ -27,7 +27,7 @@ class LocalLibraryPage(ctk.CTkFrame):
             self._theme,
             subtitle="Gestiona la carpeta principal y el conjunto de bibliotecas guardadas",
         )
-        self.header.setActions(None, "Escanear biblioteca")
+        self.header.setActions("Actualizar canciones", "Escanear biblioteca")
         self.section = LocalLibrariesSection(content, self._theme)
 
         self.header.pack(fill="x")
@@ -35,6 +35,9 @@ class LocalLibraryPage(ctk.CTkFrame):
 
     def onPrimaryActionRequested(self, callback: Callable[[], None]) -> None:
         self.header.primaryActionRequested.connect(callback)
+
+    def onSecondaryActionRequested(self, callback: Callable[[], None]) -> None:
+        self.header.secondaryActionRequested.connect(callback)
 
     def onBrowseFolderRequested(self, callback: Callable[[], None]) -> None:
         self.section.browseFolderButton.clicked.connect(callback)

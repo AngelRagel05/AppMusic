@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
 from app.application.use_cases.library.scanLocalFolderUseCase import ScanLocalFolderUseCase
 from app.domain.library.entities.localFolder import LocalFolder
@@ -325,3 +326,33 @@ def test_execute_reconciles_moved_song_without_creating_duplicate() -> None:
     assert persistedSongs[0].id == originalSong.id
     assert persistedSongs[0].file_path == newPath
     assert persistedSongs[0].is_available is True
+
+
+def test_execute_emits_progress_for_each_processed_song() -> None:
+    progressEvents: list[ScanLocalFolderProgressDto] = []
+    use_case = ScanLocalFolderUseCase(
+        LocalFolderRepositorySpy(
+            LocalFolder(
+                id=7,
+                path=r"C:\Music\Jazz",
+                display_name="Jazz",
+                is_active=True,
+            )
+        ),
+        LocalSongRepositorySpy(),
+        LocalMusicScannerSpy(
+            [
+                r"C:\Music\Jazz\first.mp3",
+                r"C:\Music\Jazz\second.mp3",
+            ]
+        ),
+        LocalSongMetadataReaderSpy(),
+    )
+
+    use_case.execute(on_progress=progressEvents.append)
+
+    assert progressEvents == [
+        ScanLocalFolderProgressDto(processed_song_count=0, total_song_count=2),
+        ScanLocalFolderProgressDto(processed_song_count=1, total_song_count=2),
+        ScanLocalFolderProgressDto(processed_song_count=2, total_song_count=2),
+    ]

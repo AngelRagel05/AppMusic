@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Protocol
 
 from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
+from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.scanLocalFolderResultDto import ScanLocalFolderResultDto
 from app.domain.library.entities.localSong import LocalSong
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
@@ -34,12 +35,16 @@ class ScanLocalFolderUseCase:
         self._local_music_scanner = local_music_scanner
         self._local_song_metadata_reader = local_song_metadata_reader
 
-    def execute(self) -> ScanLocalFolderResultDto:
+    def execute(
+        self,
+        on_progress: Callable[[ScanLocalFolderProgressDto], None] | None = None,
+    ) -> ScanLocalFolderResultDto:
         activeLocalFolder = self._local_folder_repository.get_active()
         if activeLocalFolder is None or activeLocalFolder.id is None:
             raise ValueError("No hay una biblioteca local activa para escanear.")
 
         discoveredFilePaths = self._local_music_scanner.scanMp3Files(activeLocalFolder.path)
+        totalSongCount = len(discoveredFilePaths)
         discoveredFilePathSet = set(discoveredFilePaths)
         persistedSongs = self._local_song_repository.list_by_folder(activeLocalFolder.id)
         persistedSongsByPath = {song.file_path: song for song in persistedSongs}
@@ -52,6 +57,9 @@ class ScanLocalFolderUseCase:
         existingSongCount = 0
         missingSongCount = 0
         movedSongCount = 0
+        processedSongCount = 0
+
+        self._emitProgress(on_progress, processedSongCount, totalSongCount)
 
         for filePath in discoveredFilePaths:
             existingSong = persistedSongsByPath.get(filePath)
@@ -66,6 +74,8 @@ class ScanLocalFolderUseCase:
                     )
                 )
                 existingSongCount += 1
+                processedSongCount += 1
+                self._emitProgress(on_progress, processedSongCount, totalSongCount)
                 continue
 
             movedSong = self._findMovedSongCandidate(
@@ -85,6 +95,8 @@ class ScanLocalFolderUseCase:
                 if movedSong.id is not None:
                     missingCandidateSongsById.pop(movedSong.id, None)
                 movedSongCount += 1
+                processedSongCount += 1
+                self._emitProgress(on_progress, processedSongCount, totalSongCount)
                 continue
 
             self._local_song_repository.save(
@@ -95,6 +107,8 @@ class ScanLocalFolderUseCase:
                 )
             )
             createdSongCount += 1
+            processedSongCount += 1
+            self._emitProgress(on_progress, processedSongCount, totalSongCount)
 
         for missingSong in missingCandidateSongsById.values():
             if not missingSong.is_available:
@@ -121,11 +135,27 @@ class ScanLocalFolderUseCase:
         return ScanLocalFolderResultDto(
             local_folder_id=activeLocalFolder.id,
             local_folder_name=activeLocalFolder.display_name,
-            scanned_file_count=len(discoveredFilePaths),
+            scanned_file_count=totalSongCount,
             created_song_count=createdSongCount,
             existing_song_count=existingSongCount,
             missing_song_count=missingSongCount,
             moved_song_count=movedSongCount,
+        )
+
+    def _emitProgress(
+        self,
+        on_progress: Callable[[ScanLocalFolderProgressDto], None] | None,
+        processed_song_count: int,
+        total_song_count: int,
+    ) -> None:
+        if on_progress is None:
+            return
+
+        on_progress(
+            ScanLocalFolderProgressDto(
+                processed_song_count=processed_song_count,
+                total_song_count=total_song_count,
+            )
         )
 
     def _buildLocalSong(

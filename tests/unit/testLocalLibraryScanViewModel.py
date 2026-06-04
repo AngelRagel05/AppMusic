@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from app.application.dto.localFolderDto import LocalFolderDto
+from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.scanLocalFolderResultDto import ScanLocalFolderResultDto
 from app.presentation.viewmodels.localLibrary.localLibraryScanViewModel import (
     LocalLibraryScanFeedback,
@@ -15,13 +16,18 @@ class ScanLocalFolderUseCaseSpy:
         self,
         result: ScanLocalFolderResultDto | None = None,
         error: Exception | None = None,
+        progress_events: list[ScanLocalFolderProgressDto] | None = None,
     ) -> None:
         self.result = result
         self.error = error
         self.execute_calls = 0
+        self.progress_events = progress_events or []
 
-    def execute(self) -> ScanLocalFolderResultDto:
+    def execute(self, on_progress=None) -> ScanLocalFolderResultDto:
         self.execute_calls += 1
+        if on_progress is not None:
+            for progress in self.progress_events:
+                on_progress(progress)
         if self.error is not None:
             raise self.error
         if self.result is None:
@@ -39,6 +45,10 @@ def test_requestScan_emits_start_and_success_feedback() -> None:
     scheduled_callbacks: list[Callable[[], None]] = []
     view_model = LocalLibraryScanViewModel(
         ScanLocalFolderUseCaseSpy(
+            progress_events=[
+                ScanLocalFolderProgressDto(processed_song_count=0, total_song_count=2),
+                ScanLocalFolderProgressDto(processed_song_count=1, total_song_count=2),
+            ],
             result=ScanLocalFolderResultDto(
                 local_folder_id=7,
                 local_folder_name="Jazz",
@@ -68,6 +78,18 @@ def test_requestScan_emits_start_and_success_feedback() -> None:
         last_action_message=None,
     )
     assert feedbacks[1] == LocalLibraryScanFeedback(
+        status_message="Escaneando biblioteca...",
+        status_tone="info",
+        song_count_label="0/2 canciones",
+        last_action_message=None,
+    )
+    assert feedbacks[2] == LocalLibraryScanFeedback(
+        status_message="Escaneando biblioteca...",
+        status_tone="info",
+        song_count_label="1/2 canciones",
+        last_action_message=None,
+    )
+    assert feedbacks[3] == LocalLibraryScanFeedback(
         status_message='Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
         status_tone="success",
         song_count_label="2 MP3 detectados",

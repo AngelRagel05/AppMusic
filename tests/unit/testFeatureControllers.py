@@ -28,6 +28,7 @@ class PageCallbackPort:
 class LocalLibraryPageSpy:
     def __init__(self) -> None:
         self.primaryActionRequested = PageCallbackPort()
+        self.secondaryActionRequested = PageCallbackPort()
         self.browseRequested = PageCallbackPort()
         self.saveRequested = PageCallbackPort()
         self.activateRequested = PageCallbackPort()
@@ -41,6 +42,9 @@ class LocalLibraryPageSpy:
 
     def onPrimaryActionRequested(self, callback) -> None:
         self.primaryActionRequested.connect(callback)
+
+    def onSecondaryActionRequested(self, callback) -> None:
+        self.secondaryActionRequested.connect(callback)
 
     def onBrowseFolderRequested(self, callback) -> None:
         self.browseRequested.connect(callback)
@@ -133,7 +137,13 @@ class LocalLibraryScanViewModelSpy:
         self.received_active_folder = None
         self.request_calls = 0
 
-    def requestScan(self, active_folder, schedule_on_main_thread, on_feedback) -> None:
+    def requestScan(
+        self,
+        active_folder,
+        schedule_on_main_thread,
+        on_feedback,
+        automatic: bool = False,
+    ) -> None:
         self.request_calls += 1
         self.received_active_folder = active_folder
         for feedback in self.feedbacks:
@@ -444,6 +454,37 @@ def test_local_library_controller_delegates_scan_and_updates_song_count() -> Non
         'Escaneo completado en "Jazz": 2 MP3 detectados, 2 canciones registradas (1 nuevas y 1 ya registradas).',
         "success",
     )
+
+
+def test_local_library_controller_delegates_manual_refresh_of_scanned_songs() -> None:
+    page = LocalLibraryPageSpy()
+    active_folder = LocalFolderDto(
+        id=7,
+        path=r"C:\Music\Jazz",
+        display_name="Jazz",
+        is_active=True,
+    )
+    scan_view_model = LocalLibraryScanViewModelSpy()
+    controller = LocalLibraryController(
+        page=page,
+        view_model=LocalLibraryViewModelSpy(active_folder),
+        scan_view_model=scan_view_model,
+        folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=lambda _message: None,
+        on_active_folder_changed=lambda _name: None,
+        on_song_count_changed=lambda _value: None,
+    )
+
+    controller.bindEvents()
+    if page.secondaryActionRequested.callback is None:
+        raise AssertionError("Se esperaba callback secundario registrado.")
+
+    page.secondaryActionRequested.callback()
+
+    assert scan_view_model.request_calls == 1
+    assert scan_view_model.received_active_folder == active_folder
 
 
 def test_local_library_controller_starts_auto_refresh_for_active_folder_on_load() -> None:

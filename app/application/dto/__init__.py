@@ -4,6 +4,7 @@ from app.application.dto.createIgnoredTermInputDto import CreateIgnoredTermInput
 from app.application.dto.deleteIgnoredTermInputDto import DeleteIgnoredTermInputDto
 from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
+from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.updateIgnoredTermInputDto import UpdateIgnoredTermInputDto
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "DeleteIgnoredTermInputDto",
     "IgnoredTermDto",
     "LocalSongMetadataDto",
+    "ScanLocalFolderProgressDto",
     "UpdateIgnoredTermInputDto",
 ]
