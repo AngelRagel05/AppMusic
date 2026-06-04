@@ -81,3 +81,34 @@ def test_local_song_contains_availability_column() -> None:
 
     assert "is_available" in table.columns.keys()
     assert table.columns["is_available"].nullable is False
+
+
+def test_youtube_playlist_item_has_snapshot_columns_and_constraints() -> None:
+    table = Base.metadata.tables["youtube_playlist_item"]
+    unique_constraints = {
+        tuple(constraint.columns.keys())
+        for constraint in table.constraints
+        if isinstance(constraint, UniqueConstraint)
+    }
+    check_constraints = {
+        str(constraint.sqltext)
+        for constraint in table.constraints
+        if isinstance(constraint, CheckConstraint)
+    }
+
+    expected_columns = {
+        "external_video_id",
+        "raw_title",
+        "raw_channel_name",
+        "normalized_title",
+        "normalized_artist",
+        "duration_seconds",
+        "published_at",
+    }
+
+    assert expected_columns.issubset(table.columns.keys())
+    assert ("youtube_playlist_id", "external_video_id") in unique_constraints
+    assert "position > 0" in check_constraints
+    assert "duration_seconds IS NULL OR duration_seconds >= 0" in check_constraints
+    assert "ix_youtube_playlist_item_youtube_playlist_id" in {index.name for index in table.indexes}
+    assert "ix_youtube_playlist_item_playlist_position" in {index.name for index in table.indexes}

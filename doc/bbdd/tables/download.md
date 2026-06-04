@@ -73,5 +73,6 @@ erDiagram
   * `in_progress`
   * `completed`
   * `failed`
+* `youtube_playlist_item` no guarda ya una URL de video canonica; `source_url` se resuelve en el flujo de descarga a partir del item importado y su identificador externo.
 * La lista de errores posibles debe vivir en codigo.
 * `error_message` solo guarda el detalle concreto del fallo ocurrido.

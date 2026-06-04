@@ -54,12 +54,14 @@ erDiagram
     youtube_playlist_item {
         int id PK
         int youtube_playlist_id FK
-        string video_id UK
-        string video_url UK
-        string title
-        string artist
-        int release_year
+        string external_video_id
         int position
+        string raw_title
+        string raw_channel_name
+        string normalized_title
+        string normalized_artist
+        float duration_seconds NULL
+        datetime published_at NULL
         datetime created_at
         datetime updated_at
     }
@@ -201,18 +203,26 @@ Representa una cancion o video individual dentro de una playlist de YouTube.
 Columnas clave:
 
 * `youtube_playlist_id`
-* `video_id`
-* `video_url`
-* `title`
-* `artist`
-* `release_year`
 * `position`
+* `external_video_id`
+* `raw_title`
+* `raw_channel_name`
+* `normalized_title`
+* `normalized_artist`
+* `duration_seconds`
+* `published_at`
 
 Restricciones:
 
-* `video_url` debe ser unica
-* `video_id` debe ser unico
-* `position` deberia ser unica dentro de cada playlist
+* la pareja `youtube_playlist_id + external_video_id` debe ser unica
+* `position` debe cumplir `> 0`
+* `duration_seconds` debe ser `>= 0` cuando tenga valor
+
+Notas:
+
+* la tabla guarda un snapshot completo de los items importados de cada playlist
+* `raw_title` y `raw_channel_name` conservan el dato original extraido de YouTube
+* `normalized_title` y `normalized_artist` se persisten desde la importacion para preparar la futura comparacion con `local_song`
 
 ### `playlist_comparison`
 
@@ -329,7 +339,7 @@ Si falta en local:
 
 ### Descarga
 
-La descarga se inicia desde `youtube_playlist_item` porque ahi vive la URL de origen.
+La descarga se inicia desde `youtube_playlist_item` porque ahi vive la referencia al item esperado de YouTube.
 
 Si termina correctamente, puede quedar enlazada con `local_song`.
 
@@ -346,8 +356,7 @@ Estas reglas son estructurales y deben reforzarse con el esquema relacional:
   * `local_song.file_path`
   * `youtube_playlist.playlist_url`
   * `youtube_playlist.external_playlist_id`
-  * `youtube_playlist_item.video_id`
-  * `youtube_playlist_item.video_url`
+  * `youtube_playlist_item (youtube_playlist_id, external_video_id)`
   * `playlist_comparison_result (playlist_comparison_id, youtube_playlist_item_id)`
   * `ignored_term (term, scope, language)`
 * nulabilidad segun el modelo definido

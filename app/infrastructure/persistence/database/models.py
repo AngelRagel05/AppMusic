@@ -67,11 +67,20 @@ class YoutubePlaylistItem(TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint(
             "youtube_playlist_id",
-            "position",
-            name="uq_youtube_playlist_item_playlist_position",
+            "external_video_id",
+            name="uq_youtube_playlist_item_playlist_video",
         ),
         CheckConstraint("position > 0", name="ck_youtube_playlist_item_position_positive"),
+        CheckConstraint(
+            "duration_seconds IS NULL OR duration_seconds >= 0",
+            name="ck_youtube_playlist_item_duration_seconds_non_negative",
+        ),
         Index("ix_youtube_playlist_item_youtube_playlist_id", "youtube_playlist_id"),
+        Index(
+            "ix_youtube_playlist_item_playlist_position",
+            "youtube_playlist_id",
+            "position",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -79,12 +88,14 @@ class YoutubePlaylistItem(TimestampMixin, Base):
         ForeignKey("youtube_playlist.id"),
         nullable=False,
     )
-    video_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    video_url: Mapped[str] = mapped_column(String(2048), unique=True, nullable=False)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    artist: Mapped[str] = mapped_column(String(255), nullable=False)
-    release_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    external_video_id: Mapped[str] = mapped_column(String(255), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
+    raw_title: Mapped[str] = mapped_column(String(512), nullable=False)
+    raw_channel_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    normalized_title: Mapped[str] = mapped_column(String(512), nullable=False)
+    normalized_artist: Mapped[str] = mapped_column(String(255), nullable=False)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     youtube_playlist: Mapped[YoutubePlaylist] = relationship(back_populates="items")
     comparison_results: Mapped[list[PlaylistComparisonResult]] = relationship(

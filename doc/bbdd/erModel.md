@@ -153,11 +153,14 @@ En el modelo relacional deberia contemplar como minimo:
 
 En el modelo relacional deberia contemplar como minimo:
 
-* `video_id`
-* `url`
-* `title`
-* `artist`
-* `release_year`
+* `external_video_id`
+* `position`
+* `raw_title`
+* `raw_channel_name`
+* `normalized_title`
+* `normalized_artist`
+* `duration_seconds`
+* `published_at`
 
 ## Notas de negocio
 
