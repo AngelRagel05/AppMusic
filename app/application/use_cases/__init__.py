@@ -45,8 +45,17 @@ from app.application.use_cases.playlists.deleteYoutubePlaylistUseCase import (
 from app.application.use_cases.playlists.getActiveYoutubePlaylistUseCase import (
     GetActiveYoutubePlaylistUseCase,
 )
+from app.application.use_cases.playlists.listActiveYoutubePlaylistItemsUseCase import (
+    ListActiveYoutubePlaylistItemsUseCase,
+)
+from app.application.use_cases.playlists.importYoutubePlaylistItemsUseCase import (
+    ImportYoutubePlaylistItemsUseCase,
+)
 from app.application.use_cases.playlists.listYoutubePlaylistsUseCase import (
     ListYoutubePlaylistsUseCase,
+)
+from app.application.use_cases.playlists.compareYoutubePlaylistWithLocalLibraryUseCase import (
+    CompareYoutubePlaylistWithLocalLibraryUseCase,
 )
 from app.application.use_cases.playlists.updateYoutubePlaylistUseCase import (
     UpdateYoutubePlaylistUseCase,
@@ -67,8 +76,11 @@ __all__ = [
     "DefineMainYoutubePlaylistUseCase",
     "GetActiveLocalFolderUseCase",
     "GetActiveYoutubePlaylistUseCase",
+    "ListActiveYoutubePlaylistItemsUseCase",
+    "ImportYoutubePlaylistItemsUseCase",
     "ListLocalFoldersUseCase",
     "ListYoutubePlaylistsUseCase",
+    "CompareYoutubePlaylistWithLocalLibraryUseCase",
     "ListIgnoredTermsUseCase",
     "ScanLocalFolderUseCase",
     "UpdateLocalFolderUseCase",

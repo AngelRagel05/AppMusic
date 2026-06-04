@@ -11,6 +11,7 @@ from app.infrastructure.persistence import (
     LocalFolderSqlAlchemyRepository,
     LocalSongSqlAlchemyRepository,
     SessionLocal,
+    YoutubePlaylistItemSqlAlchemyRepository,
     YoutubePlaylistSqlAlchemyRepository,
     engine,
     get_session,
@@ -23,6 +24,7 @@ class PersistenceRegistry:
     ignoredTermRepository: IgnoredTermSqlAlchemyRepository
     localFolderRepository: LocalFolderSqlAlchemyRepository
     localSongRepository: LocalSongSqlAlchemyRepository
+    youtubePlaylistItemRepository: YoutubePlaylistItemSqlAlchemyRepository
     youtubePlaylistRepository: YoutubePlaylistSqlAlchemyRepository
 
 
@@ -37,5 +39,8 @@ class PersistenceFactory:
             ignoredTermRepository=IgnoredTermSqlAlchemyRepository(session),
             localFolderRepository=LocalFolderSqlAlchemyRepository(session),
             localSongRepository=LocalSongSqlAlchemyRepository(session),
+            youtubePlaylistItemRepository=YoutubePlaylistItemSqlAlchemyRepository(
+                session
+            ),
             youtubePlaylistRepository=YoutubePlaylistSqlAlchemyRepository(session),
         )

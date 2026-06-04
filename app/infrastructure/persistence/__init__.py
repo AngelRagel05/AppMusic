@@ -20,6 +20,7 @@ from app.infrastructure.persistence.repositories import (
     LocalFolderSqlAlchemyRepository,
     LocalSongSqlAlchemyRepository,
     SqlAlchemyRepository,
+    YoutubePlaylistItemSqlAlchemyRepository,
     YoutubePlaylistSqlAlchemyRepository,
 )
 
@@ -39,6 +40,7 @@ __all__ = [
     "SqlAlchemyRepository",
     "YoutubePlaylist",
     "YoutubePlaylistItem",
+    "YoutubePlaylistItemSqlAlchemyRepository",
     "YoutubePlaylistSqlAlchemyRepository",
     "engine",
     "get_session",

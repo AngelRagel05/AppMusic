@@ -2,16 +2,24 @@
 
 from app.application.dto.createIgnoredTermInputDto import CreateIgnoredTermInputDto
 from app.application.dto.deleteIgnoredTermInputDto import DeleteIgnoredTermInputDto
+from app.application.dto.importYoutubePlaylistItemsResultDto import (
+    ImportYoutubePlaylistItemsResultDto,
+)
+from app.application.dto.importedYoutubePlaylistItemDto import ImportedYoutubePlaylistItemDto
 from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
 from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.updateIgnoredTermInputDto import UpdateIgnoredTermInputDto
+from app.application.dto.youtubePlaylistItemDto import YoutubePlaylistItemDto
 
 __all__ = [
     "CreateIgnoredTermInputDto",
     "DeleteIgnoredTermInputDto",
+    "ImportYoutubePlaylistItemsResultDto",
+    "ImportedYoutubePlaylistItemDto",
     "IgnoredTermDto",
     "LocalSongMetadataDto",
     "ScanLocalFolderProgressDto",
     "UpdateIgnoredTermInputDto",
+    "YoutubePlaylistItemDto",
 ]

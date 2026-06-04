@@ -23,7 +23,8 @@ Estado actual:
 
 * existe la agrupacion `app/infrastructure/downloads/`
 * `FFMPEG_PATH` ya es configurable en settings
-* todavia no hay adaptadores funcionales relevantes implementados en codigo productivo
+* `YtDlpYoutubePlaylistItemsImporter` ya implementa la importacion real de items de playlist en `app/infrastructure/downloads/youtube/`
+* la aplicacion define `YoutubePlaylistItemsImporterPort` como contrato para desacoplar el caso de uso de `yt-dlp`
 
 ### Metadata
 
@@ -69,6 +70,20 @@ Uso actual:
 * los adaptadores concretos deben vivir en `app/infrastructure/`
 * `application/` solo debe depender de contratos o protocolos cuando haga falta
 * `domain/` no debe conocer estas librerias
+
+## Contrato de importacion de playlists de YouTube
+
+Para la futura importacion de items de playlist:
+
+* `application` depende de `YoutubePlaylistItemsImporterPort`
+* el puerto devuelve `ImportedYoutubePlaylistItemDto`
+* el puerto expone errores diferenciados para:
+  * playlist no accesible
+  * URL invalida
+  * fallo del extractor externo
+
+Eso permite que el caso de uso traduzca feedback funcional sin depender de `yt-dlp`, red o formato de excepcion del adaptador concreto.
+
 
 ## Documentos relacionados
 
