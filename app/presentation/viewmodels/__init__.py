@@ -5,11 +5,15 @@ from app.presentation.viewmodels.localLibrary import (
     LocalFolderViewModel,
     LocalLibraryScanViewModel,
 )
-from app.presentation.viewmodels.youtubePlaylists import YoutubePlaylistViewModel
+from app.presentation.viewmodels.youtubePlaylists import (
+    YoutubePlaylistImportViewModel,
+    YoutubePlaylistViewModel,
+)
 
 __all__ = [
     "IgnoredTermsViewModel",
     "LocalFolderViewModel",
     "LocalLibraryScanViewModel",
+    "YoutubePlaylistImportViewModel",
     "YoutubePlaylistViewModel",
 ]

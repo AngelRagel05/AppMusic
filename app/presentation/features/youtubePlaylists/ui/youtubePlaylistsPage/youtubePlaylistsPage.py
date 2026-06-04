@@ -27,7 +27,7 @@ class YoutubePlaylistsPage(ctk.CTkFrame):
             self._theme,
             subtitle="Mantén una playlist de referencia para sincronizar tu biblioteca musical",
         )
-        self.header.setActions(None, "Guardar playlist")
+        self.header.setActions(None, "Importar items")
         self.section = YoutubePlaylistsSection(content, self._theme)
 
         self.header.pack(fill="x")

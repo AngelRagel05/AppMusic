@@ -46,6 +46,7 @@ class PresentationFactory:
             local_folder_view_model=service_registry.localFolderViewModel,
             local_library_scan_view_model=service_registry.localLibraryScanViewModel,
             local_folder_monitor_worker=localFolderMonitorWorker,
+            youtube_playlist_import_view_model=service_registry.youtubePlaylistImportViewModel,
             youtube_playlist_view_model=service_registry.youtubePlaylistViewModel,
             ignored_terms_view_model=service_registry.ignoredTermsViewModel,
         )

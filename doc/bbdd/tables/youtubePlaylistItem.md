@@ -6,23 +6,25 @@
 
 ## Objetivo
 
-Representa una cancion o video individual dentro de una playlist de YouTube.
+Representa el snapshot persistido de los items importados de una playlist de YouTube.
 
-Es la cancion esperada que luego se compara contra la biblioteca local.
+Cada fila conserva tanto el dato bruto extraido de YouTube como los campos normalizados que luego serviran para comparar contra `local_song`.
 
 ## Columnas
 
 | Columna | Tipo conceptual | Requerido | Restricciones | Descripcion |
 | --- | --- | --- | --- | --- |
-| `id` | entero | si | PK | Identificador unico |
-| `youtube_playlist_id` | entero | si | FK | Playlist a la que pertenece |
-| `video_id` | texto | si | UNIQUE | Identificador unico del video en YouTube |
-| `video_url` | texto | si | UNIQUE | URL completa del video |
-| `title` | texto | si | - | Titulo del item |
-| `artist` | texto | no | - | Artista o autor detectado |
-| `release_year` | entero | no | - | Año de lanzamiento |
-| `position` | entero | si | UNIQUE por playlist | Posicion dentro de la playlist |
-| `created_at` | fecha-hora | si | - | Fecha de creacion |
+| `id` | entero | si | PK | Identificador interno |
+| `youtube_playlist_id` | entero | si | FK | Playlist a la que pertenece el item |
+| `external_video_id` | texto | si | UNIQUE por playlist | Identificador externo del video en YouTube |
+| `position` | entero | si | indice por playlist, `> 0` | Posicion del item dentro de la playlist |
+| `raw_title` | texto | si | - | Titulo original extraido de YouTube |
+| `raw_channel_name` | texto | si | - | Nombre original del canal asociado al item |
+| `normalized_title` | texto | si | - | Titulo preparado para futura comparacion |
+| `normalized_artist` | texto | si | - | Artista inferido o normalizado para futura comparacion |
+| `duration_seconds` | decimal | no | `>= 0` si existe | Duracion del item en segundos |
+| `published_at` | fecha-hora | no | - | Fecha de publicacion si la fuente la devuelve |
+| `created_at` | fecha-hora | si | - | Fecha de creacion del registro |
 | `updated_at` | fecha-hora | si | - | Fecha de ultima actualizacion |
 
 ## Relaciones
@@ -31,6 +33,12 @@ Es la cancion esperada que luego se compara contra la biblioteca local.
 * un `youtube_playlist_item` puede aparecer en muchos `playlist_comparison_result`
 * un `youtube_playlist_item` puede originar muchas `download`
 
+## Restricciones relevantes
+
+* la pareja `youtube_playlist_id + external_video_id` debe ser unica
+* `position` debe ser mayor que `0`
+* `duration_seconds` debe ser mayor o igual que `0` cuando tenga valor
+
 ## Diagrama Mermaid
 
 ```mermaid
@@ -38,12 +46,14 @@ erDiagram
     youtube_playlist_item {
         int id PK
         int youtube_playlist_id FK
-        string video_id UK
-        string video_url UK
-        string title
-        string artist
-        int release_year
+        string external_video_id
         int position
+        string raw_title
+        string raw_channel_name
+        string normalized_title
+        string normalized_artist
+        float duration_seconds
+        datetime published_at
         datetime created_at
         datetime updated_at
     }
@@ -69,5 +79,6 @@ erDiagram
 
 ## Notas
 
-* `position` debe ser unica dentro de cada playlist, no necesariamente global.
-* Si una cancion falta en local, sigue existiendo en esta tabla y se marca en `playlist_comparison_result`.
+* la tabla se plantea como snapshot completo por playlist: cada importacion futura reemplazara los items previos de esa playlist
+* `raw_title` y `raw_channel_name` preservan la fuente original
+* `normalized_title` y `normalized_artist` se guardan desde la importacion para evitar recalcular la normalizacion cada vez que se compare contra la biblioteca local

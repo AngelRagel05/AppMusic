@@ -12,6 +12,9 @@ from app.infrastructure.persistence.repositories.localSongSqlAlchemyRepository i
 from app.infrastructure.persistence.repositories.sqlAlchemyRepository import (
     SqlAlchemyRepository,
 )
+from app.infrastructure.persistence.repositories.youtubePlaylistItemSqlAlchemyRepository import (
+    YoutubePlaylistItemSqlAlchemyRepository,
+)
 from app.infrastructure.persistence.repositories.youtubePlaylistSqlAlchemyRepository import (
     YoutubePlaylistSqlAlchemyRepository,
 )
@@ -21,5 +24,6 @@ __all__ = [
     "LocalFolderSqlAlchemyRepository",
     "LocalSongSqlAlchemyRepository",
     "SqlAlchemyRepository",
+    "YoutubePlaylistItemSqlAlchemyRepository",
     "YoutubePlaylistSqlAlchemyRepository",
 ]

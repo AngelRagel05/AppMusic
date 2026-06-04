@@ -9,6 +9,7 @@ from app.presentation.viewmodels import (
     IgnoredTermsViewModel,
     LocalFolderViewModel,
     LocalLibraryScanViewModel,
+    YoutubePlaylistImportViewModel,
     YoutubePlaylistViewModel,
 )
 
@@ -19,4 +20,5 @@ class ServiceRegistry:
     ignoredTermsViewModel: IgnoredTermsViewModel
     localFolderViewModel: LocalFolderViewModel
     localLibraryScanViewModel: LocalLibraryScanViewModel
+    youtubePlaylistImportViewModel: YoutubePlaylistImportViewModel
     youtubePlaylistViewModel: YoutubePlaylistViewModel

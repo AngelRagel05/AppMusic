@@ -5,6 +5,10 @@ from collections.abc import Callable
 from app.presentation.features.youtubePlaylists.ui.youtubePlaylistsPage.youtubePlaylistsPage import (
     YoutubePlaylistsPage,
 )
+from app.presentation.viewmodels.youtubePlaylists.youtubePlaylistImportViewModel import (
+    YoutubePlaylistImportFeedback,
+    YoutubePlaylistImportViewModel,
+)
 from app.presentation.viewmodels.youtubePlaylists.youtubePlaylistViewModel import (
     YoutubePlaylistViewModel,
 )
@@ -15,6 +19,7 @@ class YoutubePlaylistsController:
         self,
         page: YoutubePlaylistsPage,
         view_model: YoutubePlaylistViewModel,
+        import_view_model: YoutubePlaylistImportViewModel,
         show_page: Callable[[str, bool], None],
         on_state_changed: Callable[[], None],
         on_action_recorded: Callable[[str], None],
@@ -22,6 +27,7 @@ class YoutubePlaylistsController:
     ) -> None:
         self._page = page
         self._view_model = view_model
+        self._import_view_model = import_view_model
         self._show_page = show_page
         self._on_state_changed = on_state_changed
         self._on_action_recorded = on_action_recorded
@@ -29,6 +35,7 @@ class YoutubePlaylistsController:
         self._editing_playlist_id: int | None = None
 
     def bindEvents(self) -> None:
+        self._page.onPrimaryActionRequested(self._handleImportPlaylistItemsRequested)
         self._page.onSavePlaylistRequested(self._handleSavePlaylist)
         self._page.onActivatePlaylistRequested(self._handleActivatePlaylistById)
         self._page.onEditPlaylistRequested(self._handleEditPlaylistById)
@@ -46,6 +53,13 @@ class YoutubePlaylistsController:
 
     def activePlaylist(self):
         return self._view_model.load_active_playlist()
+
+    def _handleImportPlaylistItemsRequested(self) -> None:
+        self._import_view_model.requestImport(
+            active_playlist=self._view_model.load_active_playlist(),
+            schedule_on_main_thread=lambda callback: self._page.after(0, callback),
+            on_feedback=self._renderImportFeedback,
+        )
 
     def _handleSavePlaylist(self) -> None:
         try:
@@ -161,3 +175,8 @@ class YoutubePlaylistsController:
         )
         self._on_active_playlist_changed(activePlaylistTitle)
         self._on_state_changed()
+
+    def _renderImportFeedback(self, feedback: YoutubePlaylistImportFeedback) -> None:
+        self._page.showStatusMessage(feedback.status_message, tone=feedback.status_tone)
+        if feedback.last_action_message is not None:
+            self._on_action_recorded(feedback.last_action_message)

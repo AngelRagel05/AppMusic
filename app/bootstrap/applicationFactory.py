@@ -11,6 +11,7 @@ from app.application.use_cases import (
     DefineMainYoutubePlaylistUseCase,
     GetActiveLocalFolderUseCase,
     GetActiveYoutubePlaylistUseCase,
+    ImportYoutubePlaylistItemsUseCase,
     ListIgnoredTermsUseCase,
     ListLocalFoldersUseCase,
     ListYoutubePlaylistsUseCase,
@@ -23,11 +24,13 @@ from app.bootstrap.persistenceFactory import PersistenceFactory
 from app.bootstrap.presentationFactory import DesktopApplication, PresentationFactory
 from app.bootstrap.serviceRegistry import ServiceRegistry
 from app.infrastructure.filesystem import LocalMusicScanner
+from app.infrastructure.downloads.youtube import YtDlpYoutubePlaylistItemsImporter
 from app.infrastructure.metadata import MutagenLocalSongMetadataReader
 from app.presentation.viewmodels import (
     IgnoredTermsViewModel,
     LocalFolderViewModel,
     LocalLibraryScanViewModel,
+    YoutubePlaylistImportViewModel,
     YoutubePlaylistViewModel,
 )
 
@@ -108,12 +111,20 @@ class ApplicationFactory:
                 persistence_registry.youtubePlaylistRepository
             ),
         )
+        youtubePlaylistImportViewModel = YoutubePlaylistImportViewModel(
+            ImportYoutubePlaylistItemsUseCase(
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.youtubePlaylistItemRepository,
+                YtDlpYoutubePlaylistItemsImporter(),
+            )
+        )
 
         return ServiceRegistry(
             session=persistence_registry.session,
             ignoredTermsViewModel=ignoredTermsViewModel,
             localFolderViewModel=localFolderViewModel,
             localLibraryScanViewModel=localLibraryScanViewModel,
+            youtubePlaylistImportViewModel=youtubePlaylistImportViewModel,
             youtubePlaylistViewModel=youtubePlaylistViewModel,
         )
 

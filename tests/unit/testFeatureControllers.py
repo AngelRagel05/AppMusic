@@ -12,6 +12,9 @@ from app.presentation.features.localLibrary.controller.localLibraryController im
 from app.presentation.viewmodels.localLibrary.localLibraryScanViewModel import (
     LocalLibraryScanFeedback,
 )
+from app.presentation.viewmodels.youtubePlaylists.youtubePlaylistImportViewModel import (
+    YoutubePlaylistImportFeedback,
+)
 from app.presentation.features.youtubePlaylists.controller.youtubePlaylistsController import (
     YoutubePlaylistsController,
 )
@@ -241,6 +244,7 @@ class IgnoredTermsViewModelSpy:
 
 class YoutubePlaylistsPageSpy:
     def __init__(self) -> None:
+        self.primaryActionRequested = PageCallbackPort()
         self.saveRequested = PageCallbackPort()
         self.activateRequested = PageCallbackPort()
         self.editRequested = PageCallbackPort()
@@ -249,6 +253,10 @@ class YoutubePlaylistsPageSpy:
         self.playlist_url = ""
         self.save_mode = None
         self.status_messages: list[tuple[str, str]] = []
+        self.after_calls: list[int] = []
+
+    def onPrimaryActionRequested(self, callback) -> None:
+        self.primaryActionRequested.connect(callback)
 
     def onSavePlaylistRequested(self, callback) -> None:
         self.saveRequested.connect(callback)
@@ -293,6 +301,10 @@ class YoutubePlaylistsPageSpy:
     def focusPrimaryInput(self) -> None:
         return None
 
+    def after(self, delay_ms: int, callback) -> None:
+        self.after_calls.append(delay_ms)
+        callback()
+
 
 class YoutubePlaylistsViewModelSpy:
     def __init__(self, selected_playlist: YoutubePlaylistDto | None) -> None:
@@ -307,7 +319,7 @@ class YoutubePlaylistsViewModelSpy:
         raise AssertionError("load_playlists no debe usarse para buscar por id")
 
     def load_active_playlist(self):
-        return None
+        return self.selected_playlist if self.selected_playlist and self.selected_playlist.is_active else None
 
     def find_playlist_by_id(self, youtube_playlist_id: int):
         self.find_calls.append(youtube_playlist_id)
@@ -316,6 +328,27 @@ class YoutubePlaylistsViewModelSpy:
     def activate_playlist(self, youtube_playlist_id: int):
         self.activate_calls.append(youtube_playlist_id)
         return self.selected_playlist
+
+
+class YoutubePlaylistImportViewModelSpy:
+    def __init__(
+        self,
+        feedbacks: list[YoutubePlaylistImportFeedback] | None = None,
+    ) -> None:
+        self.feedbacks = feedbacks or []
+        self.request_calls = 0
+        self.received_active_playlist = None
+
+    def requestImport(
+        self,
+        active_playlist,
+        schedule_on_main_thread,
+        on_feedback,
+    ) -> None:
+        self.request_calls += 1
+        self.received_active_playlist = active_playlist
+        for feedback in self.feedbacks:
+            on_feedback(feedback)
 
 
 def test_local_library_controller_uses_view_model_lookup_for_editing_selected_folder() -> None:
@@ -578,6 +611,7 @@ def test_youtube_playlists_controller_does_not_reactivate_active_playlist() -> N
     controller = YoutubePlaylistsController(
         page=page,
         view_model=view_model,
+        import_view_model=YoutubePlaylistImportViewModelSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
         on_action_recorded=lambda _message: None,
@@ -589,3 +623,66 @@ def test_youtube_playlists_controller_does_not_reactivate_active_playlist() -> N
     assert view_model.find_calls == [9]
     assert view_model.activate_calls == []
     assert page.status_messages[-1] == ('La playlist "Favoritas" ya esta activa.', "info")
+
+
+def test_youtube_playlists_controller_registers_primary_import_action() -> None:
+    page = YoutubePlaylistsPageSpy()
+    controller = YoutubePlaylistsController(
+        page=page,
+        view_model=YoutubePlaylistsViewModelSpy(None),
+        import_view_model=YoutubePlaylistImportViewModelSpy(),
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=lambda _message: None,
+        on_active_playlist_changed=lambda _title: None,
+    )
+
+    controller.bindEvents()
+
+    assert page.primaryActionRequested.callback is not None
+
+
+def test_youtube_playlists_controller_delegates_import_and_shows_feedback() -> None:
+    page = YoutubePlaylistsPageSpy()
+    active_playlist = YoutubePlaylistDto(
+        id=9,
+        title="Favoritas",
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        is_active=True,
+    )
+    import_view_model = YoutubePlaylistImportViewModelSpy(
+        feedbacks=[
+            YoutubePlaylistImportFeedback(
+                status_message='Importando items de la playlist "Favoritas"...',
+                status_tone="info",
+            ),
+            YoutubePlaylistImportFeedback(
+                status_message='Importacion completada en "Favoritas": 42 items importados.',
+                status_tone="success",
+                last_action_message='Importacion completada en "Favoritas": 42 items importados.',
+            ),
+        ]
+    )
+    recorded_actions: list[str] = []
+    controller = YoutubePlaylistsController(
+        page=page,
+        view_model=YoutubePlaylistsViewModelSpy(active_playlist),
+        import_view_model=import_view_model,
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=recorded_actions.append,
+        on_active_playlist_changed=lambda _title: None,
+    )
+
+    controller._handleImportPlaylistItemsRequested()
+
+    assert import_view_model.request_calls == 1
+    assert import_view_model.received_active_playlist == active_playlist
+    assert page.status_messages == [
+        ('Importando items de la playlist "Favoritas"...', "info"),
+        ('Importacion completada en "Favoritas": 42 items importados.', "success"),
+    ]
+    assert recorded_actions == [
+        'Importacion completada en "Favoritas": 42 items importados.'
+    ]

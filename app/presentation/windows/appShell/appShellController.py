@@ -9,6 +9,7 @@ from app.presentation.viewmodels import (
     IgnoredTermsViewModel,
     LocalFolderViewModel,
     LocalLibraryScanViewModel,
+    YoutubePlaylistImportViewModel,
     YoutubePlaylistViewModel,
 )
 from app.presentation.windows.mainWindow.mainWindow import MainWindow
@@ -22,6 +23,7 @@ class AppShellController:
         local_folder_view_model: LocalFolderViewModel,
         local_library_scan_view_model: LocalLibraryScanViewModel,
         local_folder_monitor_worker: LocalFolderMonitorWorker,
+        youtube_playlist_import_view_model: YoutubePlaylistImportViewModel,
         youtube_playlist_view_model: YoutubePlaylistViewModel,
         ignored_terms_view_model: IgnoredTermsViewModel,
     ) -> None:
@@ -41,6 +43,7 @@ class AppShellController:
         self._youtube_playlists_controller = YoutubePlaylistsController(
             page=view.page.youtubePlaylistsPage,
             view_model=youtube_playlist_view_model,
+            import_view_model=youtube_playlist_import_view_model,
             show_page=view.page.showPage,
             on_state_changed=self._updateSyncStatus,
             on_action_recorded=self._recordLastAction,
