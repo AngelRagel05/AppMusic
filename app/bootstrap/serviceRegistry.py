@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.application.use_cases import ScanLocalFolderUseCase
 from app.presentation.viewmodels import (
     IgnoredTermsViewModel,
+    LibraryComparisonViewModel,
     LocalFolderViewModel,
     LocalLibraryScanViewModel,
     YoutubePlaylistImportViewModel,
@@ -18,6 +19,7 @@ from app.presentation.viewmodels import (
 class ServiceRegistry:
     session: Session
     ignoredTermsViewModel: IgnoredTermsViewModel
+    libraryComparisonViewModel: LibraryComparisonViewModel
     localFolderViewModel: LocalFolderViewModel
     localLibraryScanViewModel: LocalLibraryScanViewModel
     youtubePlaylistImportViewModel: YoutubePlaylistImportViewModel

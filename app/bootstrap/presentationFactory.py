@@ -43,6 +43,7 @@ class PresentationFactory:
         )
         controller = AppShellController(
             window,
+            library_comparison_view_model=service_registry.libraryComparisonViewModel,
             local_folder_view_model=service_registry.localFolderViewModel,
             local_library_scan_view_model=service_registry.localLibraryScanViewModel,
             local_folder_monitor_worker=localFolderMonitorWorker,

@@ -27,6 +27,7 @@ class Sidebar(ctk.CTkFrame):
         )
         self.grid_propagate(False)
         self.overviewRequested = Signal()
+        self.comparisonRequested = Signal()
         self.localLibraryRequested = Signal()
         self.youtubePlaylistsRequested = Signal()
         self.ignoredTermsRequested = Signal()
@@ -39,6 +40,7 @@ class Sidebar(ctk.CTkFrame):
         self.navigationFooter = NavigationFooter(self, self._theme)
 
         self.navigationMenu.overviewRequested.connect(self.overviewRequested.emit)
+        self.navigationMenu.comparisonRequested.connect(self.comparisonRequested.emit)
         self.navigationMenu.localLibraryRequested.connect(self.localLibraryRequested.emit)
         self.navigationMenu.youtubePlaylistsRequested.connect(
             self.youtubePlaylistsRequested.emit

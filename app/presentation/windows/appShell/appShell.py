@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
+from app.presentation.features.comparison.ui.comparisonPage.comparisonPage import (
+    ComparisonPage,
+)
 from app.presentation.features.ignoredTerms.ui.ignoredTermsPage.ignoredTermsPage import (
     IgnoredTermsPage,
 )
@@ -24,6 +27,7 @@ class AppShell(ctk.CTkFrame):
         self.pagesHost = createFrame(self, theme=BASE_THEME, fg_color=BASE_THEME["bg"])
 
         self.overviewPage = OverviewPage(self.pagesHost)
+        self.comparisonPage = ComparisonPage(self.pagesHost)
         self.localLibraryPage = LocalLibraryPage(self.pagesHost)
         self.youtubePlaylistsPage = YoutubePlaylistsPage(self.pagesHost)
         self.ignoredTermsPage = IgnoredTermsPage(self.pagesHost)
@@ -37,6 +41,7 @@ class AppShell(ctk.CTkFrame):
 
         for page in (
             self.overviewPage,
+            self.comparisonPage,
             self.localLibraryPage,
             self.youtubePlaylistsPage,
             self.ignoredTermsPage,
@@ -44,6 +49,7 @@ class AppShell(ctk.CTkFrame):
             page.grid(row=0, column=0, sticky="nsew")
 
         self.sidebar.overviewRequested.connect(lambda: self.showPage("overview"))
+        self.sidebar.comparisonRequested.connect(lambda: self.showPage("comparison"))
         self.sidebar.localLibraryRequested.connect(lambda: self.showPage("localLibrary"))
         self.sidebar.youtubePlaylistsRequested.connect(
             lambda: self.showPage("youtubePlaylists")
@@ -59,6 +65,7 @@ class AppShell(ctk.CTkFrame):
     def showPage(self, page_name: str, focus_input: bool = False) -> None:
         page_map = {
             "overview": self.overviewPage,
+            "comparison": self.comparisonPage,
             "localLibrary": self.localLibraryPage,
             "youtubePlaylists": self.youtubePlaylistsPage,
             "ignoredTerms": self.ignoredTermsPage,
@@ -71,6 +78,7 @@ class AppShell(ctk.CTkFrame):
 
     def setActiveFolderName(self, name: str) -> None:
         self.overviewPage.setActiveFolderName(name)
+        self.comparisonPage.setActiveFolderName(name)
         self.localLibraryPage.setActiveFolderName(name)
         self.youtubePlaylistsPage.setActiveFolderName(name)
         self.ignoredTermsPage.setActiveFolderName(name)
@@ -78,6 +86,7 @@ class AppShell(ctk.CTkFrame):
 
     def setActivePlaylistTitle(self, title: str) -> None:
         self.overviewPage.setActivePlaylistTitle(title)
+        self.comparisonPage.setActivePlaylistTitle(title)
         self.localLibraryPage.setActivePlaylistTitle(title)
         self.youtubePlaylistsPage.setActivePlaylistTitle(title)
         self.ignoredTermsPage.setActivePlaylistTitle(title)

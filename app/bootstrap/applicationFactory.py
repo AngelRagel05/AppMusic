@@ -12,6 +12,8 @@ from app.application.use_cases import (
     GetActiveLocalFolderUseCase,
     GetActiveYoutubePlaylistUseCase,
     ImportYoutubePlaylistItemsUseCase,
+    ListActiveLocalSongsUseCase,
+    ListActiveYoutubePlaylistItemsUseCase,
     ListIgnoredTermsUseCase,
     ListLocalFoldersUseCase,
     ListYoutubePlaylistsUseCase,
@@ -28,6 +30,7 @@ from app.infrastructure.downloads.youtube import YtDlpYoutubePlaylistItemsImport
 from app.infrastructure.metadata import MutagenLocalSongMetadataReader
 from app.presentation.viewmodels import (
     IgnoredTermsViewModel,
+    LibraryComparisonViewModel,
     LocalFolderViewModel,
     LocalLibraryScanViewModel,
     YoutubePlaylistImportViewModel,
@@ -93,10 +96,12 @@ class ApplicationFactory:
         )
         youtubePlaylistViewModel = YoutubePlaylistViewModel(
             list_use_case=ListYoutubePlaylistsUseCase(
-                persistence_registry.youtubePlaylistRepository
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.youtubePlaylistItemRepository,
             ),
             get_active_use_case=GetActiveYoutubePlaylistUseCase(
-                persistence_registry.youtubePlaylistRepository
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.youtubePlaylistItemRepository,
             ),
             activate_use_case=ActivateYoutubePlaylistUseCase(
                 persistence_registry.youtubePlaylistRepository
@@ -118,10 +123,21 @@ class ApplicationFactory:
                 YtDlpYoutubePlaylistItemsImporter(),
             )
         )
+        libraryComparisonViewModel = LibraryComparisonViewModel(
+            ListActiveLocalSongsUseCase(
+                persistence_registry.localFolderRepository,
+                persistence_registry.localSongRepository,
+            ),
+            ListActiveYoutubePlaylistItemsUseCase(
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.youtubePlaylistItemRepository,
+            ),
+        )
 
         return ServiceRegistry(
             session=persistence_registry.session,
             ignoredTermsViewModel=ignoredTermsViewModel,
+            libraryComparisonViewModel=libraryComparisonViewModel,
             localFolderViewModel=localFolderViewModel,
             localLibraryScanViewModel=localLibraryScanViewModel,
             youtubePlaylistImportViewModel=youtubePlaylistImportViewModel,

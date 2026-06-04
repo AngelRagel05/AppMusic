@@ -10,12 +10,14 @@ class NavigationMenu(ctk.CTkFrame):
         self._theme = theme
         super().__init__(parent, fg_color="transparent", corner_radius=0)
         self.overviewRequested = Signal()
+        self.comparisonRequested = Signal()
         self.localLibraryRequested = Signal()
         self.youtubePlaylistsRequested = Signal()
         self.ignoredTermsRequested = Signal()
 
         self._buttons = {
             "overview": self._build_button("Resumen", self.overviewRequested.emit),
+            "comparison": self._build_button("Comparacion", self.comparisonRequested.emit),
             "localLibrary": self._build_button(
                 "Biblioteca local",
                 self.localLibraryRequested.emit,

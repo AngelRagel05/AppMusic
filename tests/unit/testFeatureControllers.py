@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.application.dto.localFolderDto import LocalFolderDto
+from app.application.dto.localSongDto import LocalSongDto
+from app.application.dto.youtubePlaylistItemDto import YoutubePlaylistItemDto
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
+from app.presentation.features.comparison.controller.comparisonController import (
+    ComparisonController,
+)
 from app.presentation.features.ignoredTerms.controller.ignoredTermsController import (
     IgnoredTermsController,
 )
@@ -349,6 +354,29 @@ class YoutubePlaylistImportViewModelSpy:
         self.received_active_playlist = active_playlist
         for feedback in self.feedbacks:
             on_feedback(feedback)
+
+
+class ComparisonPageSpy:
+    def __init__(self) -> None:
+        self.local_songs = None
+        self.youtube_playlist_items = None
+
+    def showLocalSongs(self, local_songs) -> None:
+        self.local_songs = local_songs
+
+    def showYoutubePlaylistItems(self, youtube_playlist_items) -> None:
+        self.youtube_playlist_items = youtube_playlist_items
+
+
+class LibraryComparisonViewModelSpy:
+    def __init__(self, local_songs=None, youtube_playlist_items=None) -> None:
+        self.local_songs = local_songs or []
+        self.youtube_playlist_items = youtube_playlist_items or []
+        self.refresh_calls = 0
+
+    def refreshState(self):
+        self.refresh_calls += 1
+        return self.local_songs, self.youtube_playlist_items
 
 
 def test_local_library_controller_uses_view_model_lookup_for_editing_selected_folder() -> None:
@@ -730,3 +758,43 @@ def test_youtube_playlists_controller_does_not_trigger_auto_import_on_load_witho
     controller.load()
 
     assert import_view_model.request_calls == 0
+
+
+def test_comparison_controller_loads_local_and_playlist_items_into_page() -> None:
+    page = ComparisonPageSpy()
+    local_songs = [
+        LocalSongDto(
+            id=1,
+            local_folder_id=7,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            album="Album One",
+            release_year=2024,
+            track_number_album=1,
+            duration_seconds=180.0,
+        )
+    ]
+    youtube_playlist_items = [
+        YoutubePlaylistItemDto(
+            id=1,
+            youtube_playlist_id=9,
+            external_video_id="abc123",
+            position=1,
+            raw_title="Song One",
+            raw_channel_name="Artist One",
+            normalized_title="song one",
+            normalized_artist="artist one",
+            duration_seconds=180.0,
+        )
+    ]
+    view_model = LibraryComparisonViewModelSpy(local_songs, youtube_playlist_items)
+    controller = ComparisonController(page=page, view_model=view_model)
+
+    controller.load()
+
+    assert view_model.refresh_calls == 1
+    assert page.local_songs == local_songs
+    assert page.youtube_playlist_items == youtube_playlist_items

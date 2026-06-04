@@ -24,6 +24,9 @@ from app.application.use_cases.library.deleteLocalFolderUseCase import (
 from app.application.use_cases.library.getActiveLocalFolderUseCase import (
     GetActiveLocalFolderUseCase,
 )
+from app.application.use_cases.library.listActiveLocalSongsUseCase import (
+    ListActiveLocalSongsUseCase,
+)
 from app.application.use_cases.library.listLocalFoldersUseCase import (
     ListLocalFoldersUseCase,
 )
@@ -76,6 +79,7 @@ __all__ = [
     "DefineMainYoutubePlaylistUseCase",
     "GetActiveLocalFolderUseCase",
     "GetActiveYoutubePlaylistUseCase",
+    "ListActiveLocalSongsUseCase",
     "ListActiveYoutubePlaylistItemsUseCase",
     "ImportYoutubePlaylistItemsUseCase",
     "ListLocalFoldersUseCase",
