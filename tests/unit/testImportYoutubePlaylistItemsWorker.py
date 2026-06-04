@@ -42,6 +42,10 @@ def test_start_schedules_success_callback_on_main_thread() -> None:
                 youtube_playlist_id=9,
                 playlist_title="Favoritas",
                 imported_item_count=42,
+                created_item_count=3,
+                updated_item_count=2,
+                existing_item_count=37,
+                removed_item_count=1,
             )
         ),
         schedule_on_main_thread=scheduled_callbacks.append,
@@ -60,6 +64,10 @@ def test_start_schedules_success_callback_on_main_thread() -> None:
             youtube_playlist_id=9,
             playlist_title="Favoritas",
             imported_item_count=42,
+            created_item_count=3,
+            updated_item_count=2,
+            existing_item_count=37,
+            removed_item_count=1,
         )
     ]
 

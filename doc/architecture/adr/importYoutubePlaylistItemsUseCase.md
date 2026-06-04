@@ -36,6 +36,14 @@ El resultado del caso de uso se resume en:
 * `youtube_playlist_id`
 * `playlist_title`
 * `imported_item_count`
+* `created_item_count`
+* `updated_item_count`
+* `existing_item_count`
+* `removed_item_count`
+
+La importacion compara el snapshot persistido anterior con el snapshot nuevo por `external_video_id`.
+
+Se considera `actualizado` cualquier item ya existente cuyo `position`, titulos o metadata comparable haya cambiado entre ambas importaciones.
 
 ## Consecuencias
 

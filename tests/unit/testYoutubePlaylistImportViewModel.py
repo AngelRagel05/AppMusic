@@ -45,6 +45,10 @@ def test_requestImport_emits_start_and_success_feedback() -> None:
                 youtube_playlist_id=9,
                 playlist_title="Favoritas",
                 imported_item_count=42,
+                created_item_count=3,
+                updated_item_count=2,
+                existing_item_count=37,
+                removed_item_count=1,
             )
         )
     )
@@ -69,9 +73,9 @@ def test_requestImport_emits_start_and_success_feedback() -> None:
             last_action_message=None,
         ),
         YoutubePlaylistImportFeedback(
-            status_message='Importacion completada en "Favoritas": 42 items importados.',
+            status_message='Importacion completada en "Favoritas": 42 items importados, 3 anadidos, 2 actualizados y 1 eliminados.',
             status_tone="success",
-            last_action_message='Importacion completada en "Favoritas": 42 items importados.',
+            last_action_message='Importacion completada en "Favoritas": 42 items importados, 3 anadidos, 2 actualizados y 1 eliminados.',
         ),
     ]
 

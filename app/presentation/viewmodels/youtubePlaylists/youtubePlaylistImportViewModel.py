@@ -75,7 +75,10 @@ class YoutubePlaylistImportViewModel:
         self._import_in_progress = False
         message = (
             f'Importacion completada en "{result.playlist_title}": '
-            f"{result.imported_item_count} items importados."
+            f"{result.imported_item_count} items importados, "
+            f"{result.created_item_count} anadidos, "
+            f"{result.updated_item_count} actualizados y "
+            f"{result.removed_item_count} eliminados."
         )
         on_feedback(
             YoutubePlaylistImportFeedback(

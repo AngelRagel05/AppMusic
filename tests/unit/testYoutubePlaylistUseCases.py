@@ -489,6 +489,10 @@ def test_import_youtube_playlist_items_use_case_imports_and_replaces_snapshot() 
     assert result.youtube_playlist_id == active_playlist.id
     assert result.playlist_title == "Favoritas"
     assert result.imported_item_count == 2
+    assert result.created_item_count == 2
+    assert result.updated_item_count == 0
+    assert result.existing_item_count == 0
+    assert result.removed_item_count == 1
     assert len(persisted_items) == 2
     assert persisted_items[0].external_video_id == "abc123"
     assert persisted_items[0].normalized_artist == "kendrick lamar"
@@ -539,6 +543,71 @@ def test_import_youtube_playlist_items_use_case_replaces_previous_snapshot() -> 
 
     assert [item.external_video_id for item in persisted_items] == ["fresh"]
     assert len(item_repository.replace_calls) == 1
+
+
+def test_import_youtube_playlist_items_use_case_detects_updated_and_unchanged_items() -> None:
+    playlist_repository = InMemoryYoutubePlaylistRepository()
+    active_playlist = playlist_repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        title="Favoritas",
+    )
+    item_repository = InMemoryYoutubePlaylistItemRepository()
+    item_repository.items_by_playlist_id[active_playlist.id or 0] = [
+        YoutubePlaylistItem(
+            id=1,
+            youtube_playlist_id=active_playlist.id or 0,
+            external_video_id="stable",
+            position=1,
+            raw_title="Stable Song",
+            raw_channel_name="Stable Artist",
+            normalized_title="stable song",
+            normalized_artist="stable artist",
+            duration_seconds=180.0,
+        ),
+        YoutubePlaylistItem(
+            id=2,
+            youtube_playlist_id=active_playlist.id or 0,
+            external_video_id="moved",
+            position=2,
+            raw_title="Moved Song",
+            raw_channel_name="Moved Artist",
+            normalized_title="moved song",
+            normalized_artist="moved artist",
+            duration_seconds=200.0,
+        ),
+    ]
+    importer = YoutubePlaylistItemsImporterSpy(
+        items=[
+            ImportedYoutubePlaylistItemDto(
+                external_video_id="stable",
+                position=1,
+                raw_title="Stable Song",
+                raw_channel_name="Stable Artist",
+                duration_seconds=180.0,
+            ),
+            ImportedYoutubePlaylistItemDto(
+                external_video_id="moved",
+                position=5,
+                raw_title="Moved Song",
+                raw_channel_name="Moved Artist",
+                duration_seconds=200.0,
+            ),
+        ]
+    )
+    use_case = ImportYoutubePlaylistItemsUseCase(
+        playlist_repository,
+        item_repository,
+        importer,
+    )
+
+    result = use_case.execute()
+
+    assert result.imported_item_count == 2
+    assert result.created_item_count == 0
+    assert result.updated_item_count == 1
+    assert result.existing_item_count == 1
+    assert result.removed_item_count == 0
 
 
 def test_import_youtube_playlist_items_use_case_propagates_importer_errors() -> None:

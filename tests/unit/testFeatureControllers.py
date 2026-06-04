@@ -658,9 +658,9 @@ def test_youtube_playlists_controller_delegates_import_and_shows_feedback() -> N
                 status_tone="info",
             ),
             YoutubePlaylistImportFeedback(
-                status_message='Importacion completada en "Favoritas": 42 items importados.',
+                status_message='Importacion completada en "Favoritas": 42 items importados, 3 anadidos, 2 actualizados y 1 eliminados.',
                 status_tone="success",
-                last_action_message='Importacion completada en "Favoritas": 42 items importados.',
+                last_action_message='Importacion completada en "Favoritas": 42 items importados, 3 anadidos, 2 actualizados y 1 eliminados.',
             ),
         ]
     )
@@ -681,8 +681,52 @@ def test_youtube_playlists_controller_delegates_import_and_shows_feedback() -> N
     assert import_view_model.received_active_playlist == active_playlist
     assert page.status_messages == [
         ('Importando items de la playlist "Favoritas"...', "info"),
-        ('Importacion completada en "Favoritas": 42 items importados.', "success"),
+        ('Importacion completada en "Favoritas": 42 items importados, 3 anadidos, 2 actualizados y 1 eliminados.', "success"),
     ]
     assert recorded_actions == [
-        'Importacion completada en "Favoritas": 42 items importados.'
+        'Importacion completada en "Favoritas": 42 items importados, 3 anadidos, 2 actualizados y 1 eliminados.'
     ]
+
+
+def test_youtube_playlists_controller_triggers_auto_import_on_load_for_active_playlist() -> None:
+    page = YoutubePlaylistsPageSpy()
+    active_playlist = YoutubePlaylistDto(
+        id=9,
+        title="Favoritas",
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        is_active=True,
+    )
+    import_view_model = YoutubePlaylistImportViewModelSpy()
+    controller = YoutubePlaylistsController(
+        page=page,
+        view_model=YoutubePlaylistsViewModelSpy(active_playlist),
+        import_view_model=import_view_model,
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=lambda _message: None,
+        on_active_playlist_changed=lambda _title: None,
+    )
+
+    controller.load()
+
+    assert import_view_model.request_calls == 1
+    assert import_view_model.received_active_playlist == active_playlist
+
+
+def test_youtube_playlists_controller_does_not_trigger_auto_import_on_load_without_active_playlist() -> None:
+    page = YoutubePlaylistsPageSpy()
+    import_view_model = YoutubePlaylistImportViewModelSpy()
+    controller = YoutubePlaylistsController(
+        page=page,
+        view_model=YoutubePlaylistsViewModelSpy(None),
+        import_view_model=import_view_model,
+        show_page=lambda _page_name, _focus_input: None,
+        on_state_changed=lambda: None,
+        on_action_recorded=lambda _message: None,
+        on_active_playlist_changed=lambda _title: None,
+    )
+
+    controller.load()
+
+    assert import_view_model.request_calls == 0

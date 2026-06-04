@@ -50,13 +50,20 @@ class YoutubePlaylistsController:
         )
         self._on_active_playlist_changed(active_playlist_title)
         self._on_state_changed()
+        self._requestImportForActivePlaylist(active_playlist)
 
     def activePlaylist(self):
         return self._view_model.load_active_playlist()
 
     def _handleImportPlaylistItemsRequested(self) -> None:
+        self._requestImportForActivePlaylist(self._view_model.load_active_playlist())
+
+    def _requestImportForActivePlaylist(self, active_playlist) -> None:
+        if active_playlist is None:
+            return
+
         self._import_view_model.requestImport(
-            active_playlist=self._view_model.load_active_playlist(),
+            active_playlist=active_playlist,
             schedule_on_main_thread=lambda callback: self._page.after(0, callback),
             on_feedback=self._renderImportFeedback,
         )

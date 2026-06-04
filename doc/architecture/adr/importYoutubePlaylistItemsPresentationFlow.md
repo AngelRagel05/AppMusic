@@ -18,6 +18,8 @@ La UI delega la accion en `YoutubePlaylistsController`, que a su vez usa `Youtub
 
 El viewmodel arranca un `ImportYoutubePlaylistItemsWorker` dedicado para ejecutar `ImportYoutubePlaylistItemsUseCase` en segundo plano y devolver el resultado al hilo principal.
 
+Ademas, al cargar la feature, si existe una playlist activa, el controller lanza automaticamente una importacion inicial en segundo plano para refrescar el snapshot al iniciar la aplicacion.
+
 ## Consecuencias
 
 - La interfaz sigue respondiendo durante la importacion.
