@@ -318,7 +318,10 @@ class YoutubePlaylistsViewModelSpy:
         self.activate_calls: list[int] = []
 
     def refreshState(self):
-        return [], None
+        if self.selected_playlist is None:
+            return [], None
+        active_playlist = self.selected_playlist if self.selected_playlist.is_active else None
+        return [self.selected_playlist], active_playlist
 
     def load_playlists(self):
         raise AssertionError("load_playlists no debe usarse para buscar por id")
