@@ -10,11 +10,26 @@ from app.infrastructure.persistence.database.models import IgnoredTerm
 
 DEFAULT_IGNORED_TERMS: tuple[tuple[str, str, str], ...] = (
     ("official", "title", "global"),
+    ("official video", "title", "global"),
+    ("official audio", "title", "global"),
+    ("official lyric video", "title", "global"),
     ("video", "title", "global"),
     ("audio", "title", "global"),
     ("lyrics", "title", "global"),
+    ("lyric", "title", "global"),
+    ("letras", "title", "global"),
+    ("letra", "title", "global"),
+    ("music video", "title", "global"),
     ("hd", "title", "global"),
+    ("hq", "title", "global"),
+    ("4k", "title", "global"),
     ("remastered", "title", "global"),
+    ("visualizer", "title", "global"),
+    ("visualiser", "title", "global"),
+    ("audio oficial", "title", "global"),
+    ("video oficial", "title", "global"),
+    ("prod", "title", "global"),
+    ("producido", "title", "global"),
 )
 
 

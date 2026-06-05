@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from tkinter import messagebox
 
 import customtkinter as ctk
 
@@ -28,6 +29,9 @@ from app.presentation.widgets.pageHeader.pageHeader import PageHeader
 
 
 class ComparisonPage(ctk.CTkFrame):
+    TOP_SECTION_RATIO = 0.25
+    MINIMUM_TOP_SECTION_HEIGHT = 250
+
     def __init__(self, parent) -> None:
         self._theme = getPageTheme("overview")
         super().__init__(parent, fg_color=self._theme["bg"], corner_radius=0)
@@ -41,6 +45,8 @@ class ComparisonPage(ctk.CTkFrame):
         self._pending_search_after_id: str | None = None
         self._search_variable: ctk.StringVar | None = None
         self._loadingOverlay = LoadingOverlay(self, self._theme)
+        self._content: ctk.CTkFrame | None = None
+        self._topSection: ctk.CTkFrame | None = None
 
     def activate(self) -> None:
         self._ensureBuilt()
@@ -52,6 +58,18 @@ class ComparisonPage(ctk.CTkFrame):
     def onPrimaryActionRequested(self, callback: Callable[[], None]) -> None:
         self._ensureBuilt()
         self.header.primaryActionRequested.connect(callback)
+
+    def confirmManualComparisonStart(self) -> bool:
+        return messagebox.askokcancel(
+            "Refrescar comparación",
+            (
+                "Esta acción volverá a calcular la comparación y actualizará el "
+                "snapshot guardado en la base de datos.\n\n"
+                "Puede tardar unos minutos dependiendo del tamaño de la biblioteca "
+                "y la playlist.\n\n¿Quieres continuar ahora?"
+            ),
+            parent=self.winfo_toplevel(),
+        )
 
     def showComparisonData(
         self,
@@ -94,12 +112,12 @@ class ComparisonPage(ctk.CTkFrame):
             "info": "Comparando",
             "success": "Resultado",
             "error": "Error",
-        }.get(tone, "Comparacion")
+        }.get(tone, "Comparación")
         self.header.setSubtitle(f"{tone_prefix}: {message}" if message else self._defaultSubtitle)
 
     def showLoadingState(self, message: str) -> None:
         self._loadingOverlay.show(
-            "Cargando comparacion",
+            "Cargando comparación...",
             message,
         )
 
@@ -112,23 +130,45 @@ class ComparisonPage(ctk.CTkFrame):
 
         content = createFrame(self, theme=self._theme, fg_color=self._theme["bg"])
         content.pack(fill="both", expand=True, padx=int(self._theme["page_padding"]), pady=36)
+        content.grid_columnconfigure(0, weight=1)
+        content.grid_rowconfigure(0, weight=0)
+        content.grid_rowconfigure(1, weight=1)
+        self._content = content
+
+        top_section = createFrame(content, theme=self._theme, fg_color=self._theme["bg"])
+        top_section.grid(row=0, column=0, sticky="nsew")
+        top_section.grid_columnconfigure(0, weight=1)
+        top_section.grid_propagate(False)
+        self._topSection = top_section
 
         self.header = PageHeader(
-            content,
-            "Comparacion",
+            top_section,
+            "Comparación",
             self._theme,
             subtitle=self._defaultSubtitle,
         )
-        self.header.setActions(None, "Comparar ahora")
+        self.header.setContextVisible(False)
+        self.header.setActions(None, "Refrescar comparación")
         self.section = ComparisonSplitSection(content, self._theme)
-        self._summaryCards = self._buildSummaryCards(content)
+        self._summaryCards = self._buildSummaryCards(top_section)
 
-        self.header.pack(fill="x")
-        self._summaryCards.pack(fill="x", pady=(24, 0))
-        self.section.pack(fill="both", expand=True, pady=(24, 0))
+        self.header.grid(row=0, column=0, sticky="ew")
+        self._summaryCards.grid(row=1, column=0, sticky="ew", pady=(18, 0))
+        self.section.grid(row=1, column=0, sticky="nsew", pady=(18, 0))
         self.header.setActiveFolderName(self._active_folder_name)
         self.header.setActivePlaylistTitle(self._active_playlist_title)
+        content.bind("<Configure>", self._handleContentResize)
         self._is_built = True
+
+    def _handleContentResize(self, event) -> None:
+        if self._topSection is None:
+            return
+
+        target_height = max(
+            self.MINIMUM_TOP_SECTION_HEIGHT,
+            int(event.height * self.TOP_SECTION_RATIO),
+        )
+        self._topSection.configure(height=target_height)
 
     def _buildSummaryCards(self, parent):
         wrapper = createFrame(parent, theme=self._theme, fg_color=self._theme["bg"])
@@ -164,14 +204,14 @@ class ComparisonPage(ctk.CTkFrame):
             border_color=self._theme["border"],
             corner_radius=int(self._theme["radius_lg"]),
         )
-        search_card.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=(0, 9), pady=(18, 0))
+        search_card.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=(0, 9), pady=(14, 0))
         createLabel(
             search_card,
             "Buscador global",
             theme=self._theme,
             text_color=self._theme["text_muted"],
             font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w", padx=16, pady=(14, 8))
+        ).pack(anchor="w", padx=16, pady=(12, 6))
         search_variable = ctk.StringVar(value="")
         self._search_variable = search_variable
         search_entry = createEntry(
@@ -181,7 +221,7 @@ class ComparisonPage(ctk.CTkFrame):
             placeholder_text="Busca por titulo, artista, album o texto relacionado...",
             textvariable=search_variable,
         )
-        search_entry.pack(fill="x", padx=16, pady=(0, 14))
+        search_entry.pack(fill="x", padx=16, pady=(0, 12))
         search_variable.trace_add(
             "write",
             lambda *_args: self._scheduleSearchUpdate(),
@@ -202,7 +242,7 @@ class ComparisonPage(ctk.CTkFrame):
             theme=self._theme,
             text_color=self._theme["text_muted"],
             font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w", padx=16, pady=(14, 8))
+        ).pack(anchor="w", padx=16, pady=(12, 6))
         filter_variable = ctk.StringVar(value=ALL_COMPARISON_FILTER)
         filter_menu = createOptionMenu(
             filter_card,
@@ -212,7 +252,7 @@ class ComparisonPage(ctk.CTkFrame):
             width=220,
         )
         filter_menu.configure(command=self.section.setComparisonFilter)
-        filter_menu.pack(anchor="w", padx=16, pady=(0, 14))
+        filter_menu.pack(anchor="w", padx=16, pady=(0, 12))
         return wrapper
 
     def _scheduleSearchUpdate(self) -> None:
@@ -244,7 +284,7 @@ class ComparisonPage(ctk.CTkFrame):
             theme=self._theme,
             text_color=self._theme["text_muted"],
             font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w", padx=16, pady=(14, 8))
+        ).pack(anchor="w", padx=16, pady=(12, 6))
         value_label = createLabel(
             card,
             "0",
@@ -252,5 +292,5 @@ class ComparisonPage(ctk.CTkFrame):
             text_color=accent,
             font=("Segoe UI", 24, "bold"),
         )
-        value_label.pack(anchor="w", padx=16, pady=(0, 14))
+        value_label.pack(anchor="w", padx=16, pady=(0, 12))
         return value_label

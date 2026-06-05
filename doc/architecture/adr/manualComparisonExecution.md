@@ -16,7 +16,13 @@ Al entrar en la pantalla:
 * si la cache esta obsoleta, se sigue mostrando con aviso
 * si no hay cache, se muestra un estado informativo
 
-La recomparacion solo se ejecuta cuando el usuario pulsa `Comparar ahora`.
+La recomparacion solo se ejecuta cuando el usuario pulsa `Refrescar comparacion`.
+
+Esa accion:
+
+* recalcula el matching completo para la playlist y biblioteca activas
+* genera un nuevo snapshot persistido en BBDD
+* actualiza el resultado visible con la ultima comparacion guardada
 
 ## Consecuencias
 

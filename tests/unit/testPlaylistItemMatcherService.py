@@ -114,6 +114,33 @@ def test_match_youtube_playlist_item_to_local_songs_returns_possible_match_for_n
     assert result.score >= 55.0
 
 
+def test_match_youtube_playlist_item_to_local_songs_returns_found_for_partial_featured_artist_with_strong_total_score() -> None:
+    youtube_item = YoutubePlaylistItem(
+        id=1,
+        youtube_playlist_id=9,
+        external_video_id="abc123",
+        position=1,
+        raw_title="Song One",
+        raw_channel_name="Artist One",
+        normalized_title="song one",
+        normalized_artist="artist one",
+        duration_seconds=180.0,
+    )
+    local_song = LocalSong(
+        id=4,
+        file_name="song-one.mp3",
+        title="Song One",
+        artist="Artist One feat Guest Singer",
+        duration_seconds=181.0,
+    )
+
+    result = matchYoutubePlaylistItemToLocalSongs(youtube_item, [local_song])
+
+    assert result.local_song == local_song
+    assert result.comparison_status is ComparisonStatus.FOUND
+    assert result.score >= 85.0
+
+
 def test_match_youtube_playlist_item_to_local_songs_breaks_ties_using_title_and_artist_strength() -> None:
     youtube_item = YoutubePlaylistItem(
         id=1,
@@ -147,4 +174,4 @@ def test_match_youtube_playlist_item_to_local_songs_breaks_ties_using_title_and_
     )
 
     assert result.local_song == stronger_candidate
-    assert result.comparison_status is ComparisonStatus.POSSIBLE_MATCH
+    assert result.comparison_status is ComparisonStatus.FOUND

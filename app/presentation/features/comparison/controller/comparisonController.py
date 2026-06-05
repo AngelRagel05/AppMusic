@@ -19,6 +19,9 @@ class ComparisonController:
         self._view_model = view_model
 
     def load(self) -> None:
+        if not self._view_model.hasCachedComparison():
+            self._view_model.restorePersistedComparison()
+
         if self._view_model.hasCachedComparison():
             comparison_result = self._view_model.load_comparison_result()
             if comparison_result is not None:
@@ -30,19 +33,21 @@ class ComparisonController:
                 self._page.showLocalSongs(self._view_model.load_local_songs())
             if self._view_model.isComparisonStale():
                 self._page.showComparisonStatusMessage(
-                    "Los resultados visibles pueden estar desactualizados. Pulsa \"Comparar ahora\" para refrescarlos.",
+                    "Los resultados visibles pueden estar desactualizados. Pulsa \"Refrescar comparacion\" para recalcularlos y actualizar la base de datos.",
                     tone="info",
                 )
             return
 
         self._page.showComparisonStatusMessage(
-            "Pulsa \"Comparar ahora\" para cargar la comparacion manualmente.",
+            "Pulsa \"Refrescar comparacion\" para calcular la comparacion y guardar el resultado actualizado.",
             tone="info",
         )
 
     def requestComparison(self) -> None:
+        if not self._page.confirmManualComparisonStart():
+            return
         self._page.showLoadingState(
-            "Preparando canciones locales y resultados de comparacion..."
+            "Recalculando resultados y actualizando la base de datos..."
         )
         self._page.after(16, self._startComparison)
 

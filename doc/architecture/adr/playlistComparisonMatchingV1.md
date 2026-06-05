@@ -37,10 +37,11 @@ Pesos principales:
 
 `found`
 
-* el titulo coincide de forma fuerte
-* el artista coincide de forma fuerte
-* si ambas duraciones existen, la diferencia queda dentro de tolerancia
-* el score total supera el umbral de coincidencia clara
+* se decide por score ponderado, no por exigir igualdad exacta en todos los campos
+* el titulo debe aportar una señal fuerte
+* el artista debe aportar al menos una señal parcial util
+* si ambas duraciones existen, la diferencia debe quedar dentro de tolerancia
+* el score total debe superar el umbral de coincidencia clara
 
 `possible_match`
 
@@ -82,6 +83,7 @@ La version v1 tiene limitaciones esperables:
   * en algunos casos incluso podria parecer `found` si el etiquetado local es pobre
 * artistas mal etiquetados
   * si el MP3 local o YouTube traen artistas incompletos o inconsistentes, el score baja
+  * aun asi una coincidencia con `feat`, invitados o artistas extra puede seguir resolverse como `found` si la ponderacion total sigue siendo fuerte
 * diferencias de duracion
   * intros, silencios, cortes o ediciones pueden mover el resultado entre `found` y `possible_match`
 

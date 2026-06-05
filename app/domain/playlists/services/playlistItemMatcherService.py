@@ -12,6 +12,8 @@ from app.shared.constants.comparison import ComparisonStatus
 FOUND_MINIMUM_SCORE = 85.0
 POSSIBLE_MATCH_MINIMUM_SCORE = 55.0
 FOUND_DURATION_TOLERANCE_SECONDS = 5.0
+FOUND_MINIMUM_TITLE_SCORE = 45.0
+FOUND_MINIMUM_ARTIST_SCORE = 10.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,8 +190,8 @@ def _classifyMatchStatus(
     )
 
     if (
-        title_score >= 60.0
-        and artist_score >= 30.0
+        title_score >= FOUND_MINIMUM_TITLE_SCORE
+        and artist_score >= FOUND_MINIMUM_ARTIST_SCORE
         and duration_is_strong
         and total_score >= FOUND_MINIMUM_SCORE
     ):
@@ -210,10 +212,10 @@ def _buildReason(
     if status is ComparisonStatus.FOUND:
         if duration_distance != float("inf"):
             return (
-                "Coincidencia fuerte en titulo y artista normalizados; "
+                "Coincidencia ponderada fuerte en titulo y artista normalizados; "
                 f"duracion dentro de tolerancia ({duration_distance:.1f}s)."
             )
-        return "Coincidencia fuerte en titulo y artista normalizados."
+        return "Coincidencia ponderada fuerte en titulo y artista normalizados."
     if status is ComparisonStatus.POSSIBLE_MATCH:
         duration_note = ""
         if duration_distance != float("inf") and duration_distance <= 8:

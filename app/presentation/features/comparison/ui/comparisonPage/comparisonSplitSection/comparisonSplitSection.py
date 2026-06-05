@@ -22,6 +22,7 @@ from app.presentation.features.comparison.comparisonResultFilter import (
 )
 from app.presentation.styles import (
     ActionButton,
+    bindRecursive,
     clearChildren,
     createFrame,
     createLabel,
@@ -31,9 +32,11 @@ from app.presentation.styles import (
 from app.shared.constants.comparison import ComparisonStatus
 
 
-PAGE_SIZE_VALUES = ("25", "50", "75")
+PAGE_SIZE_VALUES = ("25", "50", "75", "100")
 DEFAULT_PAGE_SIZE = 25
 RENDER_BATCH_SIZE = 25
+FAST_MOUSE_WHEEL_UNITS = 4
+SCROLL_INCREMENT_PIXELS = 36
 
 
 @dataclass
@@ -68,17 +71,17 @@ class ComparisonSplitSection(ctk.CTkFrame):
 
         self._localSongsColumn = self._buildColumnCard(
             title="Canciones de biblioteca local",
-            empty_title="Todavia no hay canciones locales visibles",
+            empty_title="Todavía no hay canciones locales visibles",
             empty_message="Activa una biblioteca local y sincronizala para ver aqui su detalle.",
-            singular_label="cancion local",
+            singular_label="canción local",
             plural_label="canciones locales",
             build_row=self._buildLocalSongRow,
         )
         self._localSongsColumn.card.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
         self._comparisonResultsColumn = self._buildColumnCard(
-            title="Resultados de comparacion",
-            empty_title="Todavia no hay resultados de comparacion",
+            title="Resultados de comparación",
+            empty_title="Todavía no hay resultados de comparación",
             empty_message="Activa una playlist de YouTube y una biblioteca local para comparar.",
             singular_label="resultado",
             plural_label="resultados",
@@ -176,7 +179,7 @@ class ComparisonSplitSection(ctk.CTkFrame):
         controls_right.grid(row=0, column=1, sticky="e")
         createLabel(
             controls_right,
-            "Por pagina",
+            "Por página",
             theme=self._theme,
             text_color=self._theme["text_secondary"],
             font=("Segoe UI", 12),
@@ -230,6 +233,7 @@ class ComparisonSplitSection(ctk.CTkFrame):
         page_size_menu.configure(
             command=lambda selected_value: self._handlePageSizeChanged(column_state, selected_value)
         )
+        self._configureFastScroll(column_state.rowsHost)
         self._refreshColumn(column_state)
         return column_state
 
@@ -274,6 +278,7 @@ class ComparisonSplitSection(ctk.CTkFrame):
     def _refreshColumn(self, column_state: ComparisonColumnState) -> None:
         column_state.renderToken += 1
         token = column_state.renderToken
+        self._scrollColumnToTop(column_state.rowsHost)
         clearChildren(column_state.rowsHost)
         self._refreshColumnLabels(column_state)
         page_items = column_state.pagination.currentItems()
@@ -314,7 +319,9 @@ class ComparisonSplitSection(ctk.CTkFrame):
 
         end_index = min(start_index + RENDER_BATCH_SIZE, len(items))
         for item in items[start_index:end_index]:
-            column_state.buildRow(column_state.rowsHost, item).pack(fill="x", pady=(0, 12))
+            row = column_state.buildRow(column_state.rowsHost, item)
+            self._bindFastScrollToContent(row, column_state.rowsHost)
+            row.pack(fill="x", pady=(0, 12))
 
         if end_index < len(items):
             column_state.rowsHost.after(
@@ -437,6 +444,64 @@ class ComparisonSplitSection(ctk.CTkFrame):
         if comparison_item.comparison_status is ComparisonStatus.MISSING:
             return "Local: sin coincidencia encontrada"
         return "Local: candidata sin metadata completa"
+
+    def _configureFastScroll(self, rows_host: ctk.CTkScrollableFrame) -> None:
+        canvas = getattr(rows_host, "_parent_canvas", None)
+        if canvas is None:
+            return
+        canvas.configure(yscrollincrement=SCROLL_INCREMENT_PIXELS)
+        rows_host.bind("<MouseWheel>", lambda event: self._handleMouseWheel(rows_host, event))
+        canvas.bind("<MouseWheel>", lambda event: self._handleMouseWheel(rows_host, event))
+        rows_host.bind("<Button-4>", lambda event: self._handleMouseWheel(rows_host, event))
+        rows_host.bind("<Button-5>", lambda event: self._handleMouseWheel(rows_host, event))
+        canvas.bind("<Button-4>", lambda event: self._handleMouseWheel(rows_host, event))
+        canvas.bind("<Button-5>", lambda event: self._handleMouseWheel(rows_host, event))
+
+    def _bindFastScrollToContent(
+        self,
+        widget,
+        rows_host: ctk.CTkScrollableFrame,
+    ) -> None:
+        bindRecursive(
+            widget,
+            "<MouseWheel>",
+            lambda event: self._handleMouseWheel(rows_host, event),
+        )
+        bindRecursive(
+            widget,
+            "<Button-4>",
+            lambda event: self._handleMouseWheel(rows_host, event),
+        )
+        bindRecursive(
+            widget,
+            "<Button-5>",
+            lambda event: self._handleMouseWheel(rows_host, event),
+        )
+
+    def _handleMouseWheel(self, rows_host: ctk.CTkScrollableFrame, event) -> str:
+        canvas = getattr(rows_host, "_parent_canvas", None)
+        if canvas is None:
+            return "break"
+
+        if getattr(event, "num", None) == 4:
+            canvas.yview_scroll(-FAST_MOUSE_WHEEL_UNITS, "units")
+            return "break"
+        if getattr(event, "num", None) == 5:
+            canvas.yview_scroll(FAST_MOUSE_WHEEL_UNITS, "units")
+            return "break"
+
+        delta = getattr(event, "delta", 0)
+        if delta == 0:
+            return "break"
+        direction = -1 if delta > 0 else 1
+        canvas.yview_scroll(direction * FAST_MOUSE_WHEEL_UNITS, "units")
+        return "break"
+
+    def _scrollColumnToTop(self, rows_host: ctk.CTkScrollableFrame) -> None:
+        canvas = getattr(rows_host, "_parent_canvas", None)
+        if canvas is None:
+            return
+        canvas.yview_moveto(0)
 
     def _showEmptyState(self, parent, title: str, message: str) -> None:
         card = createFrame(
