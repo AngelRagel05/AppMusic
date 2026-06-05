@@ -16,6 +16,9 @@ from app.presentation.features.comparison.comparisonSearch import (
 from app.presentation.features.comparison.comparisonPaginationState import (
     ComparisonPaginationState,
 )
+from app.presentation.features.comparison.comparisonReasonSummary import (
+    buildComparisonReasonSummary,
+)
 from app.presentation.features.comparison.comparisonResultFilter import (
     ALL_COMPARISON_FILTER,
     filterComparisonItemsByStatus,
@@ -165,7 +168,7 @@ class ComparisonSplitSection(ctk.CTkFrame):
             "0",
             theme=self._theme,
             text_color=self._theme["text_muted"],
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 12),
         )
         count_label.grid(row=0, column=1, sticky="e")
 
@@ -394,6 +397,9 @@ class ComparisonSplitSection(ctk.CTkFrame):
             corner_radius=int(self._theme["radius_sm"]),
         )
         row.grid_columnconfigure(0, weight=1)
+        row.grid_columnconfigure(1, weight=0)
+        row.grid_rowconfigure(0, weight=1)
+        row.grid_rowconfigure(1, weight=1)
         title_row = createFrame(row, theme=self._theme, fg_color="transparent")
         title_row.grid(row=0, column=0, sticky="ew", padx=6, pady=(2, 0))
         title_row.grid_columnconfigure(0, weight=1)
@@ -404,21 +410,21 @@ class ComparisonSplitSection(ctk.CTkFrame):
             font=("Segoe UI", 11),
             wraplength=0,
         ).grid(row=0, column=0, sticky="w")
-        self._buildStatusBadge(title_row, comparison_item.comparison_status).grid(
+        self._buildStatusBadge(row, comparison_item.comparison_status).grid(
             row=0,
             column=1,
-            sticky="e",
-            padx=(6, 0),
+            rowspan=2,
+            padx=(6, 6),
         )
         createLabel(
             row,
             self._buildCandidateMessage(comparison_item),
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 11),
             wraplength=0,
         ).grid(row=1, column=0, sticky="ew", padx=6, pady=(0, 3))
-        self._buildRowSeparator(row).grid(row=2, column=0, sticky="ew")
+        self._buildRowSeparator(row).grid(row=2, column=0, columnspan=2, sticky="ew")
         return row
 
     def _buildStatusBadge(self, parent, status: ComparisonStatus):
@@ -435,7 +441,7 @@ class ComparisonSplitSection(ctk.CTkFrame):
         badge = createFrame(
             parent,
             theme=self._theme,
-            fg_color=self._theme["accent_soft"],
+            fg_color="transparent",
             corner_radius=int(self._theme["radius_sm"]),
             border_width=0,
         )
@@ -444,18 +450,22 @@ class ComparisonSplitSection(ctk.CTkFrame):
             status_text,
             theme=self._theme,
             text_color=status_color,
-            font=("Segoe UI", 10, "bold"),
-        ).pack(anchor="center", padx=4, pady=1)
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="center", padx=0, pady=0)
         return badge
 
     def _buildCandidateMessage(self, comparison_item: PlaylistComparisonItemResultDto) -> str:
+        reason_summary = buildComparisonReasonSummary(comparison_item)
         if comparison_item.local_title and comparison_item.local_artist:
-            return f"Local: {comparison_item.local_title} · {comparison_item.local_artist}"
+            return (
+                f"Local: {comparison_item.local_title} · {comparison_item.local_artist}"
+                f" | {reason_summary}"
+            )
         if comparison_item.local_title:
-            return f"Local: {comparison_item.local_title}"
+            return f"Local: {comparison_item.local_title} | {reason_summary}"
         if comparison_item.comparison_status is ComparisonStatus.MISSING:
-            return "Local: sin coincidencia encontrada"
-        return "Local: candidata sin metadata completa"
+            return f"Local: sin coincidencia encontrada | {reason_summary}"
+        return f"Local: candidata sin metadata completa | {reason_summary}"
 
     def _configureFastScroll(self, rows_host: ctk.CTkScrollableFrame) -> None:
         canvas = getattr(rows_host, "_parent_canvas", None)
