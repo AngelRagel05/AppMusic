@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.activateYoutubePlaylistInputDto import (
     ActivateYoutubePlaylistInputDto,
 )
@@ -29,6 +30,9 @@ from app.application.use_cases import (
 from app.application.use_cases.playlists.youtubePlaylistItemsImporterPort import (
     YoutubePlaylistImportExtractorError,
 )
+from app.domain.library.entities.localFolder import LocalFolder
+from app.domain.library.entities.localSong import LocalSong
+from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
 from app.domain.playlists.entities.youtubePlaylist import YoutubePlaylist
 from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistItem
 from app.domain.playlists.repositories.youtubePlaylistItemRepository import (
@@ -38,6 +42,7 @@ from app.domain.playlists.repositories.youtubePlaylistRepository import (
     YoutubePlaylistRepository,
 )
 from app.domain.library.repositories.localSongRepository import LocalSongRepository
+from app.shared.constants.comparison import ComparisonStatus
 
 
 class InMemoryYoutubePlaylistRepository(YoutubePlaylistRepository):
@@ -250,18 +255,60 @@ class YoutubePlaylistItemsImporterSpy:
 
 
 class LocalSongRepositorySpy(LocalSongRepository):
-    def __init__(self) -> None:
+    def __init__(self, songs_by_folder_id: dict[int, list[LocalSong]] | None = None) -> None:
+        self.songs_by_folder_id = songs_by_folder_id or {}
         self.list_by_folder_calls: list[int] = []
 
     def list_by_folder(self, local_folder_id: int):
         self.list_by_folder_calls.append(local_folder_id)
-        return []
+        return list(self.songs_by_folder_id.get(local_folder_id, []))
 
     def get_by_file_path(self, file_path: str):
         return None
 
     def save(self, local_song):
         return local_song
+
+
+class InMemoryLocalFolderRepository(LocalFolderRepository):
+    def __init__(self, active_folder: LocalFolder | None = None) -> None:
+        self._active_folder = active_folder
+
+    def get_active(self) -> LocalFolder | None:
+        return self._active_folder
+
+    def save_as_active(self, path: str, display_name: str) -> LocalFolder:
+        self._active_folder = LocalFolder(
+            id=1,
+            path=path,
+            display_name=display_name,
+            is_active=True,
+        )
+        return self._active_folder
+
+    def list_all(self) -> list[LocalFolder]:
+        return [self._active_folder] if self._active_folder is not None else []
+
+    def activate(self, local_folder_id: int) -> LocalFolder:
+        if self._active_folder is None or self._active_folder.id != local_folder_id:
+            raise ValueError("La biblioteca seleccionada no existe.")
+        return self._active_folder
+
+    def update(self, local_folder_id: int, path: str, display_name: str) -> LocalFolder:
+        if self._active_folder is None or self._active_folder.id != local_folder_id:
+            raise ValueError("La biblioteca seleccionada no existe.")
+        self._active_folder = LocalFolder(
+            id=local_folder_id,
+            path=path,
+            display_name=display_name,
+            is_active=self._active_folder.is_active,
+        )
+        return self._active_folder
+
+    def delete(self, local_folder_id: int) -> None:
+        if self._active_folder is None or self._active_folder.id != local_folder_id:
+            raise ValueError("La biblioteca seleccionada no existe.")
+        self._active_folder = None
 
 
 def test_define_main_youtube_playlist_use_case_persists_playlist_as_active() -> None:
@@ -742,6 +789,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_requires_active_pl
     use_case = CompareYoutubePlaylistWithLocalLibraryUseCase(
         InMemoryYoutubePlaylistRepository(),
         InMemoryYoutubePlaylistItemRepository(),
+        InMemoryLocalFolderRepository(),
         LocalSongRepositorySpy(),
     )
 
@@ -749,7 +797,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_requires_active_pl
         use_case.execute()
 
 
-def test_compare_youtube_playlist_with_local_library_use_case_is_defined_but_not_implemented_yet() -> None:
+def test_compare_youtube_playlist_with_local_library_use_case_requires_active_local_folder() -> None:
     playlist_repository = InMemoryYoutubePlaylistRepository()
     active_playlist = playlist_repository.save_as_active(
         playlist_url="https://www.youtube.com/playlist?list=PL123",
@@ -776,8 +824,154 @@ def test_compare_youtube_playlist_with_local_library_use_case_is_defined_but_not
     use_case = CompareYoutubePlaylistWithLocalLibraryUseCase(
         playlist_repository,
         item_repository,
+        InMemoryLocalFolderRepository(),
         LocalSongRepositorySpy(),
     )
 
-    with pytest.raises(NotImplementedError, match="Pendiente de implementar"):
+    with pytest.raises(ValueError, match="biblioteca local activa"):
+        use_case.execute()
+
+
+def test_compare_youtube_playlist_with_local_library_use_case_returns_summary_and_detail_with_mixed_statuses() -> None:
+    playlist_repository = InMemoryYoutubePlaylistRepository()
+    active_playlist = playlist_repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        title="Favoritas",
+    )
+    active_folder = LocalFolder(
+        id=7,
+        path=r"C:\Music\Active",
+        display_name="Active",
+        is_active=True,
+    )
+    item_repository = InMemoryYoutubePlaylistItemRepository()
+    item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="found-item",
+                position=1,
+                raw_title="Song One",
+                raw_channel_name="Artist One",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="possible-item",
+                position=2,
+                raw_title="Song Two",
+                raw_channel_name="Artist Two",
+                normalized_title="song two",
+                normalized_artist="artist two",
+                duration_seconds=200.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="missing-item",
+                position=3,
+                raw_title="Missing Song",
+                raw_channel_name="Missing Artist",
+                normalized_title="missing song",
+                normalized_artist="missing artist",
+                duration_seconds=240.0,
+            ),
+        ],
+    )
+    local_song_repository = LocalSongRepositorySpy(
+        songs_by_folder_id={
+            active_folder.id or 0: [
+                LocalSong(
+                    id=11,
+                    local_folder_id=active_folder.id,
+                    file_name="song-one.mp3",
+                    is_available=True,
+                    title="Song One",
+                    artist="Artist One",
+                    duration_seconds=181.0,
+                ),
+                LocalSong(
+                    id=12,
+                    local_folder_id=active_folder.id,
+                    file_name="song-two-live.mp3",
+                    is_available=True,
+                    title="Song Two Live",
+                    artist="Artist Two Remix",
+                    duration_seconds=200.0,
+                ),
+                LocalSong(
+                    id=13,
+                    local_folder_id=active_folder.id,
+                    file_name="hidden.mp3",
+                    is_available=False,
+                    title="Missing Song",
+                    artist="Missing Artist",
+                    duration_seconds=240.0,
+                ),
+            ]
+        }
+    )
+    use_case = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        playlist_repository,
+        item_repository,
+        InMemoryLocalFolderRepository(active_folder),
+        local_song_repository,
+    )
+
+    result = use_case.execute()
+
+    assert isinstance(result, PlaylistComparisonResultDto)
+    assert local_song_repository.list_by_folder_calls == [7]
+    assert result.summary.found_count == 1
+    assert result.summary.possible_match_count == 1
+    assert result.summary.missing_count == 1
+    assert result.summary.total_compared == 3
+    assert [item.comparison_status for item in result.items] == [
+        ComparisonStatus.FOUND,
+        ComparisonStatus.POSSIBLE_MATCH,
+        ComparisonStatus.MISSING,
+    ]
+    assert result.items[0].local_song_id == 11
+    assert result.items[1].local_song_id == 12
+    assert result.items[2].local_song_id is None
+
+
+def test_compare_youtube_playlist_with_local_library_use_case_propagates_repository_errors() -> None:
+    playlist_repository = InMemoryYoutubePlaylistRepository()
+    active_playlist = playlist_repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        title="Favoritas",
+    )
+    active_folder = LocalFolder(
+        id=7,
+        path=r"C:\Music\Active",
+        display_name="Active",
+        is_active=True,
+    )
+
+    class BrokenLocalSongRepository(LocalSongRepository):
+        def list_by_folder(self, local_folder_id: int):
+            raise RuntimeError("DB exploded")
+
+        def get_by_file_path(self, file_path: str):
+            return None
+
+        def save(self, local_song):
+            return local_song
+
+    use_case = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        playlist_repository,
+        InMemoryYoutubePlaylistItemRepository(),
+        InMemoryLocalFolderRepository(active_folder),
+        BrokenLocalSongRepository(),
+    )
+
+    with pytest.raises(RuntimeError, match="DB exploded"):
         use_case.execute()
