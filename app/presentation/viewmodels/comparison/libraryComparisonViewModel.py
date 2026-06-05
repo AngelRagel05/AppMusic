@@ -24,8 +24,13 @@ class LibraryComparisonViewModel:
             [],
             tuple[list[LocalSongDto], PlaylistComparisonResultDto],
         ],
+        load_persisted_comparison: Callable[
+            [],
+            tuple[list[LocalSongDto], PlaylistComparisonResultDto] | None,
+        ],
     ) -> None:
         self._load_library_comparison = load_library_comparison
+        self._load_persisted_comparison = load_persisted_comparison
         self._local_songs_cache: list[LocalSongDto] = []
         self._comparison_result_cache: PlaylistComparisonResultDto | None = None
         self._comparison_in_progress = False
@@ -73,6 +78,20 @@ class LibraryComparisonViewModel:
 
     def hasCachedComparison(self) -> bool:
         return self._comparison_result_cache is not None
+
+    def restorePersistedComparison(self) -> bool:
+        if self._comparison_result_cache is not None:
+            return True
+
+        persisted_snapshot = self._load_persisted_comparison()
+        if persisted_snapshot is None:
+            return False
+
+        local_songs, comparison_result = persisted_snapshot
+        self._local_songs_cache = list(local_songs)
+        self._comparison_result_cache = comparison_result
+        self._comparison_is_stale = False
+        return True
 
     def isComparisonStale(self) -> bool:
         return self._comparison_is_stale

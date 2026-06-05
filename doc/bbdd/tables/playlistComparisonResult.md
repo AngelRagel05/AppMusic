@@ -66,7 +66,7 @@ erDiagram
 ## Notas
 
 * `match_status` debe usar este catalogo:
-  * `matched`
+  * `found`
   * `missing`
   * `possible_match`
 * Si una cancion falta en local:

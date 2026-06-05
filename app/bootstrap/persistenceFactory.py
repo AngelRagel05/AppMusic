@@ -10,6 +10,8 @@ from app.infrastructure.persistence import (
     IgnoredTermSqlAlchemyRepository,
     LocalFolderSqlAlchemyRepository,
     LocalSongSqlAlchemyRepository,
+    PlaylistComparisonResultSqlAlchemyRepository,
+    PlaylistComparisonSqlAlchemyRepository,
     SessionLocal,
     YoutubePlaylistItemSqlAlchemyRepository,
     YoutubePlaylistSqlAlchemyRepository,
@@ -24,6 +26,8 @@ class PersistenceRegistry:
     ignoredTermRepository: IgnoredTermSqlAlchemyRepository
     localFolderRepository: LocalFolderSqlAlchemyRepository
     localSongRepository: LocalSongSqlAlchemyRepository
+    playlistComparisonRepository: PlaylistComparisonSqlAlchemyRepository
+    playlistComparisonResultRepository: PlaylistComparisonResultSqlAlchemyRepository
     youtubePlaylistItemRepository: YoutubePlaylistItemSqlAlchemyRepository
     youtubePlaylistRepository: YoutubePlaylistSqlAlchemyRepository
 
@@ -39,6 +43,10 @@ class PersistenceFactory:
             ignoredTermRepository=IgnoredTermSqlAlchemyRepository(session),
             localFolderRepository=LocalFolderSqlAlchemyRepository(session),
             localSongRepository=LocalSongSqlAlchemyRepository(session),
+            playlistComparisonRepository=PlaylistComparisonSqlAlchemyRepository(session),
+            playlistComparisonResultRepository=PlaylistComparisonResultSqlAlchemyRepository(
+                session
+            ),
             youtubePlaylistItemRepository=YoutubePlaylistItemSqlAlchemyRepository(
                 session
             ),

@@ -24,6 +24,7 @@ from app.application.use_cases import (
     GetActiveYoutubePlaylistUseCase,
     ImportYoutubePlaylistItemsUseCase,
     ListActiveYoutubePlaylistItemsUseCase,
+    LoadPersistedPlaylistComparisonUseCase,
     ListYoutubePlaylistsUseCase,
     UpdateYoutubePlaylistUseCase,
 )
@@ -34,7 +35,15 @@ from app.domain.library.entities.localFolder import LocalFolder
 from app.domain.library.entities.localSong import LocalSong
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
 from app.domain.playlists.entities.youtubePlaylist import YoutubePlaylist
+from app.domain.playlists.entities.playlistComparison import PlaylistComparison
+from app.domain.playlists.entities.playlistComparisonResult import PlaylistComparisonResult
 from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistItem
+from app.domain.playlists.repositories.playlistComparisonRepository import (
+    PlaylistComparisonRepository,
+)
+from app.domain.playlists.repositories.playlistComparisonResultRepository import (
+    PlaylistComparisonResultRepository,
+)
 from app.domain.playlists.repositories.youtubePlaylistItemRepository import (
     YoutubePlaylistItemRepository,
 )
@@ -228,6 +237,71 @@ class InMemoryYoutubePlaylistItemRepository(YoutubePlaylistItemRepository):
     def delete_by_playlist(self, youtube_playlist_id: int) -> None:
         self.delete_calls.append(youtube_playlist_id)
         self.items_by_playlist_id.pop(youtube_playlist_id, None)
+
+
+class InMemoryPlaylistComparisonRepository(PlaylistComparisonRepository):
+    def __init__(self) -> None:
+        self.created_comparisons: list[PlaylistComparison] = []
+        self._next_id = 1
+
+    def create(
+        self,
+        youtube_playlist_id: int,
+        local_folder_id: int,
+    ) -> PlaylistComparison:
+        comparison = PlaylistComparison(
+            id=self._next_id,
+            youtube_playlist_id=youtube_playlist_id,
+            local_folder_id=local_folder_id,
+        )
+        self.created_comparisons.append(comparison)
+        self._next_id += 1
+        return comparison
+
+    def find_latest_for_scope(
+        self,
+        youtube_playlist_id: int,
+        local_folder_id: int,
+    ) -> PlaylistComparison | None:
+        for comparison in reversed(self.created_comparisons):
+            if (
+                comparison.youtube_playlist_id == youtube_playlist_id
+                and comparison.local_folder_id == local_folder_id
+            ):
+                return comparison
+        return None
+
+
+class InMemoryPlaylistComparisonResultRepository(PlaylistComparisonResultRepository):
+    def __init__(self) -> None:
+        self.saved_results_by_comparison_id: dict[int, list[PlaylistComparisonResult]] = {}
+
+    def save_for_comparison(
+        self,
+        playlist_comparison_id: int,
+        results: list[PlaylistComparisonResult],
+    ) -> list[PlaylistComparisonResult]:
+        persisted_results: list[PlaylistComparisonResult] = []
+        for index, result in enumerate(results, start=1):
+            persisted_results.append(
+                PlaylistComparisonResult(
+                    id=index,
+                    playlist_comparison_id=playlist_comparison_id,
+                    youtube_playlist_item_id=result.youtube_playlist_item_id,
+                    local_song_id=result.local_song_id,
+                    match_status=result.match_status,
+                    score=result.score,
+                    matched_by=result.matched_by,
+                )
+            )
+        self.saved_results_by_comparison_id[playlist_comparison_id] = persisted_results
+        return list(persisted_results)
+
+    def list_by_comparison(
+        self,
+        playlist_comparison_id: int,
+    ) -> list[PlaylistComparisonResult]:
+        return list(self.saved_results_by_comparison_id.get(playlist_comparison_id, []))
 
 
 class YoutubePlaylistItemsImporterSpy:
@@ -791,6 +865,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_requires_active_pl
         InMemoryYoutubePlaylistItemRepository(),
         InMemoryLocalFolderRepository(),
         LocalSongRepositorySpy(),
+        InMemoryPlaylistComparisonRepository(),
+        InMemoryPlaylistComparisonResultRepository(),
     )
 
     with pytest.raises(ValueError, match="playlist principal activa"):
@@ -826,6 +902,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_requires_active_lo
         item_repository,
         InMemoryLocalFolderRepository(),
         LocalSongRepositorySpy(),
+        InMemoryPlaylistComparisonRepository(),
+        InMemoryPlaylistComparisonResultRepository(),
     )
 
     with pytest.raises(ValueError, match="biblioteca local activa"):
@@ -917,11 +995,15 @@ def test_compare_youtube_playlist_with_local_library_use_case_returns_summary_an
             ]
         }
     )
+    comparison_repository = InMemoryPlaylistComparisonRepository()
+    comparison_result_repository = InMemoryPlaylistComparisonResultRepository()
     use_case = CompareYoutubePlaylistWithLocalLibraryUseCase(
         playlist_repository,
         item_repository,
         InMemoryLocalFolderRepository(active_folder),
         local_song_repository,
+        comparison_repository,
+        comparison_result_repository,
     )
 
     result = use_case.execute()
@@ -940,6 +1022,18 @@ def test_compare_youtube_playlist_with_local_library_use_case_returns_summary_an
     assert result.items[0].local_song_id == 11
     assert result.items[1].local_song_id == 12
     assert result.items[2].local_song_id is None
+    assert len(comparison_repository.created_comparisons) == 1
+    persisted_results = comparison_result_repository.saved_results_by_comparison_id[1]
+    assert [item.score for item in persisted_results] == [
+        result.items[0].score,
+        result.items[1].score,
+        result.items[2].score,
+    ]
+    assert [item.match_status for item in persisted_results] == [
+        ComparisonStatus.FOUND.value,
+        ComparisonStatus.POSSIBLE_MATCH.value,
+        ComparisonStatus.MISSING.value,
+    ]
 
 
 def test_compare_youtube_playlist_with_local_library_use_case_propagates_repository_errors() -> None:
@@ -971,7 +1065,144 @@ def test_compare_youtube_playlist_with_local_library_use_case_propagates_reposit
         InMemoryYoutubePlaylistItemRepository(),
         InMemoryLocalFolderRepository(active_folder),
         BrokenLocalSongRepository(),
+        InMemoryPlaylistComparisonRepository(),
+        InMemoryPlaylistComparisonResultRepository(),
     )
 
     with pytest.raises(RuntimeError, match="DB exploded"):
         use_case.execute()
+
+
+def test_load_persisted_playlist_comparison_use_case_returns_none_without_snapshot() -> None:
+    playlist_repository = InMemoryYoutubePlaylistRepository()
+    playlist_repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        title="Favoritas",
+    )
+    active_folder = LocalFolder(
+        id=7,
+        path=r"C:\Music\Active",
+        display_name="Active",
+        is_active=True,
+    )
+    use_case = LoadPersistedPlaylistComparisonUseCase(
+        playlist_repository,
+        InMemoryYoutubePlaylistItemRepository(),
+        InMemoryLocalFolderRepository(active_folder),
+        LocalSongRepositorySpy(),
+        InMemoryPlaylistComparisonRepository(),
+        InMemoryPlaylistComparisonResultRepository(),
+    )
+
+    assert use_case.execute() is None
+
+
+def test_load_persisted_playlist_comparison_use_case_rehydrates_last_snapshot_for_active_scope() -> None:
+    playlist_repository = InMemoryYoutubePlaylistRepository()
+    active_playlist = playlist_repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        title="Favoritas",
+    )
+    active_folder = LocalFolder(
+        id=7,
+        path=r"C:\Music\Active",
+        display_name="Active",
+        is_active=True,
+    )
+    item_repository = InMemoryYoutubePlaylistItemRepository()
+    persisted_items = item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="found-item",
+                position=1,
+                raw_title="Song One",
+                raw_channel_name="Artist One",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="missing-item",
+                position=2,
+                raw_title="Missing Song",
+                raw_channel_name="Missing Artist",
+                normalized_title="missing song",
+                normalized_artist="missing artist",
+                duration_seconds=200.0,
+            ),
+        ],
+    )
+    local_song_repository = LocalSongRepositorySpy(
+        songs_by_folder_id={
+            active_folder.id or 0: [
+                LocalSong(
+                    id=11,
+                    local_folder_id=active_folder.id,
+                    file_path=r"C:\Music\Active\song-one.mp3",
+                    file_name="song-one.mp3",
+                    is_available=True,
+                    title="Song One",
+                    artist="Artist One",
+                    album="Album One",
+                    release_year=2024,
+                    track_number_album=1,
+                    duration_seconds=181.0,
+                )
+            ]
+        }
+    )
+    comparison_repository = InMemoryPlaylistComparisonRepository()
+    comparison = comparison_repository.create(active_playlist.id or 0, active_folder.id or 0)
+    comparison_result_repository = InMemoryPlaylistComparisonResultRepository()
+    comparison_result_repository.save_for_comparison(
+        comparison.id or 0,
+        [
+            PlaylistComparisonResult(
+                playlist_comparison_id=comparison.id or 0,
+                youtube_playlist_item_id=persisted_items[0].id or 0,
+                local_song_id=11,
+                match_status=ComparisonStatus.FOUND.value,
+                score=100.0,
+                matched_by=None,
+            ),
+            PlaylistComparisonResult(
+                playlist_comparison_id=comparison.id or 0,
+                youtube_playlist_item_id=persisted_items[1].id or 0,
+                local_song_id=None,
+                match_status=ComparisonStatus.MISSING.value,
+                score=0.0,
+                matched_by=None,
+            ),
+        ],
+    )
+    use_case = LoadPersistedPlaylistComparisonUseCase(
+        playlist_repository,
+        item_repository,
+        InMemoryLocalFolderRepository(active_folder),
+        local_song_repository,
+        comparison_repository,
+        comparison_result_repository,
+    )
+
+    persisted_snapshot = use_case.execute()
+
+    assert persisted_snapshot is not None
+    local_songs, comparison_result = persisted_snapshot
+    assert local_song_repository.list_by_folder_calls == [7]
+    assert [song.id for song in local_songs] == [11]
+    assert comparison_result.summary.found_count == 1
+    assert comparison_result.summary.missing_count == 1
+    assert comparison_result.summary.possible_match_count == 0
+    assert comparison_result.summary.total_compared == 2
+    assert comparison_result.items[0].youtube_title == "Song One"
+    assert comparison_result.items[0].local_title == "Song One"
+    assert comparison_result.items[0].score == 100.0
+    assert comparison_result.items[1].comparison_status is ComparisonStatus.MISSING
+    assert comparison_result.items[1].local_song_id is None

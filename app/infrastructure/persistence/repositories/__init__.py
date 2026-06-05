@@ -9,6 +9,12 @@ from app.infrastructure.persistence.repositories.localFolderSqlAlchemyRepository
 from app.infrastructure.persistence.repositories.localSongSqlAlchemyRepository import (
     LocalSongSqlAlchemyRepository,
 )
+from app.infrastructure.persistence.repositories.playlistComparisonResultSqlAlchemyRepository import (
+    PlaylistComparisonResultSqlAlchemyRepository,
+)
+from app.infrastructure.persistence.repositories.playlistComparisonSqlAlchemyRepository import (
+    PlaylistComparisonSqlAlchemyRepository,
+)
 from app.infrastructure.persistence.repositories.sqlAlchemyRepository import (
     SqlAlchemyRepository,
 )
@@ -23,6 +29,8 @@ __all__ = [
     "IgnoredTermSqlAlchemyRepository",
     "LocalFolderSqlAlchemyRepository",
     "LocalSongSqlAlchemyRepository",
+    "PlaylistComparisonResultSqlAlchemyRepository",
+    "PlaylistComparisonSqlAlchemyRepository",
     "SqlAlchemyRepository",
     "YoutubePlaylistItemSqlAlchemyRepository",
     "YoutubePlaylistSqlAlchemyRepository",

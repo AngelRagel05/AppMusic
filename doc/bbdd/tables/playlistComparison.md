@@ -58,4 +58,5 @@ erDiagram
 
 ## Notas
 
-* Normalmente se genera una nueva comparacion al abrir la app y ejecutar la revision.
+* Se genera una nueva comparacion cuando el usuario ejecuta manualmente la accion de comparar.
+* Cada fila actua como cabecera de un snapshot persistido de resultados.

@@ -187,6 +187,7 @@ def test_library_comparison_view_model_emits_start_and_success_feedback() -> Non
             local_songs_use_case.execute(),
             compare_use_case.execute(),
         ),
+        load_persisted_comparison=lambda: None,
     )
     feedbacks: list[LibraryComparisonFeedback] = []
     scheduled_callbacks: list[Callable[[], None]] = []
@@ -249,6 +250,7 @@ def test_library_comparison_view_model_invalidates_cached_comparison_until_next_
             StubUseCase(local_songs).execute(),
             StubUseCase(comparison_result).execute(),
         ),
+        load_persisted_comparison=lambda: None,
     )
     scheduled_callbacks: list[Callable[[], None]] = []
 
@@ -267,3 +269,47 @@ def test_library_comparison_view_model_invalidates_cached_comparison_until_next_
     view_model.invalidateComparison()
 
     assert view_model.isComparisonStale() is True
+
+
+def test_library_comparison_view_model_restores_persisted_snapshot_into_memory_cache() -> None:
+    local_songs = [
+        LocalSongDto(
+            id=1,
+            local_folder_id=2,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            album="Album One",
+            release_year=2024,
+            track_number_album=1,
+            duration_seconds=180.0,
+        )
+    ]
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[],
+    )
+    persisted_loader = StubUseCase((local_songs, comparison_result))
+    view_model = LibraryComparisonViewModel(
+        load_library_comparison=lambda: (
+            StubUseCase(local_songs).execute(),
+            StubUseCase(comparison_result).execute(),
+        ),
+        load_persisted_comparison=persisted_loader.execute,
+    )
+
+    restored = view_model.restorePersistedComparison()
+
+    assert restored is True
+    assert view_model.hasCachedComparison() is True
+    assert view_model.isComparisonStale() is False
+    assert view_model.load_local_songs() == local_songs
+    assert view_model.load_comparison_result() == comparison_result
+    assert len(persisted_loader.calls) == 1

@@ -21,6 +21,8 @@ Faltaba coordinar ambas fuentes en un caso de uso de aplicacion que devolviera r
 * lee canciones locales de la carpeta activa
 * filtra solo `local_song.is_available = true`
 * ejecuta el matcher en memoria por cada item de YouTube
+* crea una cabecera `playlist_comparison`
+* persiste una fila `playlist_comparison_result` por cada item evaluado
 * devuelve `PlaylistComparisonResultDto`
 
 El resultado contiene:
@@ -28,11 +30,10 @@ El resultado contiene:
 * `summary`
 * `items`
 
-No se persiste todavia el resultado de comparacion.
-
 ## Consecuencias
 
 * la comparacion se calcula bajo demanda
 * el flujo queda desacoplado de la UI
-* la primera version evita introducir tablas nuevas para resultados
+* el resultado queda persistido como snapshot reutilizable
 * la disponibilidad de una cancion local influye directamente en el matching
+* cada item conserva su `score` para uso posterior

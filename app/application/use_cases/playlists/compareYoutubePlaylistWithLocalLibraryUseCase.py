@@ -7,7 +7,16 @@ from app.application.dto.playlistComparisonResultDto import PlaylistComparisonRe
 from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
 from app.domain.library.repositories.localSongRepository import LocalSongRepository
+from app.domain.playlists.entities.playlistComparisonResult import (
+    PlaylistComparisonResult,
+)
 from app.domain.playlists.services import matchYoutubePlaylistItemToLocalSongs
+from app.domain.playlists.repositories.playlistComparisonRepository import (
+    PlaylistComparisonRepository,
+)
+from app.domain.playlists.repositories.playlistComparisonResultRepository import (
+    PlaylistComparisonResultRepository,
+)
 from app.domain.playlists.repositories.youtubePlaylistItemRepository import (
     YoutubePlaylistItemRepository,
 )
@@ -24,11 +33,15 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         youtube_playlist_item_repository: YoutubePlaylistItemRepository,
         local_folder_repository: LocalFolderRepository,
         local_song_repository: LocalSongRepository,
+        playlist_comparison_repository: PlaylistComparisonRepository,
+        playlist_comparison_result_repository: PlaylistComparisonResultRepository,
     ) -> None:
         self._youtube_playlist_repository = youtube_playlist_repository
         self._youtube_playlist_item_repository = youtube_playlist_item_repository
         self._local_folder_repository = local_folder_repository
         self._local_song_repository = local_song_repository
+        self._playlist_comparison_repository = playlist_comparison_repository
+        self._playlist_comparison_result_repository = playlist_comparison_result_repository
 
     def execute(self) -> PlaylistComparisonResultDto:
         active_youtube_playlist = self._youtube_playlist_repository.get_active()
@@ -73,6 +86,25 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                     reason=match_result.reason,
                 )
             )
+
+        persisted_comparison = self._playlist_comparison_repository.create(
+            active_youtube_playlist.id,
+            active_local_folder.id,
+        )
+        self._playlist_comparison_result_repository.save_for_comparison(
+            persisted_comparison.id or 0,
+            [
+                PlaylistComparisonResult(
+                    playlist_comparison_id=persisted_comparison.id or 0,
+                    youtube_playlist_item_id=item.youtube_playlist_item_id,
+                    local_song_id=item.local_song_id,
+                    match_status=item.comparison_status.value,
+                    score=item.score,
+                    matched_by=None,
+                )
+                for item in comparison_items
+            ],
+        )
 
         summary = PlaylistComparisonSummaryDto(
             found_count=sum(

@@ -16,6 +16,7 @@ from app.application.use_cases import (
     ListActiveLocalSongsUseCase,
     ListIgnoredTermsUseCase,
     ListLocalFoldersUseCase,
+    LoadPersistedPlaylistComparisonUseCase,
     ListYoutubePlaylistsUseCase,
     ScanLocalFolderUseCase,
     UpdateIgnoredTermUseCase,
@@ -116,7 +117,8 @@ class ApplicationFactory:
             self._executeImportYoutubePlaylistItemsInBackground
         )
         libraryComparisonViewModel = LibraryComparisonViewModel(
-            self._loadLibraryComparisonInBackground
+            self._loadLibraryComparisonInBackground,
+            self._loadPersistedLibraryComparison,
         )
 
         return ServiceRegistry(
@@ -173,7 +175,23 @@ class ApplicationFactory:
                 persistence_registry.youtubePlaylistItemRepository,
                 persistence_registry.localFolderRepository,
                 persistence_registry.localSongRepository,
+                persistence_registry.playlistComparisonRepository,
+                persistence_registry.playlistComparisonResultRepository,
             ).execute()
             return local_songs, comparison_result
+        finally:
+            persistence_registry.session.close()
+
+    def _loadPersistedLibraryComparison(self):
+        persistence_registry = self._persistence_factory.createRegistry()
+        try:
+            return LoadPersistedPlaylistComparisonUseCase(
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.youtubePlaylistItemRepository,
+                persistence_registry.localFolderRepository,
+                persistence_registry.localSongRepository,
+                persistence_registry.playlistComparisonRepository,
+                persistence_registry.playlistComparisonResultRepository,
+            ).execute()
         finally:
             persistence_registry.session.close()

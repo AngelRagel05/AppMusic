@@ -236,7 +236,8 @@ Columnas clave:
 
 Notas:
 
-* normalmente se genera una nueva comparacion al abrir la app y ejecutar la revision
+* se genera una nueva comparacion cuando el usuario ejecuta manualmente la accion de comparar
+* la fila actua como cabecera de un snapshot persistido
 
 ### `playlist_comparison_result`
 
@@ -253,7 +254,7 @@ Columnas clave:
 
 Estados de `match_status`:
 
-* `matched`
+* `found`
 * `missing`
 * `possible_match`
 
