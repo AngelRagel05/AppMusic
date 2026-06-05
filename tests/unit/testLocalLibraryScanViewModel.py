@@ -43,21 +43,22 @@ def runScheduledCallbacks(callbacks: list[Callable[[], None]]) -> None:
 def test_requestScan_emits_start_and_success_feedback() -> None:
     feedbacks: list[LocalLibraryScanFeedback] = []
     scheduled_callbacks: list[Callable[[], None]] = []
+    use_case = ScanLocalFolderUseCaseSpy(
+        progress_events=[
+            ScanLocalFolderProgressDto(processed_song_count=0, total_song_count=2),
+            ScanLocalFolderProgressDto(processed_song_count=1, total_song_count=2),
+        ],
+        result=ScanLocalFolderResultDto(
+            local_folder_id=7,
+            local_folder_name="Jazz",
+            scanned_file_count=2,
+            created_song_count=1,
+            updated_song_count=1,
+            existing_song_count=1,
+        ),
+    )
     view_model = LocalLibraryScanViewModel(
-        ScanLocalFolderUseCaseSpy(
-            progress_events=[
-                ScanLocalFolderProgressDto(processed_song_count=0, total_song_count=2),
-                ScanLocalFolderProgressDto(processed_song_count=1, total_song_count=2),
-            ],
-            result=ScanLocalFolderResultDto(
-                local_folder_id=7,
-                local_folder_name="Jazz",
-                scanned_file_count=2,
-                created_song_count=1,
-                updated_song_count=1,
-                existing_song_count=1,
-            )
-        )
+        use_case.execute
     )
 
     view_model.requestScan(
@@ -101,19 +102,20 @@ def test_requestScan_emits_start_and_success_feedback() -> None:
 def test_requestScan_includes_missing_and_moved_counts_in_success_feedback() -> None:
     feedbacks: list[LocalLibraryScanFeedback] = []
     scheduled_callbacks: list[Callable[[], None]] = []
-    view_model = LocalLibraryScanViewModel(
-        ScanLocalFolderUseCaseSpy(
-            result=ScanLocalFolderResultDto(
-                local_folder_id=7,
-                local_folder_name="Jazz",
-                scanned_file_count=3,
-                created_song_count=1,
-                updated_song_count=1,
-                existing_song_count=0,
-                missing_song_count=1,
-                moved_song_count=1,
-            )
+    use_case = ScanLocalFolderUseCaseSpy(
+        result=ScanLocalFolderResultDto(
+            local_folder_id=7,
+            local_folder_name="Jazz",
+            scanned_file_count=3,
+            created_song_count=1,
+            updated_song_count=1,
+            existing_song_count=0,
+            missing_song_count=1,
+            moved_song_count=1,
         )
+    )
+    view_model = LocalLibraryScanViewModel(
+        use_case.execute
     )
 
     view_model.requestScan(
@@ -138,7 +140,7 @@ def test_requestScan_includes_missing_and_moved_counts_in_success_feedback() -> 
 
 def test_requestScan_emits_error_when_no_active_folder_exists() -> None:
     feedbacks: list[LocalLibraryScanFeedback] = []
-    view_model = LocalLibraryScanViewModel(ScanLocalFolderUseCaseSpy())
+    view_model = LocalLibraryScanViewModel(ScanLocalFolderUseCaseSpy().execute)
 
     view_model.requestScan(
         active_folder=None,
@@ -159,17 +161,18 @@ def test_requestScan_emits_error_when_no_active_folder_exists() -> None:
 def test_requestScan_automatic_does_not_emit_feedback_when_scan_is_already_running() -> None:
     feedbacks: list[LocalLibraryScanFeedback] = []
     scheduled_callbacks: list[Callable[[], None]] = []
-    view_model = LocalLibraryScanViewModel(
-        ScanLocalFolderUseCaseSpy(
-            result=ScanLocalFolderResultDto(
-                local_folder_id=7,
-                local_folder_name="Jazz",
-                scanned_file_count=2,
-                created_song_count=1,
-                updated_song_count=0,
-                existing_song_count=1,
-            )
+    use_case = ScanLocalFolderUseCaseSpy(
+        result=ScanLocalFolderResultDto(
+            local_folder_id=7,
+            local_folder_name="Jazz",
+            scanned_file_count=2,
+            created_song_count=1,
+            updated_song_count=0,
+            existing_song_count=1,
         )
+    )
+    view_model = LocalLibraryScanViewModel(
+        use_case.execute
     )
 
     view_model.requestScan(
@@ -207,12 +210,13 @@ def test_requestScan_automatic_does_not_emit_feedback_when_scan_is_already_runni
 def test_requestScan_emits_clear_error_when_folder_does_not_exist() -> None:
     feedbacks: list[LocalLibraryScanFeedback] = []
     scheduled_callbacks: list[Callable[[], None]] = []
-    view_model = LocalLibraryScanViewModel(
-        ScanLocalFolderUseCaseSpy(
-            error=ValueError(
-                'La carpeta local "Jazz" no existe o ya no esta disponible: C:\\Music\\Missing.'
-            )
+    use_case = ScanLocalFolderUseCaseSpy(
+        error=ValueError(
+            'La carpeta local "Jazz" no existe o ya no esta disponible: C:\\Music\\Missing.'
         )
+    )
+    view_model = LocalLibraryScanViewModel(
+        use_case.execute
     )
 
     view_model.requestScan(
@@ -238,12 +242,13 @@ def test_requestScan_emits_clear_error_when_folder_does_not_exist() -> None:
 def test_requestScan_emits_clear_error_when_folder_cannot_be_read() -> None:
     feedbacks: list[LocalLibraryScanFeedback] = []
     scheduled_callbacks: list[Callable[[], None]] = []
-    view_model = LocalLibraryScanViewModel(
-        ScanLocalFolderUseCaseSpy(
-            error=ValueError(
-                'No se puede leer la carpeta local "Jazz": C:\\Music\\Restricted. Revisa los permisos e intentalo de nuevo.'
-            )
+    use_case = ScanLocalFolderUseCaseSpy(
+        error=ValueError(
+            'No se puede leer la carpeta local "Jazz": C:\\Music\\Restricted. Revisa los permisos e intentalo de nuevo.'
         )
+    )
+    view_model = LocalLibraryScanViewModel(
+        use_case.execute
     )
 
     view_model.requestScan(

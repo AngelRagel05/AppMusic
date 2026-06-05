@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.application.dto.localFolderDto import LocalFolderDto
 from app.application.dto.localSongDto import LocalSongDto
-from app.application.dto.youtubePlaylistItemDto import YoutubePlaylistItemDto
+from app.application.dto.playlistComparisonItemResultDto import (
+    PlaylistComparisonItemResultDto,
+)
+from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
+from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
 from app.presentation.viewmodels.comparison.libraryComparisonViewModel import (
+    LibraryComparisonFeedback,
     LibraryComparisonViewModel,
 )
 from app.presentation.viewmodels.ignoredTerms.ignoredTermsViewModel import (
@@ -17,6 +24,7 @@ from app.presentation.viewmodels.localLibrary.localFolderViewModel import (
 from app.presentation.viewmodels.youtubePlaylists.youtubePlaylistViewModel import (
     YoutubePlaylistViewModel,
 )
+from app.shared.constants.comparison import ComparisonStatus
 
 
 class StubUseCase:
@@ -27,6 +35,11 @@ class StubUseCase:
     def execute(self, payload=None):
         self.calls.append(payload)
         return self.result
+
+
+def runScheduledCallbacks(callbacks: list[Callable[[], None]]) -> None:
+    for callback in callbacks:
+        callback()
 
 
 def test_local_folder_view_model_refresh_state_caches_collection_and_active_folder() -> None:
@@ -130,7 +143,7 @@ def test_ignored_terms_view_model_create_term_refreshes_cached_terms() -> None:
     assert len(list_use_case.calls) == 1
 
 
-def test_library_comparison_view_model_refresh_state_caches_both_lists() -> None:
+def test_library_comparison_view_model_emits_start_and_success_feedback() -> None:
     local_songs = [
         LocalSongDto(
             id=1,
@@ -146,31 +159,111 @@ def test_library_comparison_view_model_refresh_state_caches_both_lists() -> None
             duration_seconds=180.0,
         )
     ]
-    youtube_playlist_items = [
-        YoutubePlaylistItemDto(
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[
+            PlaylistComparisonItemResultDto(
+                youtube_playlist_item_id=1,
+                local_song_id=1,
+                comparison_status=ComparisonStatus.FOUND,
+                youtube_title="Song One",
+                youtube_artist="Artist One",
+                local_title="Song One",
+                local_artist="Artist One",
+                score=99.0,
+                reason="Coincidencia fuerte.",
+            )
+        ],
+    )
+    local_songs_use_case = StubUseCase(local_songs)
+    compare_use_case = StubUseCase(comparison_result)
+    view_model = LibraryComparisonViewModel(
+        load_library_comparison=lambda: (
+            local_songs_use_case.execute(),
+            compare_use_case.execute(),
+        ),
+    )
+    feedbacks: list[LibraryComparisonFeedback] = []
+    scheduled_callbacks: list[Callable[[], None]] = []
+
+    view_model.requestComparison(
+        schedule_on_main_thread=scheduled_callbacks.append,
+        on_feedback=feedbacks.append,
+    )
+    runScheduledCallbacks(scheduled_callbacks)
+
+    assert view_model.load_local_songs() == local_songs
+    assert view_model.load_comparison_result() == comparison_result
+    assert len(local_songs_use_case.calls) == 1
+    assert len(compare_use_case.calls) == 1
+    assert feedbacks == [
+        LibraryComparisonFeedback(
+            status_message="Comparando biblioteca local contra playlist activa...",
+            status_tone="info",
+            local_songs=None,
+            comparison_result=None,
+            last_action_message=None,
+        ),
+        LibraryComparisonFeedback(
+            status_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
+            status_tone="success",
+            local_songs=local_songs,
+            comparison_result=comparison_result,
+            last_action_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
+        ),
+    ]
+
+
+def test_library_comparison_view_model_invalidates_cached_comparison_until_next_success() -> None:
+    local_songs = [
+        LocalSongDto(
             id=1,
-            youtube_playlist_id=5,
-            external_video_id="abc123",
-            position=1,
-            raw_title="Song One",
-            raw_channel_name="Artist One",
-            normalized_title="song one",
-            normalized_artist="artist one",
+            local_folder_id=2,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            album="Album One",
+            release_year=2024,
+            track_number_album=1,
             duration_seconds=180.0,
         )
     ]
-    local_songs_use_case = StubUseCase(local_songs)
-    youtube_items_use_case = StubUseCase(youtube_playlist_items)
-    view_model = LibraryComparisonViewModel(
-        list_active_local_songs_use_case=local_songs_use_case,
-        list_active_youtube_playlist_items_use_case=youtube_items_use_case,
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[],
     )
+    view_model = LibraryComparisonViewModel(
+        load_library_comparison=lambda: (
+            StubUseCase(local_songs).execute(),
+            StubUseCase(comparison_result).execute(),
+        ),
+    )
+    scheduled_callbacks: list[Callable[[], None]] = []
 
-    loaded_local_songs, loaded_youtube_playlist_items = view_model.refreshState()
+    assert view_model.isComparisonStale() is True
+    assert view_model.hasCachedComparison() is False
 
-    assert loaded_local_songs == local_songs
-    assert loaded_youtube_playlist_items == youtube_playlist_items
-    assert view_model.load_local_songs() == local_songs
-    assert view_model.load_youtube_playlist_items() == youtube_playlist_items
-    assert len(local_songs_use_case.calls) == 1
-    assert len(youtube_items_use_case.calls) == 1
+    view_model.requestComparison(
+        schedule_on_main_thread=scheduled_callbacks.append,
+        on_feedback=lambda _feedback: None,
+    )
+    runScheduledCallbacks(scheduled_callbacks)
+
+    assert view_model.hasCachedComparison() is True
+    assert view_model.isComparisonStale() is False
+
+    view_model.invalidateComparison()
+
+    assert view_model.isComparisonStale() is True

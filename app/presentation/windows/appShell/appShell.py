@@ -16,6 +16,7 @@ from app.presentation.features.youtubePlaylists.ui.youtubePlaylistsPage.youtubeP
     YoutubePlaylistsPage,
 )
 from app.presentation.styles import BASE_THEME, createFrame
+from app.presentation.widgets.loadingOverlay import LoadingOverlay
 from app.presentation.windows.sidebar.sidebar.sidebar import Sidebar
 
 
@@ -25,9 +26,10 @@ class AppShell(ctk.CTkFrame):
 
         self.sidebar = Sidebar(self, BASE_THEME)
         self.pagesHost = createFrame(self, theme=BASE_THEME, fg_color=BASE_THEME["bg"])
+        self._shellLoadingOverlay = LoadingOverlay(self.pagesHost, BASE_THEME)
 
         self.overviewPage = OverviewPage(self.pagesHost)
-        self.comparisonPage = ComparisonPage(self.pagesHost)
+        self._comparisonPage: ComparisonPage | None = None
         self.localLibraryPage = LocalLibraryPage(self.pagesHost)
         self.youtubePlaylistsPage = YoutubePlaylistsPage(self.pagesHost)
         self.ignoredTermsPage = IgnoredTermsPage(self.pagesHost)
@@ -41,7 +43,6 @@ class AppShell(ctk.CTkFrame):
 
         for page in (
             self.overviewPage,
-            self.comparisonPage,
             self.localLibraryPage,
             self.youtubePlaylistsPage,
             self.ignoredTermsPage,
@@ -72,13 +73,24 @@ class AppShell(ctk.CTkFrame):
         }
         page = page_map[page_name]
         page.tkraise()
+        if hasattr(page, "activate"):
+            page.activate()
         self.sidebar.setActiveSection(page_name)
         if focus_input and hasattr(page, "focusPrimaryInput"):
             page.focusPrimaryInput()
 
+    @property
+    def comparisonPage(self) -> ComparisonPage:
+        if self._comparisonPage is None:
+            page = ComparisonPage(self.pagesHost)
+            page.grid(row=0, column=0, sticky="nsew")
+            self._comparisonPage = page
+        return self._comparisonPage
+
     def setActiveFolderName(self, name: str) -> None:
         self.overviewPage.setActiveFolderName(name)
-        self.comparisonPage.setActiveFolderName(name)
+        if self._comparisonPage is not None:
+            self._comparisonPage.setActiveFolderName(name)
         self.localLibraryPage.setActiveFolderName(name)
         self.youtubePlaylistsPage.setActiveFolderName(name)
         self.ignoredTermsPage.setActiveFolderName(name)
@@ -86,7 +98,8 @@ class AppShell(ctk.CTkFrame):
 
     def setActivePlaylistTitle(self, title: str) -> None:
         self.overviewPage.setActivePlaylistTitle(title)
-        self.comparisonPage.setActivePlaylistTitle(title)
+        if self._comparisonPage is not None:
+            self._comparisonPage.setActivePlaylistTitle(title)
         self.localLibraryPage.setActivePlaylistTitle(title)
         self.youtubePlaylistsPage.setActivePlaylistTitle(title)
         self.ignoredTermsPage.setActivePlaylistTitle(title)
@@ -102,3 +115,9 @@ class AppShell(ctk.CTkFrame):
 
     def setLastAction(self, value: str) -> None:
         self.overviewPage.setLastAction(value)
+
+    def showShellLoading(self, message: str) -> None:
+        self._shellLoadingOverlay.show("Cargando AppMusic", message)
+
+    def hideShellLoading(self) -> None:
+        self._shellLoadingOverlay.hide()

@@ -17,8 +17,12 @@ class DesktopApplication:
     serviceRegistry: ServiceRegistry
 
     def run(self) -> int:
-        self.controller.initialize()
         self.window.show()
+        self.window.page.showShellLoading(
+            "Preparando vistas, estado local y configuracion activa..."
+        )
+        self.window.window.update_idletasks()
+        self.window.window.after(0, self._initialize_bindings)
 
         try:
             self.window.mainloop()
@@ -26,6 +30,25 @@ class DesktopApplication:
         finally:
             self.controller.shutdown()
             self.serviceRegistry.session.close()
+
+    def _initialize_bindings(self) -> None:
+        self.controller.initializeBindings()
+        self.window.window.after(20, self._initialize_local_library)
+
+    def _initialize_local_library(self) -> None:
+        self.controller.initializeLocalLibrary()
+        self.window.window.after(20, self._initialize_youtube_playlists)
+
+    def _initialize_youtube_playlists(self) -> None:
+        self.controller.initializeYoutubePlaylists()
+        self.window.window.after(20, self._initialize_ignored_terms)
+
+    def _initialize_ignored_terms(self) -> None:
+        try:
+            self.controller.initializeIgnoredTerms()
+            self.controller.finalizeInitialization()
+        finally:
+            self.window.page.hideShellLoading()
 
 
 class PresentationFactory:

@@ -3,7 +3,11 @@ from __future__ import annotations
 from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.application.dto.localFolderDto import LocalFolderDto
 from app.application.dto.localSongDto import LocalSongDto
-from app.application.dto.youtubePlaylistItemDto import YoutubePlaylistItemDto
+from app.application.dto.playlistComparisonItemResultDto import (
+    PlaylistComparisonItemResultDto,
+)
+from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
+from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
 from app.presentation.features.comparison.controller.comparisonController import (
     ComparisonController,
@@ -17,12 +21,16 @@ from app.presentation.features.localLibrary.controller.localLibraryController im
 from app.presentation.viewmodels.localLibrary.localLibraryScanViewModel import (
     LocalLibraryScanFeedback,
 )
+from app.presentation.viewmodels.comparison.libraryComparisonViewModel import (
+    LibraryComparisonFeedback,
+)
 from app.presentation.viewmodels.youtubePlaylists.youtubePlaylistImportViewModel import (
     YoutubePlaylistImportFeedback,
 )
 from app.presentation.features.youtubePlaylists.controller.youtubePlaylistsController import (
     YoutubePlaylistsController,
 )
+from app.shared.constants.comparison import ComparisonStatus
 
 
 class PageCallbackPort:
@@ -362,24 +370,80 @@ class YoutubePlaylistImportViewModelSpy:
 class ComparisonPageSpy:
     def __init__(self) -> None:
         self.local_songs = None
-        self.youtube_playlist_items = None
+        self.comparison_result = None
+        self.status_messages: list[tuple[str, str]] = []
+        self.after_calls: list[int] = []
+        self.loading_messages: list[str] = []
+        self.loading_hidden = 0
+        self.primary_action_callback = None
 
     def showLocalSongs(self, local_songs) -> None:
         self.local_songs = local_songs
 
-    def showYoutubePlaylistItems(self, youtube_playlist_items) -> None:
-        self.youtube_playlist_items = youtube_playlist_items
+    def showComparisonData(self, local_songs, comparison_result) -> None:
+        self.local_songs = local_songs
+        self.comparison_result = comparison_result
+
+    def onPrimaryActionRequested(self, callback) -> None:
+        self.primary_action_callback = callback
+
+    def showComparisonResults(self, comparison_result) -> None:
+        self.comparison_result = comparison_result
+
+    def showComparisonStatusMessage(self, message: str, tone: str = "info") -> None:
+        self.status_messages.append((message, tone))
+
+    def showLoadingState(self, message: str) -> None:
+        self.loading_messages.append(message)
+
+    def hideLoadingState(self) -> None:
+        self.loading_hidden += 1
+
+    def after(self, delay_ms: int, callback) -> None:
+        self.after_calls.append(delay_ms)
+        callback()
 
 
 class LibraryComparisonViewModelSpy:
-    def __init__(self, local_songs=None, youtube_playlist_items=None) -> None:
-        self.local_songs = local_songs or []
-        self.youtube_playlist_items = youtube_playlist_items or []
-        self.refresh_calls = 0
+    def __init__(
+        self,
+        feedbacks: list[LibraryComparisonFeedback] | None = None,
+        *,
+        cached_local_songs=None,
+        cached_comparison_result=None,
+        is_stale: bool = True,
+    ) -> None:
+        self.feedbacks = feedbacks or []
+        self.request_calls = 0
+        self.cached_local_songs = cached_local_songs or []
+        self.cached_comparison_result = cached_comparison_result
+        self.is_stale = is_stale
+        self.invalidate_calls = 0
 
-    def refreshState(self):
-        self.refresh_calls += 1
-        return self.local_songs, self.youtube_playlist_items
+    def requestComparison(
+        self,
+        schedule_on_main_thread,
+        on_feedback,
+    ) -> None:
+        self.request_calls += 1
+        for feedback in self.feedbacks:
+            on_feedback(feedback)
+
+    def load_local_songs(self):
+        return self.cached_local_songs
+
+    def load_comparison_result(self):
+        return self.cached_comparison_result
+
+    def hasCachedComparison(self) -> bool:
+        return self.cached_comparison_result is not None
+
+    def isComparisonStale(self) -> bool:
+        return self.is_stale
+
+    def invalidateComparison(self) -> None:
+        self.invalidate_calls += 1
+        self.is_stale = True
 
 
 def test_local_library_controller_uses_view_model_lookup_for_editing_selected_folder() -> None:
@@ -399,6 +463,7 @@ def test_local_library_controller_uses_view_model_lookup_for_editing_selected_fo
         folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda page_name, focus_input: shown_pages.append((page_name, focus_input)),
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -430,6 +495,7 @@ def test_local_library_controller_does_not_reactivate_active_folder() -> None:
         folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -460,6 +526,7 @@ def test_local_library_controller_sends_visible_name_when_updating_folder() -> N
         folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -505,6 +572,7 @@ def test_local_library_controller_delegates_scan_and_updates_song_count() -> Non
         folder_monitor_worker=folder_monitor_worker,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: recorded_actions.append("invalidate"),
         on_action_recorded=recorded_actions.append,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=song_count_updates.append,
@@ -515,6 +583,7 @@ def test_local_library_controller_delegates_scan_and_updates_song_count() -> Non
     assert scan_view_model.request_calls == 1
     assert scan_view_model.received_active_folder == active_folder
     assert song_count_updates == ["Escaneando...", "2 MP3 detectados"]
+    assert "invalidate" in recorded_actions
     assert recorded_actions[-1] == 'Escaneo completado en "Jazz": 2 MP3 detectados, 1 anadidas, 1 actualizadas y 0 eliminadas.'
     assert page.status_messages[0] == ('Escaneando la biblioteca "Jazz"...', "info")
     assert page.status_messages[-1] == (
@@ -532,6 +601,7 @@ def test_local_library_controller_registers_only_primary_scan_action() -> None:
         folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -560,6 +630,7 @@ def test_local_library_controller_starts_auto_refresh_for_active_folder_on_load(
         folder_monitor_worker=folder_monitor_worker,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -587,6 +658,7 @@ def test_local_library_controller_triggers_scan_when_auto_refresh_detects_change
         folder_monitor_worker=folder_monitor_worker,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -645,6 +717,7 @@ def test_youtube_playlists_controller_does_not_reactivate_active_playlist() -> N
         import_view_model=YoutubePlaylistImportViewModelSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: None,
         on_action_recorded=lambda _message: None,
         on_active_playlist_changed=lambda _title: None,
     )
@@ -664,6 +737,7 @@ def test_youtube_playlists_controller_registers_primary_import_action() -> None:
         import_view_model=YoutubePlaylistImportViewModelSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: None,
         on_action_recorded=lambda _message: None,
         on_active_playlist_changed=lambda _title: None,
     )
@@ -702,6 +776,7 @@ def test_youtube_playlists_controller_delegates_import_and_shows_feedback() -> N
         import_view_model=import_view_model,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: recorded_actions.append("invalidate"),
         on_action_recorded=recorded_actions.append,
         on_active_playlist_changed=lambda _title: None,
     )
@@ -715,11 +790,12 @@ def test_youtube_playlists_controller_delegates_import_and_shows_feedback() -> N
         ('Importacion completada en "Favoritas": 42 items importados, 3 anadidos, 2 actualizados y 1 eliminados.', "success"),
     ]
     assert recorded_actions == [
+        "invalidate",
         'Importacion completada en "Favoritas": 42 items importados, 3 anadidos, 2 actualizados y 1 eliminados.'
     ]
 
 
-def test_youtube_playlists_controller_triggers_auto_import_on_load_for_active_playlist() -> None:
+def test_youtube_playlists_controller_does_not_trigger_import_on_load_for_active_playlist() -> None:
     page = YoutubePlaylistsPageSpy()
     active_playlist = YoutubePlaylistDto(
         id=9,
@@ -735,14 +811,15 @@ def test_youtube_playlists_controller_triggers_auto_import_on_load_for_active_pl
         import_view_model=import_view_model,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: None,
         on_action_recorded=lambda _message: None,
         on_active_playlist_changed=lambda _title: None,
     )
 
     controller.load()
 
-    assert import_view_model.request_calls == 1
-    assert import_view_model.received_active_playlist == active_playlist
+    assert import_view_model.request_calls == 0
+    assert import_view_model.received_active_playlist is None
 
 
 def test_youtube_playlists_controller_does_not_trigger_auto_import_on_load_without_active_playlist() -> None:
@@ -754,6 +831,7 @@ def test_youtube_playlists_controller_does_not_trigger_auto_import_on_load_witho
         import_view_model=import_view_model,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
+        on_comparison_data_changed=lambda: None,
         on_action_recorded=lambda _message: None,
         on_active_playlist_changed=lambda _title: None,
     )
@@ -763,7 +841,7 @@ def test_youtube_playlists_controller_does_not_trigger_auto_import_on_load_witho
     assert import_view_model.request_calls == 0
 
 
-def test_comparison_controller_loads_local_and_playlist_items_into_page() -> None:
+def test_comparison_controller_request_comparison_loads_local_songs_and_matching_results_into_page() -> None:
     page = ComparisonPageSpy()
     local_songs = [
         LocalSongDto(
@@ -780,24 +858,188 @@ def test_comparison_controller_loads_local_and_playlist_items_into_page() -> Non
             duration_seconds=180.0,
         )
     ]
-    youtube_playlist_items = [
-        YoutubePlaylistItemDto(
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[
+            PlaylistComparisonItemResultDto(
+                youtube_playlist_item_id=1,
+                local_song_id=1,
+                comparison_status=ComparisonStatus.FOUND,
+                youtube_title="Song One",
+                youtube_artist="Artist One",
+                local_title="Song One",
+                local_artist="Artist One",
+                score=98.0,
+                reason="Coincidencia fuerte en titulo y artista normalizados.",
+            )
+        ],
+    )
+    view_model = LibraryComparisonViewModelSpy(
+        feedbacks=[
+            LibraryComparisonFeedback(
+                status_message="Comparando biblioteca local contra playlist activa...",
+                status_tone="info",
+            ),
+            LibraryComparisonFeedback(
+                status_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
+                status_tone="success",
+                local_songs=local_songs,
+                comparison_result=comparison_result,
+                last_action_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
+            ),
+        ]
+    )
+    controller = ComparisonController(page=page, view_model=view_model)
+
+    controller.requestComparison()
+
+    assert view_model.request_calls == 1
+    assert page.loading_messages == [
+        "Preparando canciones locales y resultados de comparacion..."
+    ]
+    assert page.loading_hidden == 1
+    assert page.local_songs == local_songs
+    assert page.comparison_result == comparison_result
+    assert page.status_messages == [
+        ("Comparando biblioteca local contra playlist activa...", "info"),
+        ("Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.", "success"),
+    ]
+
+
+def test_comparison_controller_request_comparison_shows_error_feedback_when_comparison_fails() -> None:
+    page = ComparisonPageSpy()
+    view_model = LibraryComparisonViewModelSpy(
+        feedbacks=[
+            LibraryComparisonFeedback(
+                status_message="Comparando biblioteca local contra playlist activa...",
+                status_tone="info",
+            ),
+            LibraryComparisonFeedback(
+                status_message="No hay una biblioteca local activa para comparar.",
+                status_tone="error",
+            ),
+        ]
+    )
+    controller = ComparisonController(page=page, view_model=view_model)
+
+    controller.requestComparison()
+
+    assert view_model.request_calls == 1
+    assert page.loading_messages == [
+        "Preparando canciones locales y resultados de comparacion..."
+    ]
+    assert page.loading_hidden == 1
+    assert page.local_songs is None
+    assert page.comparison_result is None
+    assert page.status_messages == [
+        ("Comparando biblioteca local contra playlist activa...", "info"),
+        ("No hay una biblioteca local activa para comparar.", "error"),
+    ]
+
+
+def test_comparison_controller_reuses_cached_results_without_reloading() -> None:
+    page = ComparisonPageSpy()
+    local_songs = [
+        LocalSongDto(
             id=1,
-            youtube_playlist_id=9,
-            external_video_id="abc123",
-            position=1,
-            raw_title="Song One",
-            raw_channel_name="Artist One",
-            normalized_title="song one",
-            normalized_artist="artist one",
+            local_folder_id=7,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            album="Album One",
+            release_year=2024,
+            track_number_album=1,
             duration_seconds=180.0,
         )
     ]
-    view_model = LibraryComparisonViewModelSpy(local_songs, youtube_playlist_items)
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[],
+    )
+    view_model = LibraryComparisonViewModelSpy(
+        cached_local_songs=local_songs,
+        cached_comparison_result=comparison_result,
+        is_stale=False,
+    )
     controller = ComparisonController(page=page, view_model=view_model)
 
     controller.load()
 
-    assert view_model.refresh_calls == 1
+    assert view_model.request_calls == 0
+    assert page.loading_messages == []
+    assert page.loading_hidden == 0
     assert page.local_songs == local_songs
-    assert page.youtube_playlist_items == youtube_playlist_items
+    assert page.comparison_result == comparison_result
+    assert page.status_messages == []
+
+
+def test_comparison_controller_load_shows_manual_message_without_cached_results() -> None:
+    page = ComparisonPageSpy()
+    view_model = LibraryComparisonViewModelSpy()
+    controller = ComparisonController(page=page, view_model=view_model)
+
+    controller.load()
+
+    assert view_model.request_calls == 0
+    assert page.loading_messages == []
+    assert page.status_messages == [
+        ('Pulsa "Comparar ahora" para cargar la comparacion manualmente.', "info")
+    ]
+
+
+def test_comparison_controller_load_keeps_stale_cache_without_reloading() -> None:
+    page = ComparisonPageSpy()
+    local_songs = [
+        LocalSongDto(
+            id=1,
+            local_folder_id=7,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            album="Album One",
+            release_year=2024,
+            track_number_album=1,
+            duration_seconds=180.0,
+        )
+    ]
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[],
+    )
+    view_model = LibraryComparisonViewModelSpy(
+        cached_local_songs=local_songs,
+        cached_comparison_result=comparison_result,
+        is_stale=True,
+    )
+    controller = ComparisonController(page=page, view_model=view_model)
+
+    controller.load()
+
+    assert view_model.request_calls == 0
+    assert page.local_songs == local_songs
+    assert page.comparison_result == comparison_result
+    assert page.status_messages == [
+        (
+            'Los resultados visibles pueden estar desactualizados. Pulsa "Comparar ahora" para refrescarlos.',
+            "info",
+        )
+    ]

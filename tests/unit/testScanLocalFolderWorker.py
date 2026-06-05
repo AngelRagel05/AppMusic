@@ -39,17 +39,18 @@ def test_start_schedules_success_callback_on_main_thread() -> None:
     received_progress: list[ScanLocalFolderProgressDto] = []
     received_results: list[ScanLocalFolderResultDto] = []
     received_errors: list[Exception] = []
-    worker = ScanLocalFolderWorker(
-        ScanLocalFolderUseCaseSpy(
-            progress_events=[ScanLocalFolderProgressDto(processed_song_count=1, total_song_count=2)],
-            result=ScanLocalFolderResultDto(
-                local_folder_id=7,
-                local_folder_name="Jazz",
-                scanned_file_count=2,
-                created_song_count=1,
-                existing_song_count=1,
-            )
+    use_case = ScanLocalFolderUseCaseSpy(
+        progress_events=[ScanLocalFolderProgressDto(processed_song_count=1, total_song_count=2)],
+        result=ScanLocalFolderResultDto(
+            local_folder_id=7,
+            local_folder_name="Jazz",
+            scanned_file_count=2,
+            created_song_count=1,
+            existing_song_count=1,
         ),
+    )
+    worker = ScanLocalFolderWorker(
+        use_case.execute,
         schedule_on_main_thread=scheduled_callbacks.append,
     )
 
@@ -72,8 +73,11 @@ def test_start_schedules_error_callback_on_main_thread() -> None:
     received_progress: list[ScanLocalFolderProgressDto] = []
     received_results: list[ScanLocalFolderResultDto] = []
     received_errors: list[Exception] = []
+    use_case = ScanLocalFolderUseCaseSpy(
+        error=ValueError("No hay una biblioteca local activa para escanear.")
+    )
     worker = ScanLocalFolderWorker(
-        ScanLocalFolderUseCaseSpy(error=ValueError("No hay una biblioteca local activa para escanear.")),
+        use_case.execute,
         schedule_on_main_thread=scheduled_callbacks.append,
     )
 

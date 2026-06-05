@@ -140,6 +140,7 @@ def createEntry(
     theme: ThemeTokens | None = None,
     width: int = 240,
     placeholder_text: str = "",
+    textvariable=None,
 ) -> ctk.CTkEntry:
     activeTheme = theme or BASE_THEME
     return ctk.CTkEntry(
@@ -152,6 +153,7 @@ def createEntry(
         text_color=activeTheme["text"],
         placeholder_text_color=activeTheme["text_muted"],
         placeholder_text=placeholder_text,
+        textvariable=textvariable,
         font=("Segoe UI", 13),
     )
 

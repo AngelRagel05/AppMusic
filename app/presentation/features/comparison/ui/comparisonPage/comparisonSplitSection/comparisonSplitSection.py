@@ -6,9 +6,19 @@ from typing import Callable
 import customtkinter as ctk
 
 from app.application.dto.localSongDto import LocalSongDto
-from app.application.dto.youtubePlaylistItemDto import YoutubePlaylistItemDto
+from app.application.dto.playlistComparisonItemResultDto import (
+    PlaylistComparisonItemResultDto,
+)
+from app.presentation.features.comparison.comparisonSearch import (
+    filterComparisonItemsByQuery,
+    filterLocalSongsByQuery,
+)
 from app.presentation.features.comparison.comparisonPaginationState import (
     ComparisonPaginationState,
+)
+from app.presentation.features.comparison.comparisonResultFilter import (
+    ALL_COMPARISON_FILTER,
+    filterComparisonItemsByStatus,
 )
 from app.presentation.styles import (
     ActionButton,
@@ -18,11 +28,12 @@ from app.presentation.styles import (
     createOptionMenu,
     createScrollableFrame,
 )
+from app.shared.constants.comparison import ComparisonStatus
 
 
-PAGE_SIZE_VALUES = ("10", "25", "50", "100")
+PAGE_SIZE_VALUES = ("25", "50", "75")
 DEFAULT_PAGE_SIZE = 25
-RENDER_BATCH_SIZE = 5
+RENDER_BATCH_SIZE = 25
 
 
 @dataclass
@@ -46,6 +57,10 @@ class ComparisonColumnState:
 class ComparisonSplitSection(ctk.CTkFrame):
     def __init__(self, parent, theme) -> None:
         self._theme = theme
+        self._allLocalSongs: list[LocalSongDto] = []
+        self._allComparisonItems: list[PlaylistComparisonItemResultDto] = []
+        self._selectedComparisonFilter = ALL_COMPARISON_FILTER
+        self._searchQuery = ""
         super().__init__(parent, fg_color="transparent", corner_radius=0)
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
@@ -61,15 +76,15 @@ class ComparisonSplitSection(ctk.CTkFrame):
         )
         self._localSongsColumn.card.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
-        self._youtubePlaylistItemsColumn = self._buildColumnCard(
-            title="Items de playlist importados",
-            empty_title="Todavia no hay items importados",
-            empty_message="Activa una playlist de YouTube e importala para ver aqui su detalle.",
-            singular_label="item importado",
-            plural_label="items importados",
-            build_row=self._buildYoutubePlaylistItemRow,
+        self._comparisonResultsColumn = self._buildColumnCard(
+            title="Resultados de comparacion",
+            empty_title="Todavia no hay resultados de comparacion",
+            empty_message="Activa una playlist de YouTube y una biblioteca local para comparar.",
+            singular_label="resultado",
+            plural_label="resultados",
+            build_row=self._buildComparisonResultRow,
         )
-        self._youtubePlaylistItemsColumn.card.grid(
+        self._comparisonResultsColumn.card.grid(
             row=0,
             column=1,
             sticky="nsew",
@@ -77,13 +92,34 @@ class ComparisonSplitSection(ctk.CTkFrame):
         )
 
     def showLocalSongs(self, local_songs: list[LocalSongDto]) -> None:
-        self._setItems(self._localSongsColumn, local_songs)
+        self._allLocalSongs = list(local_songs)
+        self._refreshLocalSongsColumn()
 
-    def showYoutubePlaylistItems(
+    def showComparisonData(
         self,
-        youtube_playlist_items: list[YoutubePlaylistItemDto],
+        local_songs: list[LocalSongDto],
+        comparison_items: list[PlaylistComparisonItemResultDto],
     ) -> None:
-        self._setItems(self._youtubePlaylistItemsColumn, youtube_playlist_items)
+        self._allLocalSongs = list(local_songs)
+        self._allComparisonItems = list(comparison_items)
+        self._refreshLocalSongsColumn()
+        self._refreshComparisonResultsColumn()
+
+    def showComparisonResults(
+        self,
+        comparison_items: list[PlaylistComparisonItemResultDto],
+    ) -> None:
+        self._allComparisonItems = list(comparison_items)
+        self._refreshComparisonResultsColumn()
+
+    def setComparisonFilter(self, selected_filter: str) -> None:
+        self._selectedComparisonFilter = selected_filter
+        self._refreshComparisonResultsColumn()
+
+    def setSearchQuery(self, query: str) -> None:
+        self._searchQuery = query
+        self._refreshLocalSongsColumn()
+        self._refreshComparisonResultsColumn()
 
     def _buildColumnCard(
         self,
@@ -201,6 +237,24 @@ class ComparisonSplitSection(ctk.CTkFrame):
         column_state.pagination.setItems(items)
         self._refreshColumn(column_state)
 
+    def _refreshLocalSongsColumn(self) -> None:
+        filtered_local_songs = filterLocalSongsByQuery(
+            self._allLocalSongs,
+            self._searchQuery,
+        )
+        self._setItems(self._localSongsColumn, filtered_local_songs)
+
+    def _refreshComparisonResultsColumn(self) -> None:
+        filtered_comparison_items = filterComparisonItemsByStatus(
+            self._allComparisonItems,
+            self._selectedComparisonFilter,
+        )
+        filtered_comparison_items = filterComparisonItemsByQuery(
+            filtered_comparison_items,
+            self._searchQuery,
+        )
+        self._setItems(self._comparisonResultsColumn, filtered_comparison_items)
+
     def _handlePageSizeChanged(
         self,
         column_state: ComparisonColumnState,
@@ -282,8 +336,6 @@ class ComparisonSplitSection(ctk.CTkFrame):
         meta_parts = [artist]
         if local_song.album:
             meta_parts.append(local_song.album)
-        if local_song.track_number_album > 0:
-            meta_parts.append(f"Pista {local_song.track_number_album}")
 
         createLabel(
             row,
@@ -299,18 +351,14 @@ class ComparisonSplitSection(ctk.CTkFrame):
             text_color=self._theme["text_secondary"],
             font=("Segoe UI", 12),
             wraplength=320,
-        ).pack(anchor="w", padx=16)
-        createLabel(
-            row,
-            local_song.file_name,
-            theme=self._theme,
-            text_color=self._theme["text_muted"],
-            font=("Segoe UI", 11),
-            wraplength=320,
-        ).pack(anchor="w", padx=16, pady=(6, 14))
+        ).pack(anchor="w", padx=16, pady=(0, 14))
         return row
 
-    def _buildYoutubePlaylistItemRow(self, parent, youtube_playlist_item: YoutubePlaylistItemDto):
+    def _buildComparisonResultRow(
+        self,
+        parent,
+        comparison_item: PlaylistComparisonItemResultDto,
+    ):
         row = createFrame(
             parent,
             theme=self._theme,
@@ -324,21 +372,20 @@ class ComparisonSplitSection(ctk.CTkFrame):
         title_row.grid_columnconfigure(0, weight=1)
         createLabel(
             title_row,
-            youtube_playlist_item.raw_title or youtube_playlist_item.normalized_title,
+            comparison_item.youtube_title,
             theme=self._theme,
             font=("Segoe UI", 15, "bold"),
             wraplength=280,
         ).grid(row=0, column=0, sticky="w")
-        createLabel(
-            title_row,
-            f"#{youtube_playlist_item.position}",
-            theme=self._theme,
-            text_color=self._theme["text_muted"],
-            font=("Segoe UI", 12, "bold"),
-        ).grid(row=0, column=1, sticky="e", padx=(12, 0))
+        self._buildStatusBadge(title_row, comparison_item.comparison_status).grid(
+            row=0,
+            column=1,
+            sticky="e",
+            padx=(12, 0),
+        )
         createLabel(
             row,
-            youtube_playlist_item.raw_channel_name or youtube_playlist_item.normalized_artist,
+            comparison_item.youtube_artist,
             theme=self._theme,
             text_color=self._theme["text_secondary"],
             font=("Segoe UI", 12),
@@ -346,13 +393,50 @@ class ComparisonSplitSection(ctk.CTkFrame):
         ).pack(anchor="w", padx=16)
         createLabel(
             row,
-            youtube_playlist_item.external_video_id,
+            self._buildCandidateMessage(comparison_item),
             theme=self._theme,
-            text_color=self._theme["text_muted"],
+            text_color=self._theme["text_secondary"],
             font=("Segoe UI", 11),
             wraplength=320,
         ).pack(anchor="w", padx=16, pady=(6, 14))
         return row
+
+    def _buildStatusBadge(self, parent, status: ComparisonStatus):
+        status_text = {
+            ComparisonStatus.FOUND: "Encontrada",
+            ComparisonStatus.MISSING: "Falta",
+            ComparisonStatus.POSSIBLE_MATCH: "Posible coincidencia",
+        }[status]
+        status_color = {
+            ComparisonStatus.FOUND: self._theme["success"],
+            ComparisonStatus.MISSING: self._theme["danger"],
+            ComparisonStatus.POSSIBLE_MATCH: self._theme["accent"],
+        }[status]
+        badge = createFrame(
+            parent,
+            theme=self._theme,
+            fg_color=self._theme["accent_soft"],
+            corner_radius=int(self._theme["radius_sm"]),
+            border_width=1,
+            border_color=self._theme["border"],
+        )
+        createLabel(
+            badge,
+            status_text,
+            theme=self._theme,
+            text_color=status_color,
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="center", padx=10, pady=6)
+        return badge
+
+    def _buildCandidateMessage(self, comparison_item: PlaylistComparisonItemResultDto) -> str:
+        if comparison_item.local_title and comparison_item.local_artist:
+            return f"Local: {comparison_item.local_title} · {comparison_item.local_artist}"
+        if comparison_item.local_title:
+            return f"Local: {comparison_item.local_title}"
+        if comparison_item.comparison_status is ComparisonStatus.MISSING:
+            return "Local: sin coincidencia encontrada"
+        return "Local: candidata sin metadata completa"
 
     def _showEmptyState(self, parent, title: str, message: str) -> None:
         card = createFrame(

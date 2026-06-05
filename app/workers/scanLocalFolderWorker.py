@@ -5,16 +5,18 @@ from threading import Thread
 
 from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.scanLocalFolderResultDto import ScanLocalFolderResultDto
-from app.application.use_cases import ScanLocalFolderUseCase
 
 
 class ScanLocalFolderWorker:
     def __init__(
         self,
-        scan_local_folder_use_case: ScanLocalFolderUseCase,
+        execute_scan_local_folder: Callable[
+            [Callable[[ScanLocalFolderProgressDto], None]],
+            ScanLocalFolderResultDto,
+        ],
         schedule_on_main_thread: Callable[[Callable[[], None]], None],
     ) -> None:
-        self._scan_local_folder_use_case = scan_local_folder_use_case
+        self._execute_scan_local_folder = execute_scan_local_folder
         self._schedule_on_main_thread = schedule_on_main_thread
         self._thread: Thread | None = None
 
@@ -26,8 +28,8 @@ class ScanLocalFolderWorker:
     ) -> None:
         def run() -> None:
             try:
-                result = self._scan_local_folder_use_case.execute(
-                    on_progress=lambda progress: self._schedule_on_main_thread(
+                result = self._execute_scan_local_folder(
+                    lambda progress: self._schedule_on_main_thread(
                         lambda progress=progress: on_progress(progress)
                     )
                 )

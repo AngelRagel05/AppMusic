@@ -3,8 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from app.application.dto.importYoutubePlaylistItemsResultDto import (
+    ImportYoutubePlaylistItemsResultDto,
+)
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
-from app.application.use_cases import ImportYoutubePlaylistItemsUseCase
 from app.workers import ImportYoutubePlaylistItemsWorker
 
 
@@ -18,11 +20,12 @@ class YoutubePlaylistImportFeedback:
 class YoutubePlaylistImportViewModel:
     def __init__(
         self,
-        import_youtube_playlist_items_use_case: ImportYoutubePlaylistItemsUseCase,
+        execute_import_youtube_playlist_items: Callable[
+            [],
+            ImportYoutubePlaylistItemsResultDto,
+        ],
     ) -> None:
-        self._import_youtube_playlist_items_use_case = (
-            import_youtube_playlist_items_use_case
-        )
+        self._execute_import_youtube_playlist_items = execute_import_youtube_playlist_items
         self._import_in_progress = False
 
     def requestImport(
@@ -59,7 +62,7 @@ class YoutubePlaylistImportViewModel:
             )
         )
         import_worker = ImportYoutubePlaylistItemsWorker(
-            self._import_youtube_playlist_items_use_case,
+            self._execute_import_youtube_playlist_items,
             schedule_on_main_thread=schedule_on_main_thread,
         )
         import_worker.start(

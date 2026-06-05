@@ -36,18 +36,19 @@ def test_start_schedules_success_callback_on_main_thread() -> None:
     scheduled_callbacks: list[Callable[[], None]] = []
     received_results: list[ImportYoutubePlaylistItemsResultDto] = []
     received_errors: list[Exception] = []
+    use_case = ImportYoutubePlaylistItemsUseCaseSpy(
+        result=ImportYoutubePlaylistItemsResultDto(
+            youtube_playlist_id=9,
+            playlist_title="Favoritas",
+            imported_item_count=42,
+            created_item_count=3,
+            updated_item_count=2,
+            existing_item_count=37,
+            removed_item_count=1,
+        )
+    )
     worker = ImportYoutubePlaylistItemsWorker(
-        ImportYoutubePlaylistItemsUseCaseSpy(
-            result=ImportYoutubePlaylistItemsResultDto(
-                youtube_playlist_id=9,
-                playlist_title="Favoritas",
-                imported_item_count=42,
-                created_item_count=3,
-                updated_item_count=2,
-                existing_item_count=37,
-                removed_item_count=1,
-            )
-        ),
+        use_case.execute,
         schedule_on_main_thread=scheduled_callbacks.append,
     )
 
@@ -76,10 +77,11 @@ def test_start_schedules_error_callback_on_main_thread() -> None:
     scheduled_callbacks: list[Callable[[], None]] = []
     received_results: list[ImportYoutubePlaylistItemsResultDto] = []
     received_errors: list[Exception] = []
+    use_case = ImportYoutubePlaylistItemsUseCaseSpy(
+        error=ValueError("No hay una playlist principal activa para importar.")
+    )
     worker = ImportYoutubePlaylistItemsWorker(
-        ImportYoutubePlaylistItemsUseCaseSpy(
-            error=ValueError("No hay una playlist principal activa para importar.")
-        ),
+        use_case.execute,
         schedule_on_main_thread=scheduled_callbacks.append,
     )
 

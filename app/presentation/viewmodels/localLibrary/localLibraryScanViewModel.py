@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from app.application.dto.localFolderDto import LocalFolderDto
 from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.scanLocalFolderResultDto import ScanLocalFolderResultDto
-from app.application.use_cases import ScanLocalFolderUseCase
 from app.workers import ScanLocalFolderWorker
 
 
@@ -19,8 +18,14 @@ class LocalLibraryScanFeedback:
 
 
 class LocalLibraryScanViewModel:
-    def __init__(self, scan_local_folder_use_case: ScanLocalFolderUseCase) -> None:
-        self._scan_local_folder_use_case = scan_local_folder_use_case
+    def __init__(
+        self,
+        execute_scan_local_folder: Callable[
+            [Callable[[ScanLocalFolderProgressDto], None]],
+            ScanLocalFolderResultDto,
+        ],
+    ) -> None:
+        self._execute_scan_local_folder = execute_scan_local_folder
         self._scan_in_progress = False
 
     def requestScan(
@@ -61,7 +66,7 @@ class LocalLibraryScanViewModel:
             )
         )
         scan_worker = ScanLocalFolderWorker(
-            self._scan_local_folder_use_case,
+            self._execute_scan_local_folder,
             schedule_on_main_thread=schedule_on_main_thread,
         )
         scan_worker.start(

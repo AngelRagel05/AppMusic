@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.application.use_cases import (
     ActivateLocalFolderUseCase,
     ActivateYoutubePlaylistUseCase,
+    CompareYoutubePlaylistWithLocalLibraryUseCase,
     CreateIgnoredTermUseCase,
     DeleteIgnoredTermUseCase,
     DeleteLocalFolderUseCase,
@@ -13,7 +14,6 @@ from app.application.use_cases import (
     GetActiveYoutubePlaylistUseCase,
     ImportYoutubePlaylistItemsUseCase,
     ListActiveLocalSongsUseCase,
-    ListActiveYoutubePlaylistItemsUseCase,
     ListIgnoredTermsUseCase,
     ListLocalFoldersUseCase,
     ListYoutubePlaylistsUseCase,
@@ -52,13 +52,9 @@ class ApplicationFactory:
 
     def createServiceRegistry(self) -> ServiceRegistry:
         persistence_registry = self._persistence_factory.createRegistry()
-        scanLocalFolderUseCase = ScanLocalFolderUseCase(
-            persistence_registry.localFolderRepository,
-            persistence_registry.localSongRepository,
-            LocalMusicScanner(),
-            MutagenLocalSongMetadataReader(),
+        localLibraryScanViewModel = LocalLibraryScanViewModel(
+            self._executeScanLocalFolderInBackground
         )
-        localLibraryScanViewModel = LocalLibraryScanViewModel(scanLocalFolderUseCase)
 
         ignoredTermsViewModel = IgnoredTermsViewModel(
             list_use_case=ListIgnoredTermsUseCase(
@@ -117,21 +113,10 @@ class ApplicationFactory:
             ),
         )
         youtubePlaylistImportViewModel = YoutubePlaylistImportViewModel(
-            ImportYoutubePlaylistItemsUseCase(
-                persistence_registry.youtubePlaylistRepository,
-                persistence_registry.youtubePlaylistItemRepository,
-                YtDlpYoutubePlaylistItemsImporter(),
-            )
+            self._executeImportYoutubePlaylistItemsInBackground
         )
         libraryComparisonViewModel = LibraryComparisonViewModel(
-            ListActiveLocalSongsUseCase(
-                persistence_registry.localFolderRepository,
-                persistence_registry.localSongRepository,
-            ),
-            ListActiveYoutubePlaylistItemsUseCase(
-                persistence_registry.youtubePlaylistRepository,
-                persistence_registry.youtubePlaylistItemRepository,
-            ),
+            self._loadLibraryComparisonInBackground
         )
 
         return ServiceRegistry(
@@ -150,3 +135,45 @@ class ApplicationFactory:
             app_name=appName,
             service_registry=service_registry,
         )
+
+    def _executeScanLocalFolderInBackground(self, on_progress) -> object:
+        persistence_registry = self._persistence_factory.createRegistry()
+        try:
+            scan_local_folder_use_case = ScanLocalFolderUseCase(
+                persistence_registry.localFolderRepository,
+                persistence_registry.localSongRepository,
+                LocalMusicScanner(),
+                MutagenLocalSongMetadataReader(),
+            )
+            return scan_local_folder_use_case.execute(on_progress=on_progress)
+        finally:
+            persistence_registry.session.close()
+
+    def _executeImportYoutubePlaylistItemsInBackground(self):
+        persistence_registry = self._persistence_factory.createRegistry()
+        try:
+            import_youtube_playlist_items_use_case = ImportYoutubePlaylistItemsUseCase(
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.youtubePlaylistItemRepository,
+                YtDlpYoutubePlaylistItemsImporter(),
+            )
+            return import_youtube_playlist_items_use_case.execute()
+        finally:
+            persistence_registry.session.close()
+
+    def _loadLibraryComparisonInBackground(self):
+        persistence_registry = self._persistence_factory.createRegistry()
+        try:
+            local_songs = ListActiveLocalSongsUseCase(
+                persistence_registry.localFolderRepository,
+                persistence_registry.localSongRepository,
+            ).execute()
+            comparison_result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.youtubePlaylistItemRepository,
+                persistence_registry.localFolderRepository,
+                persistence_registry.localSongRepository,
+            ).execute()
+            return local_songs, comparison_result
+        finally:
+            persistence_registry.session.close()

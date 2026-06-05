@@ -1,41 +1,121 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
+
 from app.application.dto.localSongDto import LocalSongDto
-from app.application.dto.youtubePlaylistItemDto import YoutubePlaylistItemDto
-from app.application.use_cases import (
-    ListActiveLocalSongsUseCase,
-    ListActiveYoutubePlaylistItemsUseCase,
-)
+from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
+from app.workers import LoadLibraryComparisonWorker
+
+
+@dataclass(frozen=True, slots=True)
+class LibraryComparisonFeedback:
+    status_message: str
+    status_tone: str
+    local_songs: list[LocalSongDto] | None = None
+    comparison_result: PlaylistComparisonResultDto | None = None
+    last_action_message: str | None = None
 
 
 class LibraryComparisonViewModel:
     def __init__(
         self,
-        list_active_local_songs_use_case: ListActiveLocalSongsUseCase,
-        list_active_youtube_playlist_items_use_case: ListActiveYoutubePlaylistItemsUseCase,
+        load_library_comparison: Callable[
+            [],
+            tuple[list[LocalSongDto], PlaylistComparisonResultDto],
+        ],
     ) -> None:
-        self._list_active_local_songs_use_case = list_active_local_songs_use_case
-        self._list_active_youtube_playlist_items_use_case = (
-            list_active_youtube_playlist_items_use_case
-        )
+        self._load_library_comparison = load_library_comparison
         self._local_songs_cache: list[LocalSongDto] = []
-        self._youtube_playlist_items_cache: list[YoutubePlaylistItemDto] = []
+        self._comparison_result_cache: PlaylistComparisonResultDto | None = None
+        self._comparison_in_progress = False
+        self._comparison_is_stale = True
 
-    def refreshState(self) -> tuple[list[LocalSongDto], list[YoutubePlaylistItemDto]]:
-        local_songs = self._list_active_local_songs_use_case.execute()
-        youtube_playlist_items = (
-            self._list_active_youtube_playlist_items_use_case.execute()
+    def requestComparison(
+        self,
+        schedule_on_main_thread: Callable[[Callable[[], None]], None],
+        on_feedback: Callable[[LibraryComparisonFeedback], None],
+    ) -> None:
+        if self._comparison_in_progress:
+            on_feedback(
+                LibraryComparisonFeedback(
+                    status_message="Ya hay una comparacion en curso.",
+                    status_tone="info",
+                )
+            )
+            return
+
+        self._comparison_in_progress = True
+        on_feedback(
+            LibraryComparisonFeedback(
+                status_message="Comparando biblioteca local contra playlist activa...",
+                status_tone="info",
+            )
         )
-        self._local_songs_cache = list(local_songs)
-        self._youtube_playlist_items_cache = list(youtube_playlist_items)
-        return local_songs, youtube_playlist_items
+        comparison_worker = LoadLibraryComparisonWorker(
+            self._load_library_comparison,
+            schedule_on_main_thread=schedule_on_main_thread,
+        )
+        comparison_worker.start(
+            on_finished=lambda local_songs, comparison_result: self._handleCompleted(
+                local_songs,
+                comparison_result,
+                on_feedback,
+            ),
+            on_failed=lambda error: self._handleFailed(error, on_feedback),
+        )
 
     def load_local_songs(self) -> list[LocalSongDto]:
-        if not self._local_songs_cache and not self._youtube_playlist_items_cache:
-            self.refreshState()
         return list(self._local_songs_cache)
 
-    def load_youtube_playlist_items(self) -> list[YoutubePlaylistItemDto]:
-        if not self._local_songs_cache and not self._youtube_playlist_items_cache:
-            self.refreshState()
-        return list(self._youtube_playlist_items_cache)
+    def load_comparison_result(self) -> PlaylistComparisonResultDto | None:
+        return self._comparison_result_cache
+
+    def hasCachedComparison(self) -> bool:
+        return self._comparison_result_cache is not None
+
+    def isComparisonStale(self) -> bool:
+        return self._comparison_is_stale
+
+    def invalidateComparison(self) -> None:
+        self._comparison_is_stale = True
+
+    def _handleCompleted(
+        self,
+        local_songs: list[LocalSongDto],
+        comparison_result: PlaylistComparisonResultDto,
+        on_feedback: Callable[[LibraryComparisonFeedback], None],
+    ) -> None:
+        self._comparison_in_progress = False
+        self._local_songs_cache = list(local_songs)
+        self._comparison_result_cache = comparison_result
+        self._comparison_is_stale = False
+        summary = comparison_result.summary
+        message = (
+            "Comparacion completada: "
+            f"{summary.found_count} encontradas, "
+            f"{summary.possible_match_count} posibles coincidencias y "
+            f"{summary.missing_count} faltan."
+        )
+        on_feedback(
+            LibraryComparisonFeedback(
+                status_message=message,
+                status_tone="success",
+                local_songs=list(local_songs),
+                comparison_result=comparison_result,
+                last_action_message=message,
+            )
+        )
+
+    def _handleFailed(
+        self,
+        error: Exception,
+        on_feedback: Callable[[LibraryComparisonFeedback], None],
+    ) -> None:
+        self._comparison_in_progress = False
+        on_feedback(
+            LibraryComparisonFeedback(
+                status_message=str(error),
+                status_tone="error",
+            )
+        )

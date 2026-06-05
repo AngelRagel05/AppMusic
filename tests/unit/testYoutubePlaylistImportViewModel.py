@@ -39,18 +39,19 @@ def runScheduledCallbacks(callbacks: list[Callable[[], None]]) -> None:
 def test_requestImport_emits_start_and_success_feedback() -> None:
     feedbacks: list[YoutubePlaylistImportFeedback] = []
     scheduled_callbacks: list[Callable[[], None]] = []
-    view_model = YoutubePlaylistImportViewModel(
-        ImportYoutubePlaylistItemsUseCaseSpy(
-            result=ImportYoutubePlaylistItemsResultDto(
-                youtube_playlist_id=9,
-                playlist_title="Favoritas",
-                imported_item_count=42,
-                created_item_count=3,
-                updated_item_count=2,
-                existing_item_count=37,
-                removed_item_count=1,
-            )
+    use_case = ImportYoutubePlaylistItemsUseCaseSpy(
+        result=ImportYoutubePlaylistItemsResultDto(
+            youtube_playlist_id=9,
+            playlist_title="Favoritas",
+            imported_item_count=42,
+            created_item_count=3,
+            updated_item_count=2,
+            existing_item_count=37,
+            removed_item_count=1,
         )
+    )
+    view_model = YoutubePlaylistImportViewModel(
+        use_case.execute
     )
 
     view_model.requestImport(
@@ -82,7 +83,7 @@ def test_requestImport_emits_start_and_success_feedback() -> None:
 
 def test_requestImport_emits_error_when_no_active_playlist_exists() -> None:
     feedbacks: list[YoutubePlaylistImportFeedback] = []
-    view_model = YoutubePlaylistImportViewModel(ImportYoutubePlaylistItemsUseCaseSpy())
+    view_model = YoutubePlaylistImportViewModel(ImportYoutubePlaylistItemsUseCaseSpy().execute)
 
     view_model.requestImport(
         active_playlist=None,
@@ -102,10 +103,11 @@ def test_requestImport_emits_error_when_no_active_playlist_exists() -> None:
 def test_requestImport_emits_import_error_feedback() -> None:
     feedbacks: list[YoutubePlaylistImportFeedback] = []
     scheduled_callbacks: list[Callable[[], None]] = []
+    use_case = ImportYoutubePlaylistItemsUseCaseSpy(
+        error=ValueError("La playlist no puede leerse o no esta disponible.")
+    )
     view_model = YoutubePlaylistImportViewModel(
-        ImportYoutubePlaylistItemsUseCaseSpy(
-            error=ValueError("La playlist no puede leerse o no esta disponible.")
-        )
+        use_case.execute
     )
 
     view_model.requestImport(

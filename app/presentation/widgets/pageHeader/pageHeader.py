@@ -8,7 +8,7 @@ from app.presentation.styles import ActionButton, Signal, createFrame, createLab
 class PageHeader(ctk.CTkFrame):
     def __init__(self, parent, title: str, theme, subtitle: str | None = None) -> None:
         self._theme = theme
-        super().__init__(parent, fg_color="transparent", corner_radius=0)
+        super().__init__(parent, fg_color=self._theme["bg"], corner_radius=0)
         self.secondaryActionRequested = Signal()
         self.primaryActionRequested = Signal()
 
@@ -16,7 +16,7 @@ class PageHeader(ctk.CTkFrame):
 
         self.grid_columnconfigure(0, weight=1)
 
-        titleGroup = createFrame(self, theme=self._theme, fg_color="transparent")
+        titleGroup = createFrame(self, theme=self._theme, fg_color=self._theme["bg"])
         titleGroup.grid(row=0, column=0, sticky="w")
         self.titleLabel = createLabel(
             titleGroup,
@@ -41,7 +41,7 @@ class PageHeader(ctk.CTkFrame):
         self.secondaryButton.widget.grid(row=0, column=1, sticky="e", padx=(0, 12))
         self.primaryButton.widget.grid(row=0, column=2, sticky="e")
 
-        contextRow = createFrame(self, theme=self._theme, fg_color="transparent")
+        contextRow = createFrame(self, theme=self._theme, fg_color=self._theme["bg"])
         contextRow.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(20, 0))
         self.activeFolderBadge = self._build_context_badge(
             contextRow,
