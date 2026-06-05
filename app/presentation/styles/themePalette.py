@@ -35,6 +35,21 @@ BASE_THEME: ThemeTokens = {
 }
 
 PAGE_THEME_OVERRIDES: dict[str, ThemeTokens] = {
+    "comparison": {
+        "panel": "#1C1C1C",
+        "surface": "#191919",
+        "hover": "#252525",
+        "border": "#2C2C2C",
+        "radius_sm": 4,
+        "radius_md": 6,
+        "radius_lg": 6,
+        "page_padding": 20,
+        "title_size": 22,
+        "subtitle_size": 13,
+        "label_size": 11,
+        "value_size": 18,
+        "button_height": 32,
+    },
     "overview": {},
     "localLibrary": {},
     "youtubePlaylists": {},

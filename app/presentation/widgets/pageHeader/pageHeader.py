@@ -22,7 +22,7 @@ class PageHeader(ctk.CTkFrame):
             titleGroup,
             title,
             theme=self._theme,
-            font=("Segoe UI", 28, "bold"),
+            font=("Segoe UI", int(self._theme["title_size"]), "bold"),
         )
         self.titleLabel.pack(anchor="w")
         self.subtitleLabel = createLabel(
@@ -30,15 +30,15 @@ class PageHeader(ctk.CTkFrame):
             self._subtitleText,
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 14),
+            font=("Segoe UI", int(self._theme["subtitle_size"])),
         )
-        self.subtitleLabel.pack(anchor="w", pady=(6, 0))
+        self.subtitleLabel.pack(anchor="w", pady=(4, 0))
 
         self.primaryButton = ActionButton(self, theme=self._theme, variant="primary")
         self.primaryButton.clicked.connect(self.primaryActionRequested.emit)
         self.secondaryButton = ActionButton(self, theme=self._theme, variant="secondary")
         self.secondaryButton.clicked.connect(self.secondaryActionRequested.emit)
-        self.secondaryButton.widget.grid(row=0, column=1, sticky="e", padx=(0, 12))
+        self.secondaryButton.widget.grid(row=0, column=1, sticky="e", padx=(0, 8))
         self.primaryButton.widget.grid(row=0, column=2, sticky="e")
 
     def setTitle(self, title: str) -> None:

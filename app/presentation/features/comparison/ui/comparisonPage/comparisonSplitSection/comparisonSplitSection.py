@@ -37,6 +37,7 @@ DEFAULT_PAGE_SIZE = 25
 RENDER_BATCH_SIZE = 25
 FAST_MOUSE_WHEEL_UNITS = 4
 SCROLL_INCREMENT_PIXELS = 36
+ROW_HEIGHT = 32
 
 
 @dataclass
@@ -53,8 +54,10 @@ class ComparisonColumnState:
     emptyTitle: str
     emptyMessage: str
     buildRow: Callable
+    rowKeyAccessor: Callable
     pagination: ComparisonPaginationState
     renderToken: int = 0
+    selectedItemKey: object | None = None
 
 
 class ComparisonSplitSection(ctk.CTkFrame):
@@ -76,8 +79,9 @@ class ComparisonSplitSection(ctk.CTkFrame):
             singular_label="canción local",
             plural_label="canciones locales",
             build_row=self._buildLocalSongRow,
+            row_key_accessor=lambda local_song: local_song.id or local_song.file_path,
         )
-        self._localSongsColumn.card.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        self._localSongsColumn.card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
 
         self._comparisonResultsColumn = self._buildColumnCard(
             title="Resultados de comparación",
@@ -86,12 +90,13 @@ class ComparisonSplitSection(ctk.CTkFrame):
             singular_label="resultado",
             plural_label="resultados",
             build_row=self._buildComparisonResultRow,
+            row_key_accessor=lambda comparison_item: comparison_item.youtube_playlist_item_id,
         )
         self._comparisonResultsColumn.card.grid(
             row=0,
             column=1,
             sticky="nsew",
-            padx=(10, 0),
+            padx=(6, 0),
         )
 
     def showLocalSongs(self, local_songs: list[LocalSongDto]) -> None:
@@ -133,6 +138,7 @@ class ComparisonSplitSection(ctk.CTkFrame):
         singular_label: str,
         plural_label: str,
         build_row: Callable,
+        row_key_accessor: Callable,
     ) -> ComparisonColumnState:
         card = createFrame(
             self,
@@ -146,32 +152,32 @@ class ComparisonSplitSection(ctk.CTkFrame):
         card.grid_columnconfigure(0, weight=1)
 
         header = createFrame(card, theme=self._theme, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="ew", padx=20, pady=(18, 10))
+        header.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 2))
         header.grid_columnconfigure(0, weight=1)
         createLabel(
             header,
             title,
             theme=self._theme,
-            font=("Segoe UI", 18, "bold"),
+            font=("Segoe UI", 15, "bold"),
         ).grid(row=0, column=0, sticky="w")
         count_label = createLabel(
             header,
             "0",
             theme=self._theme,
             text_color=self._theme["text_muted"],
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", 11),
         )
         count_label.grid(row=0, column=1, sticky="e")
 
         controls = createFrame(card, theme=self._theme, fg_color="transparent")
-        controls.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 12))
+        controls.grid(row=1, column=0, sticky="ew", padx=8, pady=(0, 4))
         controls.grid_columnconfigure(0, weight=1)
         page_label = createLabel(
             controls,
             "Sin resultados",
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", 11),
         )
         page_label.grid(row=0, column=0, sticky="w")
 
@@ -179,10 +185,10 @@ class ComparisonSplitSection(ctk.CTkFrame):
         controls_right.grid(row=0, column=1, sticky="e")
         createLabel(
             controls_right,
-            "Por página",
+            "Por pag.",
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 12),
+            font=("Segoe UI", 11),
         ).pack(side="left", padx=(0, 8))
         page_size_variable = ctk.StringVar(value=str(DEFAULT_PAGE_SIZE))
         page_size_menu = createOptionMenu(
@@ -190,28 +196,31 @@ class ComparisonSplitSection(ctk.CTkFrame):
             page_size_variable,
             values=PAGE_SIZE_VALUES,
             theme=self._theme,
-            width=86,
+            width=70,
         )
-        page_size_menu.pack(side="left", padx=(0, 12))
+        page_size_menu.configure(font=("Segoe UI", 11))
+        page_size_menu.pack(side="left", padx=(0, 8))
         previous_button = ActionButton(
             controls_right,
-            text="Anterior",
+            text="< Anterior",
             variant="secondary",
             theme=self._theme,
-            height=34,
+            height=28,
         )
-        previous_button.widget.pack(side="left", padx=(0, 8))
+        previous_button.widget.configure(width=84, font=("Segoe UI", 11))
+        previous_button.widget.pack(side="left", padx=(0, 6))
         next_button = ActionButton(
             controls_right,
-            text="Siguiente",
+            text="Siguiente >",
             variant="secondary",
             theme=self._theme,
-            height=34,
+            height=28,
         )
+        next_button.widget.configure(width=84, font=("Segoe UI", 11))
         next_button.widget.pack(side="left")
 
         rows_host = createScrollableFrame(card, theme=self._theme, fg_color="transparent")
-        rows_host.grid(row=2, column=0, sticky="nsew", padx=20, pady=(0, 18))
+        rows_host.grid(row=2, column=0, sticky="nsew", padx=8, pady=(0, 8))
 
         column_state = ComparisonColumnState(
             card=card,
@@ -226,6 +235,7 @@ class ComparisonSplitSection(ctk.CTkFrame):
             emptyTitle=empty_title,
             emptyMessage=empty_message,
             buildRow=build_row,
+            rowKeyAccessor=row_key_accessor,
             pagination=ComparisonPaginationState(DEFAULT_PAGE_SIZE),
         )
         previous_button.clicked.connect(lambda: self._handlePreviousPageRequested(column_state))
@@ -299,8 +309,8 @@ class ComparisonSplitSection(ctk.CTkFrame):
             range_start, range_end = column_state.pagination.visibleRange
             column_state.pageLabel.configure(
                 text=(
-                    f"Pagina {column_state.pagination.currentPage}/{column_state.pagination.totalPages}"
-                    f" · {range_start}-{range_end}"
+                    f"Pág. {column_state.pagination.currentPage}/{column_state.pagination.totalPages}"
+                    f"  {range_start}-{range_end}"
                 )
             )
 
@@ -319,9 +329,15 @@ class ComparisonSplitSection(ctk.CTkFrame):
 
         end_index = min(start_index + RENDER_BATCH_SIZE, len(items))
         for item in items[start_index:end_index]:
-            row = column_state.buildRow(column_state.rowsHost, item)
-            self._bindFastScrollToContent(row, column_state.rowsHost)
-            row.pack(fill="x", pady=(0, 12))
+            row_key = column_state.rowKeyAccessor(item)
+            row = column_state.buildRow(
+                column_state.rowsHost,
+                item,
+                column_state.selectedItemKey == row_key,
+            )
+            row._comparison_row_key = row_key
+            self._bindRowInteractivity(column_state, row, row_key)
+            row.pack(fill="x")
 
         if end_index < len(items):
             column_state.rowsHost.after(
@@ -329,83 +345,80 @@ class ComparisonSplitSection(ctk.CTkFrame):
                 lambda: self._appendRowsChunk(column_state, items, end_index, render_token),
             )
 
-    def _buildLocalSongRow(self, parent, local_song: LocalSongDto):
+    def _buildLocalSongRow(self, parent, local_song: LocalSongDto, is_selected: bool):
         row = createFrame(
             parent,
             theme=self._theme,
-            fg_color=self._theme["surface"],
-            border_width=1,
-            border_color=self._theme["border"],
-            corner_radius=int(self._theme["radius_md"]),
+            fg_color=self._rowColor(is_selected),
+            corner_radius=int(self._theme["radius_sm"]),
         )
+        row.grid_columnconfigure(0, weight=1)
+        row.grid_columnconfigure(1, weight=0)
+        row.grid_propagate(False)
+        row.configure(height=ROW_HEIGHT)
+
         title = local_song.title or local_song.file_name
         artist = local_song.artist or "Artista desconocido"
-        meta_parts = [artist]
-        if local_song.album:
-            meta_parts.append(local_song.album)
-
         createLabel(
             row,
             title,
             theme=self._theme,
-            font=("Segoe UI", 15, "bold"),
-            wraplength=320,
-        ).pack(anchor="w", padx=16, pady=(14, 6))
+            font=("Segoe UI", 12),
+            text_color=self._theme["text"],
+            wraplength=0,
+        ).grid(row=0, column=0, sticky="ew", padx=(6, 8), pady=(4, 3))
         createLabel(
             row,
-            " · ".join(meta_parts),
+            artist,
             theme=self._theme,
-            text_color=self._theme["text_secondary"],
             font=("Segoe UI", 12),
-            wraplength=320,
-        ).pack(anchor="w", padx=16, pady=(0, 14))
+            text_color=self._theme["text_secondary"],
+            anchor="e",
+            justify="right",
+            wraplength=0,
+        ).grid(row=0, column=1, sticky="e", padx=(8, 6), pady=(4, 3))
+        self._buildRowSeparator(row).grid(row=1, column=0, sticky="ew")
+        self._buildRowSeparator(row).grid(row=1, column=1, sticky="ew")
         return row
 
     def _buildComparisonResultRow(
         self,
         parent,
         comparison_item: PlaylistComparisonItemResultDto,
+        is_selected: bool,
     ):
         row = createFrame(
             parent,
             theme=self._theme,
-            fg_color=self._theme["surface"],
-            border_width=1,
-            border_color=self._theme["border"],
-            corner_radius=int(self._theme["radius_md"]),
+            fg_color=self._rowColor(is_selected),
+            corner_radius=int(self._theme["radius_sm"]),
         )
+        row.grid_columnconfigure(0, weight=1)
         title_row = createFrame(row, theme=self._theme, fg_color="transparent")
-        title_row.pack(fill="x", padx=16, pady=(14, 6))
+        title_row.grid(row=0, column=0, sticky="ew", padx=6, pady=(2, 0))
         title_row.grid_columnconfigure(0, weight=1)
         createLabel(
             title_row,
-            comparison_item.youtube_title,
+            f"{comparison_item.youtube_title} - {comparison_item.youtube_artist}",
             theme=self._theme,
-            font=("Segoe UI", 15, "bold"),
-            wraplength=280,
+            font=("Segoe UI", 11),
+            wraplength=0,
         ).grid(row=0, column=0, sticky="w")
         self._buildStatusBadge(title_row, comparison_item.comparison_status).grid(
             row=0,
             column=1,
             sticky="e",
-            padx=(12, 0),
+            padx=(6, 0),
         )
-        createLabel(
-            row,
-            comparison_item.youtube_artist,
-            theme=self._theme,
-            text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 12),
-            wraplength=320,
-        ).pack(anchor="w", padx=16)
         createLabel(
             row,
             self._buildCandidateMessage(comparison_item),
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 11),
-            wraplength=320,
-        ).pack(anchor="w", padx=16, pady=(6, 14))
+            font=("Segoe UI", 10),
+            wraplength=0,
+        ).grid(row=1, column=0, sticky="ew", padx=6, pady=(0, 3))
+        self._buildRowSeparator(row).grid(row=2, column=0, sticky="ew")
         return row
 
     def _buildStatusBadge(self, parent, status: ComparisonStatus):
@@ -424,16 +437,15 @@ class ComparisonSplitSection(ctk.CTkFrame):
             theme=self._theme,
             fg_color=self._theme["accent_soft"],
             corner_radius=int(self._theme["radius_sm"]),
-            border_width=1,
-            border_color=self._theme["border"],
+            border_width=0,
         )
         createLabel(
             badge,
             status_text,
             theme=self._theme,
             text_color=status_color,
-            font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="center", padx=10, pady=6)
+            font=("Segoe UI", 10, "bold"),
+        ).pack(anchor="center", padx=4, pady=1)
         return badge
 
     def _buildCandidateMessage(self, comparison_item: PlaylistComparisonItemResultDto) -> str:
@@ -457,23 +469,43 @@ class ComparisonSplitSection(ctk.CTkFrame):
         canvas.bind("<Button-4>", lambda event: self._handleMouseWheel(rows_host, event))
         canvas.bind("<Button-5>", lambda event: self._handleMouseWheel(rows_host, event))
 
-    def _bindFastScrollToContent(
+    def _bindRowInteractivity(
         self,
-        widget,
-        rows_host: ctk.CTkScrollableFrame,
+        column_state: ComparisonColumnState,
+        row,
+        row_key: object,
     ) -> None:
+        rows_host = column_state.rowsHost
+        def apply_color(color: str) -> None:
+            row.configure(fg_color=color)
+
+        def handle_enter(_event) -> None:
+            is_selected = column_state.selectedItemKey == row_key
+            apply_color(self._rowHoverColor(is_selected))
+
+        def handle_leave(_event) -> None:
+            is_selected = column_state.selectedItemKey == row_key
+            apply_color(self._rowColor(is_selected))
+
+        def handle_select(_event) -> None:
+            column_state.selectedItemKey = row_key
+            self._syncSelectionStyles(column_state)
+
+        bindRecursive(row, "<Enter>", handle_enter)
+        bindRecursive(row, "<Leave>", handle_leave)
+        bindRecursive(row, "<Button-1>", handle_select)
         bindRecursive(
-            widget,
+            row,
             "<MouseWheel>",
             lambda event: self._handleMouseWheel(rows_host, event),
         )
         bindRecursive(
-            widget,
+            row,
             "<Button-4>",
             lambda event: self._handleMouseWheel(rows_host, event),
         )
         bindRecursive(
-            widget,
+            row,
             "<Button-5>",
             lambda event: self._handleMouseWheel(rows_host, event),
         )
@@ -507,7 +539,7 @@ class ComparisonSplitSection(ctk.CTkFrame):
         card = createFrame(
             parent,
             theme=self._theme,
-            fg_color=self._theme["surface"],
+            fg_color="transparent",
             border_width=1,
             border_color=self._theme["border"],
             corner_radius=int(self._theme["radius_md"]),
@@ -516,15 +548,40 @@ class ComparisonSplitSection(ctk.CTkFrame):
             card,
             title,
             theme=self._theme,
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", 14, "bold"),
             wraplength=320,
-        ).pack(anchor="w", padx=16, pady=(16, 8))
+        ).pack(anchor="w", padx=10, pady=(10, 4))
         createLabel(
             card,
             message,
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 12),
+            font=("Segoe UI", 11),
             wraplength=320,
-        ).pack(anchor="w", padx=16, pady=(0, 16))
+        ).pack(anchor="w", padx=10, pady=(0, 10))
         card.pack(fill="x")
+
+    def _buildRowSeparator(self, parent):
+        return ctk.CTkFrame(
+            parent,
+            fg_color=self._theme["border"],
+            corner_radius=0,
+            height=1,
+            border_width=0,
+        )
+
+    def _rowColor(self, is_selected: bool) -> str:
+        if is_selected:
+            return self._theme["accent_soft"]
+        return "transparent"
+
+    def _rowHoverColor(self, is_selected: bool) -> str:
+        if is_selected:
+            return self._theme["accent_soft"]
+        return self._theme["hover"]
+
+    def _syncSelectionStyles(self, column_state: ComparisonColumnState) -> None:
+        for child in column_state.rowsHost.winfo_children():
+            row_key = getattr(child, "_comparison_row_key", None)
+            is_selected = row_key == column_state.selectedItemKey
+            child.configure(fg_color=self._rowColor(is_selected))
