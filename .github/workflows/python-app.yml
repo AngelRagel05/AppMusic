@@ -43,8 +43,8 @@ jobs:
 
       - name: Ejecutar tests si existen
         run: |
-          if find tests -name "test_*.py" -o -name "*_test.py" | grep -q .; then
+          if find tests -name "test*.py" | grep -q .; then
             pytest
           else
-            echo "No hay tests todavía"
+            echo "No hay tests detectados con el patron test*.py"
           fi
