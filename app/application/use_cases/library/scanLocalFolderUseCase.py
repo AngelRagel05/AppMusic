@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from pathlib import Path
+from pathlib import PureWindowsPath
 from typing import Protocol
 
 from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
@@ -190,7 +190,7 @@ class ScanLocalFolderUseCase:
             local_folder_id=active_local_folder_id,
             download_id=existing_song.download_id if existing_song is not None else None,
             file_path=filePath,
-            file_name=Path(filePath).name,
+            file_name=PureWindowsPath(filePath).name,
             is_available=True,
             title=metadata.title,
             artist=metadata.artist,
@@ -206,7 +206,7 @@ class ScanLocalFolderUseCase:
         metadata: LocalSongMetadataDto,
         missing_candidate_songs: Iterable[LocalSong],
     ) -> LocalSong | None:
-        targetSignature = self._buildMoveSignature(Path(filePath).name, metadata)
+        targetSignature = self._buildMoveSignature(PureWindowsPath(filePath).name, metadata)
         matchingSongs = [
             song
             for song in missing_candidate_songs

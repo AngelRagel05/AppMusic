@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import PureWindowsPath
 import re
 
 from mutagen import File as MutagenFile
@@ -12,7 +12,7 @@ from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
 
 class MutagenLocalSongMetadataReader:
     def readMetadata(self, filePath: str) -> LocalSongMetadataDto:
-        path = Path(filePath)
+        path = PureWindowsPath(filePath)
         fallbackTitle = path.stem
 
         try:
