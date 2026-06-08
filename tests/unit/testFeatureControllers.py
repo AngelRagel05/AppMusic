@@ -1044,7 +1044,7 @@ def test_comparison_controller_request_comparison_shows_error_feedback_when_comp
     assert page.confirmation_requests == 1
     assert view_model.request_calls == 1
     assert page.loading_messages == [
-        "Recalculando resultados y actualizando la base de datos..."
+        'Recalculando la comparacion entre "Favoritas" y "Active"...'
     ]
     assert page.loading_hidden == 1
     assert page.local_songs is None
