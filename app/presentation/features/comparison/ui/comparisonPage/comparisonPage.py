@@ -23,6 +23,7 @@ from app.presentation.features.comparison.ui.comparisonPage.comparisonSplitSecti
 )
 from app.presentation.styles import (
     applyButtonStyle,
+    clearChildren,
     createEntry,
     createFrame,
     createLabel,
