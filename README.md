@@ -25,6 +25,26 @@ migrations/
 .\.venv\Scripts\python.exe -m app.main
 ```
 
+### Comprobar front
+
+Comando portable:
+
+```powershell
+python scripts/verifyFront.py
+```
+
+Atajo en Windows:
+
+```powershell
+.\runFrontChecks.ps1
+```
+
+Este chequeo ejecuta:
+
+* `compileall` sobre `presentation`, workers y bootstrap de presentacion
+* `ruff` solo con errores graves (`E9`, `F63`, `F7`, `F82`)
+* `pytest` sobre controllers, viewmodels, workers de UI y helpers visuales
+
 ### Build a EXE
 
 Todavia no estamos generando el `.exe`, pero la base ya esta preparada para hacerlo con `PyInstaller` cuando toque.

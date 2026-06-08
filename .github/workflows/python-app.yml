@@ -30,12 +30,12 @@ jobs:
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest
+          pip install ruff pytest
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Comprobar errores graves con flake8
+      - name: Verificar front
         run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          python scripts/verifyFront.py
 
       - name: Comprobar que el proyecto compila
         run: |
