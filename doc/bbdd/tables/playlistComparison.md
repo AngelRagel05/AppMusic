@@ -60,3 +60,4 @@ erDiagram
 
 * Se genera una nueva comparacion cuando el usuario ejecuta manualmente la accion de comparar.
 * Cada fila actua como cabecera de un snapshot persistido de resultados.
+* Las filas se conservan para permitir un historico de comparaciones por combinacion de `youtube_playlist` y `local_folder`.

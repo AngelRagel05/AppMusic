@@ -23,9 +23,13 @@ Esa accion:
 * recalcula el matching completo para la playlist y biblioteca activas
 * genera un nuevo snapshot persistido en BBDD
 * actualiza el resultado visible con la ultima comparacion guardada
+* valida antes de arrancar que exista una playlist activa y una biblioteca activa
+* confirma explicitamente al usuario que la ejecucion se hara contra esa pareja activa
 
 ## Consecuencias
 
 * entrar en la pantalla deja de disparar trabajo pesado
 * la navegacion es mas estable y predecible
 * el usuario controla cuando asumir el coste de recalculo
+* se evita lanzar el worker cuando falta contexto activo
+* el feedback de confirmacion deja claro que el alcance siempre es la playlist activa y la biblioteca activa

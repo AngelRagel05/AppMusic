@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 
 from app.application.dto.ignoredTermDto import IgnoredTermDto
 from app.application.dto.localFolderDto import LocalFolderDto
 from app.application.dto.localSongDto import LocalSongDto
+from app.application.dto.playlistComparisonHistoryEntryDto import (
+    PlaylistComparisonHistoryEntryDto,
+)
 from app.application.dto.playlistComparisonItemResultDto import (
     PlaylistComparisonItemResultDto,
 )
@@ -182,10 +186,21 @@ def test_library_comparison_view_model_emits_start_and_success_feedback() -> Non
     )
     local_songs_use_case = StubUseCase(local_songs)
     compare_use_case = StubUseCase(comparison_result)
+    comparison_history = [
+        PlaylistComparisonHistoryEntryDto(
+            comparison_id=1,
+            compared_at=datetime(2026, 6, 8, 11, 30, tzinfo=UTC),
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        )
+    ]
     view_model = LibraryComparisonViewModel(
         load_library_comparison=lambda: (
             local_songs_use_case.execute(),
             compare_use_case.execute(),
+            comparison_history,
         ),
         load_persisted_comparison=lambda: None,
     )
@@ -200,6 +215,7 @@ def test_library_comparison_view_model_emits_start_and_success_feedback() -> Non
 
     assert view_model.load_local_songs() == local_songs
     assert view_model.load_comparison_result() == comparison_result
+    assert view_model.load_comparison_history() == comparison_history
     assert len(local_songs_use_case.calls) == 1
     assert len(compare_use_case.calls) == 1
     assert feedbacks == [
@@ -208,6 +224,7 @@ def test_library_comparison_view_model_emits_start_and_success_feedback() -> Non
             status_tone="info",
             local_songs=None,
             comparison_result=None,
+            comparison_history=None,
             last_action_message=None,
         ),
         LibraryComparisonFeedback(
@@ -215,6 +232,7 @@ def test_library_comparison_view_model_emits_start_and_success_feedback() -> Non
             status_tone="success",
             local_songs=local_songs,
             comparison_result=comparison_result,
+            comparison_history=comparison_history,
             last_action_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
         ),
     ]
@@ -249,6 +267,7 @@ def test_library_comparison_view_model_invalidates_cached_comparison_until_next_
         load_library_comparison=lambda: (
             StubUseCase(local_songs).execute(),
             StubUseCase(comparison_result).execute(),
+            [],
         ),
         load_persisted_comparison=lambda: None,
     )
@@ -296,11 +315,22 @@ def test_library_comparison_view_model_restores_persisted_snapshot_into_memory_c
         ),
         items=[],
     )
-    persisted_loader = StubUseCase((local_songs, comparison_result))
+    comparison_history = [
+        PlaylistComparisonHistoryEntryDto(
+            comparison_id=2,
+            compared_at=datetime(2026, 6, 8, 10, 45, tzinfo=UTC),
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        )
+    ]
+    persisted_loader = StubUseCase((local_songs, comparison_result, comparison_history))
     view_model = LibraryComparisonViewModel(
         load_library_comparison=lambda: (
             StubUseCase(local_songs).execute(),
             StubUseCase(comparison_result).execute(),
+            comparison_history,
         ),
         load_persisted_comparison=persisted_loader.execute,
     )
@@ -312,4 +342,5 @@ def test_library_comparison_view_model_restores_persisted_snapshot_into_memory_c
     assert view_model.isComparisonStale() is False
     assert view_model.load_local_songs() == local_songs
     assert view_model.load_comparison_result() == comparison_result
+    assert view_model.load_comparison_history() == comparison_history
     assert len(persisted_loader.calls) == 1

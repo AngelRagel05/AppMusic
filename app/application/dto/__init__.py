@@ -12,6 +12,9 @@ from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
 from app.application.dto.playlistComparisonItemResultDto import (
     PlaylistComparisonItemResultDto,
 )
+from app.application.dto.playlistComparisonHistoryEntryDto import (
+    PlaylistComparisonHistoryEntryDto,
+)
 from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
 from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
@@ -26,6 +29,7 @@ __all__ = [
     "IgnoredTermDto",
     "LocalSongDto",
     "LocalSongMetadataDto",
+    "PlaylistComparisonHistoryEntryDto",
     "PlaylistComparisonItemResultDto",
     "PlaylistComparisonResultDto",
     "PlaylistComparisonSummaryDto",

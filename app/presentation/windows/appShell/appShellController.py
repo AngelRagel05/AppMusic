@@ -117,6 +117,8 @@ class AppShellController:
         self._comparison_controller = ComparisonController(
             page=self._view.page.comparisonPage,
             view_model=self._library_comparison_view_model,
+            load_active_folder=self._local_library_controller.activeFolder,
+            load_active_playlist=self._youtube_playlists_controller.activePlaylist,
         )
         self._view.page.comparisonPage.onPrimaryActionRequested(
             self._comparison_controller.requestComparison

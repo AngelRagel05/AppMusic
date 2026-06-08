@@ -21,3 +21,13 @@ class PlaylistComparisonRepository(ABC):
         local_folder_id: int,
     ) -> PlaylistComparison | None:
         raise NotImplementedError
+
+    @abstractmethod
+    def list_for_scope(
+        self,
+        youtube_playlist_id: int,
+        local_folder_id: int,
+        *,
+        limit: int,
+    ) -> list[PlaylistComparison]:
+        raise NotImplementedError

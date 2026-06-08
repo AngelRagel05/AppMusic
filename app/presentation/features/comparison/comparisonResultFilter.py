@@ -40,4 +40,18 @@ def filterComparisonItemsByStatus(
             for item in items
             if item.comparison_status is ComparisonStatus.POSSIBLE_MATCH
         ]
-    return list(items)
+    return sorted(
+        items,
+        key=lambda item: (
+            _comparisonVisibilityPriority(item.comparison_status),
+            item.youtube_playlist_item_id,
+        ),
+    )
+
+
+def _comparisonVisibilityPriority(status: ComparisonStatus) -> int:
+    return {
+        ComparisonStatus.MISSING: 0,
+        ComparisonStatus.POSSIBLE_MATCH: 1,
+        ComparisonStatus.FOUND: 2,
+    }[status]

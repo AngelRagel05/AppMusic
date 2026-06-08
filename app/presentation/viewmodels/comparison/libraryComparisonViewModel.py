@@ -4,6 +4,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from app.application.dto.localSongDto import LocalSongDto
+from app.application.dto.playlistComparisonHistoryEntryDto import (
+    PlaylistComparisonHistoryEntryDto,
+)
 from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.workers import LoadLibraryComparisonWorker
 
@@ -14,6 +17,7 @@ class LibraryComparisonFeedback:
     status_tone: str
     local_songs: list[LocalSongDto] | None = None
     comparison_result: PlaylistComparisonResultDto | None = None
+    comparison_history: list[PlaylistComparisonHistoryEntryDto] | None = None
     last_action_message: str | None = None
 
 
@@ -22,17 +26,27 @@ class LibraryComparisonViewModel:
         self,
         load_library_comparison: Callable[
             [],
-            tuple[list[LocalSongDto], PlaylistComparisonResultDto],
+            tuple[
+                list[LocalSongDto],
+                PlaylistComparisonResultDto,
+                list[PlaylistComparisonHistoryEntryDto],
+            ],
         ],
         load_persisted_comparison: Callable[
             [],
-            tuple[list[LocalSongDto], PlaylistComparisonResultDto] | None,
+            tuple[
+                list[LocalSongDto],
+                PlaylistComparisonResultDto,
+                list[PlaylistComparisonHistoryEntryDto],
+            ]
+            | None,
         ],
     ) -> None:
         self._load_library_comparison = load_library_comparison
         self._load_persisted_comparison = load_persisted_comparison
         self._local_songs_cache: list[LocalSongDto] = []
         self._comparison_result_cache: PlaylistComparisonResultDto | None = None
+        self._comparison_history_cache: list[PlaylistComparisonHistoryEntryDto] = []
         self._comparison_in_progress = False
         self._comparison_is_stale = True
 
@@ -62,9 +76,10 @@ class LibraryComparisonViewModel:
             schedule_on_main_thread=schedule_on_main_thread,
         )
         comparison_worker.start(
-            on_finished=lambda local_songs, comparison_result: self._handleCompleted(
+            on_finished=lambda local_songs, comparison_result, comparison_history: self._handleCompleted(
                 local_songs,
                 comparison_result,
+                comparison_history,
                 on_feedback,
             ),
             on_failed=lambda error: self._handleFailed(error, on_feedback),
@@ -75,6 +90,9 @@ class LibraryComparisonViewModel:
 
     def load_comparison_result(self) -> PlaylistComparisonResultDto | None:
         return self._comparison_result_cache
+
+    def load_comparison_history(self) -> list[PlaylistComparisonHistoryEntryDto]:
+        return list(self._comparison_history_cache)
 
     def hasCachedComparison(self) -> bool:
         return self._comparison_result_cache is not None
@@ -87,9 +105,10 @@ class LibraryComparisonViewModel:
         if persisted_snapshot is None:
             return False
 
-        local_songs, comparison_result = persisted_snapshot
+        local_songs, comparison_result, comparison_history = persisted_snapshot
         self._local_songs_cache = list(local_songs)
         self._comparison_result_cache = comparison_result
+        self._comparison_history_cache = list(comparison_history)
         self._comparison_is_stale = False
         return True
 
@@ -103,11 +122,13 @@ class LibraryComparisonViewModel:
         self,
         local_songs: list[LocalSongDto],
         comparison_result: PlaylistComparisonResultDto,
+        comparison_history: list[PlaylistComparisonHistoryEntryDto],
         on_feedback: Callable[[LibraryComparisonFeedback], None],
     ) -> None:
         self._comparison_in_progress = False
         self._local_songs_cache = list(local_songs)
         self._comparison_result_cache = comparison_result
+        self._comparison_history_cache = list(comparison_history)
         self._comparison_is_stale = False
         summary = comparison_result.summary
         message = (
@@ -122,6 +143,7 @@ class LibraryComparisonViewModel:
                 status_tone="success",
                 local_songs=list(local_songs),
                 comparison_result=comparison_result,
+                comparison_history=list(comparison_history),
                 last_action_message=message,
             )
         )

@@ -13,6 +13,7 @@ from app.application.use_cases import (
     GetActiveLocalFolderUseCase,
     GetActiveYoutubePlaylistUseCase,
     ImportYoutubePlaylistItemsUseCase,
+    ListPersistedPlaylistComparisonHistoryUseCase,
     ListActiveLocalSongsUseCase,
     ListIgnoredTermsUseCase,
     ListLocalFoldersUseCase,
@@ -178,14 +179,20 @@ class ApplicationFactory:
                 persistence_registry.playlistComparisonRepository,
                 persistence_registry.playlistComparisonResultRepository,
             ).execute()
-            return local_songs, comparison_result
+            comparison_history = ListPersistedPlaylistComparisonHistoryUseCase(
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.localFolderRepository,
+                persistence_registry.playlistComparisonRepository,
+                persistence_registry.playlistComparisonResultRepository,
+            ).execute()
+            return local_songs, comparison_result, comparison_history
         finally:
             persistence_registry.session.close()
 
     def _loadPersistedLibraryComparison(self):
         persistence_registry = self._persistence_factory.createRegistry()
         try:
-            return LoadPersistedPlaylistComparisonUseCase(
+            persisted_snapshot = LoadPersistedPlaylistComparisonUseCase(
                 persistence_registry.youtubePlaylistRepository,
                 persistence_registry.youtubePlaylistItemRepository,
                 persistence_registry.localFolderRepository,
@@ -193,5 +200,15 @@ class ApplicationFactory:
                 persistence_registry.playlistComparisonRepository,
                 persistence_registry.playlistComparisonResultRepository,
             ).execute()
+            if persisted_snapshot is None:
+                return None
+            local_songs, comparison_result = persisted_snapshot
+            comparison_history = ListPersistedPlaylistComparisonHistoryUseCase(
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.localFolderRepository,
+                persistence_registry.playlistComparisonRepository,
+                persistence_registry.playlistComparisonResultRepository,
+            ).execute()
+            return local_songs, comparison_result, comparison_history
         finally:
             persistence_registry.session.close()

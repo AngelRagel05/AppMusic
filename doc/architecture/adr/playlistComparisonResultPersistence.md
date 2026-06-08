@@ -30,6 +30,8 @@ La comparacion:
 * usa el estado actual de `local_song`
 * genera un snapshot persistido de ese estado comparado
 
+Ademas, la aplicacion puede consultar varias cabeceras `playlist_comparison` del mismo ambito activo para construir un historico reciente de ejecuciones.
+
 ## Motivos
 
 Persistir ahora aporta valor funcional directo:
@@ -38,6 +40,7 @@ Persistir ahora aporta valor funcional directo:
 * deja una base clara para futuras revisiones manuales o auditoria ligera
 * desacopla el calculo del consumo posterior del resultado
 * reutiliza tablas ya presentes en el esquema relacional del proyecto
+* permite exponer al usuario un historico resumido de comparaciones por playlist y biblioteca activas
 
 ## Gestion de obsolescencia
 
@@ -51,3 +54,4 @@ La aplicacion debe tratar el snapshot como el resultado de una ejecucion concret
 * cada item comparado genera un `playlist_comparison_result`
 * `score` queda disponible para analitica, depuracion y futuras reglas de UI
 * la aplicacion debe seguir controlando cuando un resultado persistido esta obsoleto
+* el historico visible se construye leyendo varias ejecuciones del mismo ambito activo

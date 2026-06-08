@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
+from app.application.dto.playlistComparisonHistoryEntryDto import (
+    PlaylistComparisonHistoryEntryDto,
+)
 from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.activateYoutubePlaylistInputDto import (
     ActivateYoutubePlaylistInputDto,
@@ -23,6 +28,7 @@ from app.application.use_cases import (
     DeleteYoutubePlaylistUseCase,
     GetActiveYoutubePlaylistUseCase,
     ImportYoutubePlaylistItemsUseCase,
+    ListPersistedPlaylistComparisonHistoryUseCase,
     ListActiveYoutubePlaylistItemsUseCase,
     LoadPersistedPlaylistComparisonUseCase,
     ListYoutubePlaylistsUseCase,
@@ -270,6 +276,31 @@ class InMemoryPlaylistComparisonRepository(PlaylistComparisonRepository):
             ):
                 return comparison
         return None
+
+    def list_for_scope(
+        self,
+        youtube_playlist_id: int,
+        local_folder_id: int,
+        *,
+        limit: int,
+    ) -> list[PlaylistComparison]:
+        matching_comparisons = [
+            comparison
+            for comparison in self.created_comparisons
+            if (
+                comparison.youtube_playlist_id == youtube_playlist_id
+                and comparison.local_folder_id == local_folder_id
+            )
+        ]
+        ordered_comparisons = sorted(
+            matching_comparisons,
+            key=lambda comparison: (
+                comparison.compared_at or datetime.min.replace(tzinfo=UTC),
+                comparison.id or 0,
+            ),
+            reverse=True,
+        )
+        return ordered_comparisons[:limit]
 
 
 class InMemoryPlaylistComparisonResultRepository(PlaylistComparisonResultRepository):
@@ -1206,3 +1237,98 @@ def test_load_persisted_playlist_comparison_use_case_rehydrates_last_snapshot_fo
     assert comparison_result.items[0].score == 100.0
     assert comparison_result.items[1].comparison_status is ComparisonStatus.MISSING
     assert comparison_result.items[1].local_song_id is None
+
+
+def test_list_persisted_playlist_comparison_history_use_case_returns_recent_runs_for_active_scope() -> None:
+    playlist_repository = InMemoryYoutubePlaylistRepository()
+    active_playlist = playlist_repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        title="Favoritas",
+    )
+    active_folder = LocalFolder(
+        id=7,
+        path=r"C:\Music\Active",
+        display_name="Active",
+        is_active=True,
+    )
+    comparison_repository = InMemoryPlaylistComparisonRepository()
+    comparison_result_repository = InMemoryPlaylistComparisonResultRepository()
+
+    first_comparison = comparison_repository.create(active_playlist.id or 0, active_folder.id or 0)
+    comparison_repository.created_comparisons[0] = PlaylistComparison(
+        id=first_comparison.id,
+        youtube_playlist_id=first_comparison.youtube_playlist_id,
+        local_folder_id=first_comparison.local_folder_id,
+        compared_at=datetime(2026, 6, 8, 8, 0, tzinfo=UTC),
+    )
+    comparison_result_repository.save_for_comparison(
+        first_comparison.id or 0,
+        [
+            PlaylistComparisonResult(
+                playlist_comparison_id=first_comparison.id or 0,
+                youtube_playlist_item_id=1,
+                local_song_id=10,
+                match_status=ComparisonStatus.FOUND.value,
+                score=100.0,
+                matched_by=None,
+            )
+        ],
+    )
+
+    second_comparison = comparison_repository.create(active_playlist.id or 0, active_folder.id or 0)
+    comparison_repository.created_comparisons[1] = PlaylistComparison(
+        id=second_comparison.id,
+        youtube_playlist_id=second_comparison.youtube_playlist_id,
+        local_folder_id=second_comparison.local_folder_id,
+        compared_at=datetime(2026, 6, 8, 9, 0, tzinfo=UTC),
+    )
+    comparison_result_repository.save_for_comparison(
+        second_comparison.id or 0,
+        [
+            PlaylistComparisonResult(
+                playlist_comparison_id=second_comparison.id or 0,
+                youtube_playlist_item_id=2,
+                local_song_id=None,
+                match_status=ComparisonStatus.MISSING.value,
+                score=0.0,
+                matched_by=None,
+            ),
+            PlaylistComparisonResult(
+                playlist_comparison_id=second_comparison.id or 0,
+                youtube_playlist_item_id=3,
+                local_song_id=11,
+                match_status=ComparisonStatus.POSSIBLE_MATCH.value,
+                score=72.0,
+                matched_by=None,
+            ),
+        ],
+    )
+
+    use_case = ListPersistedPlaylistComparisonHistoryUseCase(
+        playlist_repository,
+        InMemoryLocalFolderRepository(active_folder),
+        comparison_repository,
+        comparison_result_repository,
+    )
+
+    history = use_case.execute(limit=5)
+
+    assert history == [
+        PlaylistComparisonHistoryEntryDto(
+            comparison_id=second_comparison.id or 0,
+            compared_at=datetime(2026, 6, 8, 9, 0, tzinfo=UTC),
+            found_count=0,
+            missing_count=1,
+            possible_match_count=1,
+            total_compared=2,
+        ),
+        PlaylistComparisonHistoryEntryDto(
+            comparison_id=first_comparison.id or 0,
+            compared_at=datetime(2026, 6, 8, 8, 0, tzinfo=UTC),
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+    ]

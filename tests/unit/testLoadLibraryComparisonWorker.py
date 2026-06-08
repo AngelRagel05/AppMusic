@@ -3,9 +3,13 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from app.application.dto.localSongDto import LocalSongDto
+from app.application.dto.playlistComparisonHistoryEntryDto import (
+    PlaylistComparisonHistoryEntryDto,
+)
 from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
 from app.workers.loadLibraryComparisonWorker import LoadLibraryComparisonWorker
+from datetime import UTC, datetime
 
 
 class StubListActiveLocalSongsUseCase:
@@ -39,10 +43,16 @@ class StubCompareUseCase:
 def loadLibraryComparison(
     list_active_local_songs_use_case: StubListActiveLocalSongsUseCase,
     compare_use_case: StubCompareUseCase,
-) -> tuple[list[LocalSongDto], PlaylistComparisonResultDto]:
+    comparison_history: list[PlaylistComparisonHistoryEntryDto],
+) -> tuple[
+    list[LocalSongDto],
+    PlaylistComparisonResultDto,
+    list[PlaylistComparisonHistoryEntryDto],
+]:
     return (
         list_active_local_songs_use_case.execute(),
         compare_use_case.execute(),
+        list(comparison_history),
     )
 
 
@@ -53,7 +63,13 @@ def runScheduledCallbacks(callbacks: list[Callable[[], None]]) -> None:
 
 def test_start_schedules_success_callback_on_main_thread() -> None:
     scheduled_callbacks: list[Callable[[], None]] = []
-    received_payloads: list[tuple[list[LocalSongDto], PlaylistComparisonResultDto]] = []
+    received_payloads: list[
+        tuple[
+            list[LocalSongDto],
+            PlaylistComparisonResultDto,
+            list[PlaylistComparisonHistoryEntryDto],
+        ]
+    ] = []
     received_errors: list[Exception] = []
     local_songs = [
         LocalSongDto(
@@ -79,16 +95,26 @@ def test_start_schedules_success_callback_on_main_thread() -> None:
         ),
         items=[],
     )
+    comparison_history = [
+        PlaylistComparisonHistoryEntryDto(
+            comparison_id=3,
+            compared_at=datetime(2026, 6, 8, 12, 0, tzinfo=UTC),
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        )
+    ]
     list_use_case = StubListActiveLocalSongsUseCase(local_songs)
     compare_use_case = StubCompareUseCase(comparison_result)
     worker = LoadLibraryComparisonWorker(
-        lambda: loadLibraryComparison(list_use_case, compare_use_case),
+        lambda: loadLibraryComparison(list_use_case, compare_use_case, comparison_history),
         schedule_on_main_thread=scheduled_callbacks.append,
     )
 
     worker.start(
-        on_finished=lambda loaded_local_songs, loaded_comparison_result: received_payloads.append(
-            (loaded_local_songs, loaded_comparison_result)
+        on_finished=lambda loaded_local_songs, loaded_comparison_result, loaded_comparison_history: received_payloads.append(
+            (loaded_local_songs, loaded_comparison_result, loaded_comparison_history)
         ),
         on_failed=received_errors.append,
     )
@@ -96,12 +122,18 @@ def test_start_schedules_success_callback_on_main_thread() -> None:
     runScheduledCallbacks(scheduled_callbacks)
 
     assert received_errors == []
-    assert received_payloads == [(local_songs, comparison_result)]
+    assert received_payloads == [(local_songs, comparison_result, comparison_history)]
 
 
 def test_start_schedules_error_callback_on_main_thread() -> None:
     scheduled_callbacks: list[Callable[[], None]] = []
-    received_payloads: list[tuple[list[LocalSongDto], PlaylistComparisonResultDto]] = []
+    received_payloads: list[
+        tuple[
+            list[LocalSongDto],
+            PlaylistComparisonResultDto,
+            list[PlaylistComparisonHistoryEntryDto],
+        ]
+    ] = []
     received_errors: list[Exception] = []
     list_use_case = StubListActiveLocalSongsUseCase(
         error=ValueError("No hay una biblioteca local activa para comparar.")
@@ -118,13 +150,13 @@ def test_start_schedules_error_callback_on_main_thread() -> None:
         )
     )
     worker = LoadLibraryComparisonWorker(
-        lambda: loadLibraryComparison(list_use_case, compare_use_case),
+        lambda: loadLibraryComparison(list_use_case, compare_use_case, []),
         schedule_on_main_thread=scheduled_callbacks.append,
     )
 
     worker.start(
-        on_finished=lambda loaded_local_songs, loaded_comparison_result: received_payloads.append(
-            (loaded_local_songs, loaded_comparison_result)
+        on_finished=lambda loaded_local_songs, loaded_comparison_result, loaded_comparison_history: received_payloads.append(
+            (loaded_local_songs, loaded_comparison_result, loaded_comparison_history)
         ),
         on_failed=received_errors.append,
     )

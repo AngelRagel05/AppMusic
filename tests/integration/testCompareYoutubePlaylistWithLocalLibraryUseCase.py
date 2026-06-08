@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.application.use_cases import (
     CompareYoutubePlaylistWithLocalLibraryUseCase,
+    ListPersistedPlaylistComparisonHistoryUseCase,
     LoadPersistedPlaylistComparisonUseCase,
 )
 from app.domain.library.entities.localSong import LocalSong
@@ -230,3 +233,98 @@ def test_load_persisted_playlist_comparison_use_case_restores_last_saved_snapsho
     assert comparison_result.summary.total_compared == 1
     assert comparison_result.items[0].comparison_status is ComparisonStatus.FOUND
     assert comparison_result.items[0].score > 0
+
+
+def test_list_persisted_playlist_comparison_history_use_case_returns_latest_runs_for_active_scope() -> None:
+    session = create_session()
+    local_folder_repository = LocalFolderSqlAlchemyRepository(session)
+    local_song_repository = LocalSongSqlAlchemyRepository(session)
+    playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
+    playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
+    youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
+    youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
+
+    active_folder = local_folder_repository.save_as_active(r"C:\Music\Active", "Active")
+    active_playlist = youtube_playlist_repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PL123",
+        "PL123",
+        "Favoritas",
+    )
+
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            duration_seconds=181.0,
+        )
+    )
+    youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="found-item",
+                position=1,
+                raw_title="Song One",
+                raw_channel_name="Artist One",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            )
+        ],
+    )
+
+    CompareYoutubePlaylistWithLocalLibraryUseCase(
+        youtube_playlist_repository,
+        youtube_playlist_item_repository,
+        local_folder_repository,
+        local_song_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute()
+    first_comparison = playlist_comparison_repository.find_latest_for_scope(
+        active_playlist.id or 0,
+        active_folder.id or 0,
+    )
+    if first_comparison is None or first_comparison.id is None:
+        raise AssertionError("Se esperaba la primera comparacion persistida.")
+
+    first_model = session.query(PlaylistComparisonModel).filter_by(id=first_comparison.id).one()
+    first_model.compared_at = datetime(2026, 6, 8, 8, 0, tzinfo=UTC)
+    session.flush()
+
+    CompareYoutubePlaylistWithLocalLibraryUseCase(
+        youtube_playlist_repository,
+        youtube_playlist_item_repository,
+        local_folder_repository,
+        local_song_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute()
+    second_comparison = playlist_comparison_repository.find_latest_for_scope(
+        active_playlist.id or 0,
+        active_folder.id or 0,
+    )
+    if second_comparison is None or second_comparison.id is None:
+        raise AssertionError("Se esperaba la segunda comparacion persistida.")
+
+    second_model = session.query(PlaylistComparisonModel).filter_by(id=second_comparison.id).one()
+    second_model.compared_at = datetime(2026, 6, 8, 9, 0, tzinfo=UTC)
+    session.flush()
+
+    history = ListPersistedPlaylistComparisonHistoryUseCase(
+        youtube_playlist_repository,
+        local_folder_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute(limit=5)
+
+    assert [entry.comparison_id for entry in history] == [second_comparison.id, first_comparison.id]
+    assert history[0].compared_at == datetime(2026, 6, 8, 9, 0, tzinfo=UTC)
+    assert history[0].found_count == 1
+    assert history[0].total_compared == 1

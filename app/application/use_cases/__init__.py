@@ -60,6 +60,9 @@ from app.application.use_cases.playlists.listYoutubePlaylistsUseCase import (
 from app.application.use_cases.playlists.compareYoutubePlaylistWithLocalLibraryUseCase import (
     CompareYoutubePlaylistWithLocalLibraryUseCase,
 )
+from app.application.use_cases.playlists.listPersistedPlaylistComparisonHistoryUseCase import (
+    ListPersistedPlaylistComparisonHistoryUseCase,
+)
 from app.application.use_cases.playlists.loadPersistedPlaylistComparisonUseCase import (
     LoadPersistedPlaylistComparisonUseCase,
 )
@@ -88,6 +91,7 @@ __all__ = [
     "ListLocalFoldersUseCase",
     "ListYoutubePlaylistsUseCase",
     "CompareYoutubePlaylistWithLocalLibraryUseCase",
+    "ListPersistedPlaylistComparisonHistoryUseCase",
     "LoadPersistedPlaylistComparisonUseCase",
     "ListIgnoredTermsUseCase",
     "ScanLocalFolderUseCase",

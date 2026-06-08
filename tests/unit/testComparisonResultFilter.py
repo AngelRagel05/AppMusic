@@ -36,7 +36,20 @@ def test_filter_comparison_items_by_status_returns_all_items() -> None:
 
     filtered_items = filterComparisonItemsByStatus(items, ALL_COMPARISON_FILTER)
 
-    assert filtered_items == items
+    assert filtered_items == [items[1], items[2], items[0]]
+
+
+def test_filter_comparison_items_by_status_prioritizes_missing_items_in_all_view() -> None:
+    items = [
+        _build_item(ComparisonStatus.FOUND, 5),
+        _build_item(ComparisonStatus.POSSIBLE_MATCH, 2),
+        _build_item(ComparisonStatus.MISSING, 9),
+        _build_item(ComparisonStatus.MISSING, 1),
+    ]
+
+    filtered_items = filterComparisonItemsByStatus(items, ALL_COMPARISON_FILTER)
+
+    assert [item.youtube_playlist_item_id for item in filtered_items] == [1, 9, 2, 5]
 
 
 def test_filter_comparison_items_by_status_returns_only_found_items() -> None:

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from tkinter import messagebox
 
 import customtkinter as ctk
 
 from app.application.dto.localSongDto import LocalSongDto
+from app.application.dto.playlistComparisonHistoryEntryDto import (
+    PlaylistComparisonHistoryEntryDto,
+)
 from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.playlistComparisonItemResultDto import (
     PlaylistComparisonItemResultDto,
@@ -30,8 +34,10 @@ from app.presentation.widgets.pageHeader.pageHeader import PageHeader
 
 
 class ComparisonPage(ctk.CTkFrame):
-    TOP_SECTION_RATIO = 0.12
-    MINIMUM_TOP_SECTION_HEIGHT = 96
+    TOP_SECTION_RATIO = 0.23
+    MINIMUM_TOP_SECTION_HEIGHT = 196
+    DEFAULT_PRIMARY_ACTION_LABEL = "↻ Refrescar"
+    RERUN_PRIMARY_ACTION_LABEL = "↻ Volver a comparar"
 
     def __init__(self, parent) -> None:
         self._theme = getPageTheme("comparison")
@@ -42,6 +48,7 @@ class ComparisonPage(ctk.CTkFrame):
         self._active_playlist_title = "Sin playlist configurada"
         self._pending_search_after_id: str | None = None
         self._search_variable: ctk.StringVar | None = None
+        self._history_entries: list[PlaylistComparisonHistoryEntryDto] = []
         self._loadingOverlay = LoadingOverlay(self, self._theme)
         self._content: ctk.CTkFrame | None = None
         self._topSection: ctk.CTkFrame | None = None
@@ -57,12 +64,19 @@ class ComparisonPage(ctk.CTkFrame):
         self._ensureBuilt()
         self.header.primaryActionRequested.connect(callback)
 
-    def confirmManualComparisonStart(self) -> bool:
+    def confirmManualComparisonStart(
+        self,
+        *,
+        playlist_title: str,
+        folder_name: str,
+    ) -> bool:
         return messagebox.askokcancel(
             "Refrescar comparación",
             (
-                "Esta acción volverá a calcular la comparación y actualizará el "
-                "snapshot guardado en la base de datos.\n\n"
+                "Esta accion volvera a calcular la comparacion entre:\n"
+                f'• Playlist: "{playlist_title}"\n'
+                f'• Biblioteca: "{folder_name}"\n\n'
+                "Tambien actualizara el snapshot guardado en la base de datos.\n\n"
                 "Puede tardar unos minutos dependiendo del tamaño de la biblioteca "
                 "y la playlist.\n\n¿Quieres continuar ahora?"
             ),
@@ -94,6 +108,14 @@ class ComparisonPage(ctk.CTkFrame):
         )
         self.section.showComparisonResults(comparison_result.items)
 
+    def showComparisonHistory(
+        self,
+        comparison_history: list[PlaylistComparisonHistoryEntryDto],
+    ) -> None:
+        self._history_entries = list(comparison_history)
+        self._ensureBuilt()
+        self._renderHistoryEntries()
+
     def setActiveFolderName(self, name: str) -> None:
         self._active_folder_name = name
         if self._is_built:
@@ -112,6 +134,10 @@ class ComparisonPage(ctk.CTkFrame):
             "error": "Error",
         }.get(tone, "Comparación")
         self.header.setSubtitle(f"{tone_prefix}: {message}" if message else self._defaultSubtitle)
+
+    def setPrimaryActionLabel(self, label: str) -> None:
+        self._ensureBuilt()
+        self.header.setActions(None, label)
 
     def showLoadingState(self, message: str) -> None:
         self._loadingOverlay.show(
@@ -146,21 +172,24 @@ class ComparisonPage(ctk.CTkFrame):
             subtitle=self._defaultSubtitle,
         )
         self.header.setContextVisible(False)
-        self.header.setActions(None, "↻ Refrescar")
+        self.header.setActions(None, self.DEFAULT_PRIMARY_ACTION_LABEL)
         applyButtonStyle(self.header.primaryButton.widget, "primary", self._theme)
         self.header.primaryButton.widget.configure(
             height=32,
-            width=118,
+            width=176,
             font=("Segoe UI", 12, "bold"),
         )
         self.section = ComparisonSplitSection(content, self._theme)
         self._summaryCards = self._buildSummaryCards(top_section)
+        self._historyCard = self._buildHistoryCard(top_section)
 
         self.header.grid(row=0, column=0, sticky="ew")
         self._summaryCards.grid(row=1, column=0, sticky="ew", pady=(8, 0))
+        self._historyCard.grid(row=2, column=0, sticky="ew", pady=(8, 0))
         self.section.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
         self.header.setActiveFolderName(self._active_folder_name)
         self.header.setActivePlaylistTitle(self._active_playlist_title)
+        self._renderHistoryEntries()
         content.bind("<Configure>", self._handleContentResize)
         self._is_built = True
 
@@ -251,6 +280,94 @@ class ComparisonPage(ctk.CTkFrame):
         filter_menu.pack(side="left")
         return wrapper
 
+    def _buildHistoryCard(self, parent):
+        card = createFrame(
+            parent,
+            theme=self._theme,
+            fg_color=self._theme["panel"],
+            border_width=1,
+            border_color=self._theme["border"],
+            corner_radius=int(self._theme["radius_lg"]),
+        )
+        card.grid_columnconfigure(0, weight=1)
+
+        header = createFrame(card, theme=self._theme, fg_color="transparent")
+        header.grid(row=0, column=0, sticky="ew", padx=10, pady=(8, 4))
+        header.grid_columnconfigure(0, weight=1)
+        createLabel(
+            header,
+            "Historico reciente",
+            theme=self._theme,
+            font=("Segoe UI", 13, "bold"),
+        ).grid(row=0, column=0, sticky="w")
+        createLabel(
+            header,
+            "Ultimas comparaciones guardadas del ambito activo",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 11),
+        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
+
+        body = createFrame(card, theme=self._theme, fg_color="transparent")
+        body.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
+        body.grid_columnconfigure(0, weight=1)
+        self._historyBody = body
+        return card
+
+    def _renderHistoryEntries(self) -> None:
+        if not hasattr(self, "_historyBody"):
+            return
+
+        clearChildren(self._historyBody)
+        if not self._history_entries:
+            createLabel(
+                self._historyBody,
+                "Todavia no hay comparaciones guardadas para la playlist activa y la biblioteca activa.",
+                theme=self._theme,
+                text_color=self._theme["text_secondary"],
+                font=("Segoe UI", 11),
+                wraplength=860,
+            ).grid(row=0, column=0, sticky="w")
+            return
+
+        for row_index, entry in enumerate(self._history_entries):
+            row = createFrame(
+                self._historyBody,
+                theme=self._theme,
+                fg_color=self._theme["surface"],
+                corner_radius=int(self._theme["radius_md"]),
+            )
+            row.grid(row=row_index, column=0, sticky="ew", pady=(0, 6))
+            row.grid_columnconfigure(0, weight=1)
+            row.grid_columnconfigure(1, weight=0)
+            createLabel(
+                row,
+                self._buildHistoryEntryTitle(entry),
+                theme=self._theme,
+                font=("Segoe UI", 12, "bold"),
+            ).grid(row=0, column=0, sticky="w", padx=10, pady=(8, 2))
+            createLabel(
+                row,
+                (
+                    f"{entry.found_count} encontradas | "
+                    f"{entry.possible_match_count} coincidencias | "
+                    f"{entry.missing_count} faltan | "
+                    f"{entry.total_compared} comparadas"
+                ),
+                theme=self._theme,
+                text_color=self._theme["text_secondary"],
+                font=("Segoe UI", 11),
+            ).grid(row=1, column=0, sticky="w", padx=10, pady=(0, 8))
+            createLabel(
+                row,
+                f"#{entry.comparison_id}",
+                theme=self._theme,
+                text_color=self._theme["text_muted"],
+                font=("Segoe UI", 11),
+                anchor="e",
+                justify="right",
+            ).grid(row=0, column=1, rowspan=2, sticky="e", padx=(8, 10), pady=8)
+
     def _scheduleSearchUpdate(self) -> None:
         if self._search_variable is None:
             return
@@ -297,3 +414,10 @@ class ComparisonPage(ctk.CTkFrame):
                 font=("Segoe UI", 11),
             ).grid(row=row, column=column + 2, sticky="w", padx=(0, 10))
         return value_label
+
+    def _buildHistoryEntryTitle(self, entry: PlaylistComparisonHistoryEntryDto) -> str:
+        return f"Comparada el {self._formatHistoryTimestamp(entry.compared_at)}"
+
+    def _formatHistoryTimestamp(self, value: datetime) -> str:
+        timestamp = value.astimezone() if value.tzinfo is not None else value
+        return timestamp.strftime("%d/%m/%Y %H:%M")

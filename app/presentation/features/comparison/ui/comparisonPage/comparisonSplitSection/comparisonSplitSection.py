@@ -13,6 +13,9 @@ from app.presentation.features.comparison.comparisonSearch import (
     filterComparisonItemsByQuery,
     filterLocalSongsByQuery,
 )
+from app.presentation.features.comparison.comparisonAvailabilitySummary import (
+    buildComparisonAvailabilitySummary,
+)
 from app.presentation.features.comparison.comparisonPaginationState import (
     ComparisonPaginationState,
 )
@@ -339,6 +342,7 @@ class ComparisonSplitSection(ctk.CTkFrame):
                 column_state.selectedItemKey == row_key,
             )
             row._comparison_row_key = row_key
+            row._comparison_status = getattr(item, "comparison_status", None)
             self._bindRowInteractivity(column_state, row, row_key)
             row.pack(fill="x")
 
@@ -393,8 +397,10 @@ class ComparisonSplitSection(ctk.CTkFrame):
         row = createFrame(
             parent,
             theme=self._theme,
-            fg_color=self._rowColor(is_selected),
+            fg_color=self._rowColor(is_selected, comparison_item.comparison_status),
             corner_radius=int(self._theme["radius_sm"]),
+            border_width=self._rowBorderWidth(comparison_item.comparison_status),
+            border_color=self._rowBorderColor(comparison_item.comparison_status),
         )
         row.grid_columnconfigure(0, weight=1)
         row.grid_columnconfigure(1, weight=0)
@@ -410,10 +416,18 @@ class ComparisonSplitSection(ctk.CTkFrame):
             font=("Segoe UI", 11),
             wraplength=0,
         ).grid(row=0, column=0, sticky="w")
+        createLabel(
+            row,
+            self._buildAvailabilityMessage(comparison_item),
+            theme=self._theme,
+            text_color=self._availabilityColor(comparison_item.comparison_status),
+            font=("Segoe UI", 11, "bold"),
+            wraplength=0,
+        ).grid(row=1, column=0, sticky="ew", padx=6, pady=(0, 0))
         self._buildStatusBadge(row, comparison_item.comparison_status).grid(
             row=0,
             column=1,
-            rowspan=2,
+            rowspan=3,
             padx=(6, 6),
         )
         createLabel(
@@ -423,8 +437,8 @@ class ComparisonSplitSection(ctk.CTkFrame):
             text_color=self._theme["text_secondary"],
             font=("Segoe UI", 11),
             wraplength=0,
-        ).grid(row=1, column=0, sticky="ew", padx=6, pady=(0, 3))
-        self._buildRowSeparator(row).grid(row=2, column=0, columnspan=2, sticky="ew")
+        ).grid(row=2, column=0, sticky="ew", padx=6, pady=(0, 3))
+        self._buildRowSeparator(row).grid(row=3, column=0, columnspan=2, sticky="ew")
         return row
 
     def _buildStatusBadge(self, parent, status: ComparisonStatus):
@@ -467,6 +481,19 @@ class ComparisonSplitSection(ctk.CTkFrame):
             return f"Local: sin coincidencia encontrada | {reason_summary}"
         return f"Local: candidata sin metadata completa | {reason_summary}"
 
+    def _buildAvailabilityMessage(
+        self,
+        comparison_item: PlaylistComparisonItemResultDto,
+    ) -> str:
+        return buildComparisonAvailabilitySummary(comparison_item)
+
+    def _availabilityColor(self, status: ComparisonStatus) -> str:
+        return {
+            ComparisonStatus.FOUND: self._theme["success"],
+            ComparisonStatus.MISSING: self._theme["danger"],
+            ComparisonStatus.POSSIBLE_MATCH: self._theme["accent"],
+        }[status]
+
     def _configureFastScroll(self, rows_host: ctk.CTkScrollableFrame) -> None:
         canvas = getattr(rows_host, "_parent_canvas", None)
         if canvas is None:
@@ -491,11 +518,11 @@ class ComparisonSplitSection(ctk.CTkFrame):
 
         def handle_enter(_event) -> None:
             is_selected = column_state.selectedItemKey == row_key
-            apply_color(self._rowHoverColor(is_selected))
+            apply_color(self._rowHoverColor(is_selected, getattr(row, "_comparison_status", None)))
 
         def handle_leave(_event) -> None:
             is_selected = column_state.selectedItemKey == row_key
-            apply_color(self._rowColor(is_selected))
+            apply_color(self._rowColor(is_selected, getattr(row, "_comparison_status", None)))
 
         def handle_select(_event) -> None:
             column_state.selectedItemKey = row_key
@@ -580,18 +607,54 @@ class ComparisonSplitSection(ctk.CTkFrame):
             border_width=0,
         )
 
-    def _rowColor(self, is_selected: bool) -> str:
+    def _rowColor(
+        self,
+        is_selected: bool,
+        comparison_status: ComparisonStatus | None = None,
+    ) -> str:
         if is_selected:
+            return self._theme["accent_soft"]
+        if comparison_status is ComparisonStatus.MISSING:
+            return self._theme["surface"]
+        if comparison_status is ComparisonStatus.POSSIBLE_MATCH:
             return self._theme["accent_soft"]
         return "transparent"
 
-    def _rowHoverColor(self, is_selected: bool) -> str:
+    def _rowHoverColor(
+        self,
+        is_selected: bool,
+        comparison_status: ComparisonStatus | None = None,
+    ) -> str:
         if is_selected:
             return self._theme["accent_soft"]
+        if comparison_status is ComparisonStatus.MISSING:
+            return self._theme["hover"]
+        if comparison_status is ComparisonStatus.POSSIBLE_MATCH:
+            return self._theme["hover"]
         return self._theme["hover"]
+
+    def _rowBorderWidth(self, comparison_status: ComparisonStatus | None) -> int:
+        if comparison_status in (
+            ComparisonStatus.MISSING,
+            ComparisonStatus.POSSIBLE_MATCH,
+        ):
+            return 1
+        return 0
+
+    def _rowBorderColor(self, comparison_status: ComparisonStatus | None) -> str:
+        if comparison_status is ComparisonStatus.MISSING:
+            return self._theme["danger"]
+        if comparison_status is ComparisonStatus.POSSIBLE_MATCH:
+            return self._theme["accent"]
+        return self._theme["border"]
 
     def _syncSelectionStyles(self, column_state: ComparisonColumnState) -> None:
         for child in column_state.rowsHost.winfo_children():
             row_key = getattr(child, "_comparison_row_key", None)
             is_selected = row_key == column_state.selectedItemKey
-            child.configure(fg_color=self._rowColor(is_selected))
+            child.configure(
+                fg_color=self._rowColor(
+                    is_selected,
+                    getattr(child, "_comparison_status", None),
+                )
+            )
