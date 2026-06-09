@@ -12,6 +12,7 @@ from app.domain.playlists.services.playlistItemMatchingRules import (
     TextMatchWeights,
     buildMatchReason,
     classifyMatchStatus,
+    normalizedSimilarityRatio,
     scoreDuration,
     scoreNormalizedText,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "buildMatchReason",
     "classifyMatchStatus",
     "matchYoutubePlaylistItemToLocalSongs",
+    "normalizedSimilarityRatio",
     "normalizeYoutubePlaylistItemMetadata",
     "scoreDuration",
     "scoreNormalizedText",

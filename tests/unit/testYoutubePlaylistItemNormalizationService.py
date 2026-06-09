@@ -37,7 +37,7 @@ def test_normalize_youtube_playlist_item_metadata_extracts_artist_and_song_from_
     )
 
     assert normalized == NormalizedYoutubePlaylistItemMetadata(
-        normalized_title="humble.",
+        normalized_title="humble",
         normalized_artist="kendrick lamar",
     )
 
@@ -49,6 +49,42 @@ def test_normalize_youtube_playlist_item_metadata_uses_channel_name_as_artist_fa
     )
 
     assert normalized == NormalizedYoutubePlaylistItemMetadata(
-        normalized_title="humble.",
+        normalized_title="humble",
         normalized_artist="kendrick lamar",
+    )
+
+
+def test_normalize_youtube_playlist_item_metadata_extracts_artist_and_title_from_numbered_track() -> None:
+    normalized = normalizeYoutubePlaylistItemMetadata(
+        raw_title="10. Space Hammu - I PROMISE ft. Raggio",
+        raw_channel_name="Space Hammu",
+    )
+
+    assert normalized == NormalizedYoutubePlaylistItemMetadata(
+        normalized_title="i promise",
+        normalized_artist="space hammu",
+    )
+
+
+def test_normalize_youtube_playlist_item_metadata_extracts_title_and_artist_when_track_index_leads() -> None:
+    normalized = normalizeYoutubePlaylistItemMetadata(
+        raw_title="02 - SINCERAMENTE - CHEB RUBËN",
+        raw_channel_name="CHEB RUBËN",
+    )
+
+    assert normalized == NormalizedYoutubePlaylistItemMetadata(
+        normalized_title="sinceramente",
+        normalized_artist="cheb ruben",
+    )
+
+
+def test_normalize_youtube_playlist_item_metadata_extracts_artist_and_title_from_pipe_separator() -> None:
+    normalized = normalizeYoutubePlaylistItemMetadata(
+        raw_title="NATOS | SELECTA Motorseries #01",
+        raw_channel_name="Selecta",
+    )
+
+    assert normalized == NormalizedYoutubePlaylistItemMetadata(
+        normalized_title="selecta motorseries 01",
+        normalized_artist="natos",
     )

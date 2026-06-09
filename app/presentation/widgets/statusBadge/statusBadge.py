@@ -20,9 +20,9 @@ class StatusBadge(ctk.CTkFrame):
             text,
             theme=self._theme,
             text_color=self._badge_text(tone),
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 10, "bold"),
         )
-        self._label.pack(padx=10, pady=5)
+        self._label.pack(padx=8, pady=3)
 
     def setStatus(self, text: str, tone: str) -> None:
         self.configure(fg_color=self._badge_background(tone))

@@ -23,16 +23,29 @@ La tabla expone estas columnas:
 * score
 * revision
 
+La implementacion visual debe usar un widget tabular real con columnas persistentes compartidas por cabecera y filas.
+
+Queda descartado renderizar cada fila como un `Frame` independiente simulando columnas, porque eso rompe la alineacion y degrada la experiencia de escritorio.
+
 La caja de busqueda de esta pantalla se orienta a buscar dentro de resultados por titulo o artista, tanto de playlist como de coincidencia local.
 
-Ademas, la fila seleccionada muestra un panel de detalle inferior con:
+La estetica final de esta pantalla debe priorizar densidad de informacion y compacidad de escritorio:
+
+* filas de una sola linea
+* detalle inferior compacto
+* seleccion sutil
+* historico no invasivo cuando esta vacio
+
+Cada resultado abre un detalle dedicado en modal al pulsar su fila.
+
+El detalle modal muestra:
 
 * disponibilidad detectada
 * score
+* coincidencia local
+* revision
 * cancion local enlazada cuando existe
-* motivo resumido de comparacion
-
-Cada resultado puede abrir ademas un detalle dedicado mediante doble clic en la fila o usando la accion `Abrir detalle` del panel inferior.
+* motivo resumido y detalle textual de comparacion
 
 ## Consecuencias
 
@@ -46,7 +59,15 @@ Costes:
 
 * la vista de canciones locales deja de ser el foco principal dentro de esta pantalla
 * la tabla requiere formateo especifico de filas dentro de `presentation/features/comparison`
+* el estilo oscuro de la tabla necesita configuracion explicita del widget nativo elegido
 
 ## Implementacion
 
 La logica de formateo de filas se centraliza en `comparisonTableRowViewData.py` para poder probar la presentacion tabular sin depender de widgets `CustomTkinter`.
+
+La vista de resultados usa un control tabular real estilizado en oscuro para garantizar:
+
+* cabecera y filas alineadas
+* altura de fila constante
+* seleccion compacta
+* scroll vertical estable

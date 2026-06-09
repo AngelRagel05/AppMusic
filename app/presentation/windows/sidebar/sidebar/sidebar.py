@@ -47,10 +47,10 @@ class Sidebar(ctk.CTkFrame):
         )
         self.navigationMenu.ignoredTermsRequested.connect(self.ignoredTermsRequested.emit)
 
-        self.brandPanel.grid(row=0, column=0, sticky="ew", padx=24, pady=(26, 28))
-        self.navigationMenu.grid(row=1, column=0, sticky="ew", padx=18)
-        self.contextSummary.grid(row=2, column=0, sticky="sew", padx=18, pady=(18, 12))
-        self.navigationFooter.grid(row=3, column=0, sticky="ew", padx=24, pady=(0, 22))
+        self.brandPanel.grid(row=0, column=0, sticky="ew", padx=18, pady=(18, 18))
+        self.navigationMenu.grid(row=1, column=0, sticky="ew", padx=14)
+        self.contextSummary.grid(row=2, column=0, sticky="sew", padx=14, pady=(12, 8))
+        self.navigationFooter.grid(row=3, column=0, sticky="ew", padx=18, pady=(0, 14))
         self.setActiveSection("overview")
 
     def setActiveSection(self, section: str) -> None:

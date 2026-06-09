@@ -5,114 +5,173 @@ import customtkinter as ctk
 from app.presentation.features.comparison.comparisonResultDetailViewData import (
     ComparisonResultDetailViewData,
 )
-from app.presentation.styles import createFrame, createLabel
+from app.presentation.styles import ActionButton, createFrame, createLabel, createScrollableFrame
 
 
-class ComparisonResultDetailDialog(ctk.CTkToplevel):
+class ComparisonResultDetailDialog(ctk.CTkFrame):
     def __init__(self, parent, theme, detail_view_data: ComparisonResultDetailViewData) -> None:
-        super().__init__(parent)
-        self.title("Detalle del resultado")
-        self.transient(parent.winfo_toplevel())
-        self.grab_set()
-        self.configure(fg_color=theme["bg"])
-        self.geometry("760x520")
-        self.minsize(680, 460)
+        self._theme = theme
+        self._escapeBindingTarget = None
+        self._escapeBindingId: str | None = None
+        super().__init__(parent, fg_color="#0E1117", corner_radius=0)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.bind("<Button-1>", lambda _event: self._close())
+        self._buildLayout(detail_view_data)
+        self.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.lift()
+        self.focus_force()
+        self._bindEscapeShortcut()
 
-        container = createFrame(self, theme=theme, fg_color=theme["bg"])
-        container.pack(fill="both", expand=True, padx=16, pady=16)
-        container.grid_columnconfigure(0, weight=1)
+    def _buildLayout(self, detail_view_data: ComparisonResultDetailViewData) -> None:
+        shell = createFrame(self, theme=self._theme, fg_color="transparent")
+        shell.grid(row=0, column=0, sticky="nsew", padx=18, pady=18)
+        shell.grid_rowconfigure(0, weight=1)
+        shell.grid_columnconfigure(0, weight=1)
 
+        modal = createFrame(
+            shell,
+            theme=self._theme,
+            fg_color=self._theme["panel"],
+            border_width=1,
+            border_color=self._theme["border"],
+            corner_radius=int(self._theme["radius_md"]),
+        )
+        modal.grid(row=0, column=0)
+        modal.grid_rowconfigure(1, weight=1)
+        modal.grid_columnconfigure(0, weight=1)
+        modal.grid_propagate(False)
+        modal.configure(width=700, height=450)
+        modal.bind("<Button-1>", lambda _event: "break")
+
+        header = createFrame(modal, theme=self._theme, fg_color="transparent")
+        header.grid(row=0, column=0, sticky="ew", padx=12, pady=(10, 8))
+        header.grid_columnconfigure(0, weight=1)
+        header.bind("<Button-1>", lambda _event: "break")
         createLabel(
-            container,
-            detail_view_data.title,
-            theme=theme,
-            font=("Segoe UI", 20, "bold"),
-            wraplength=680,
+            header,
+            "Detalle del resultado",
+            theme=self._theme,
+            font=("Segoe UI", 15, "bold"),
         ).grid(row=0, column=0, sticky="w")
-        createLabel(
-            container,
-            detail_view_data.subtitle,
-            theme=theme,
-            text_color=theme["text_secondary"],
-            font=("Segoe UI", 13),
-            wraplength=680,
-        ).grid(row=1, column=0, sticky="w", pady=(2, 12))
-
-        summary_card = createFrame(
-            container,
-            theme=theme,
-            fg_color=theme["panel"],
-            border_width=1,
-            border_color=theme["border"],
-            corner_radius=int(theme["radius_md"]),
+        close_button = ctk.CTkButton(
+            header,
+            text="X",
+            width=28,
+            height=28,
+            corner_radius=int(self._theme["radius_sm"]),
+            fg_color=self._theme["surface"],
+            hover_color=self._theme["hover"],
+            text_color=self._theme["text_secondary"],
+            border_width=0,
+            font=("Segoe UI", 10, "bold"),
+            command=self._close,
         )
-        summary_card.grid(row=2, column=0, sticky="ew", pady=(0, 12))
-        summary_card.grid_columnconfigure(0, weight=1)
-        createLabel(
-            summary_card,
-            (
-                f"Estado: {detail_view_data.status_label}\n"
-                f"Disponibilidad: {detail_view_data.availability_summary}\n"
-                f"Score: {detail_view_data.score_label}"
-            ),
-            theme=theme,
-            font=("Segoe UI", 12),
-            wraplength=660,
-        ).grid(row=0, column=0, sticky="w", padx=12, pady=12)
+        close_button.grid(row=0, column=1, sticky="e")
 
-        linked_song_card = createFrame(
-            container,
-            theme=theme,
-            fg_color=theme["surface"],
-            border_width=1,
-            border_color=theme["border"],
-            corner_radius=int(theme["radius_md"]),
+        content = createScrollableFrame(
+            modal,
+            theme=self._theme,
+            fg_color=self._theme["surface"],
+            corner_radius=int(self._theme["radius_sm"]),
         )
-        linked_song_card.grid(row=3, column=0, sticky="ew", pady=(0, 12))
-        linked_song_card.grid_columnconfigure(0, weight=1)
+        content.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
+        content.grid_columnconfigure(0, minsize=140, weight=0)
+        content.grid_columnconfigure(1, weight=1)
+        content.bind("<Button-1>", lambda _event: "break")
+
+        self._addField(content, 0, "Estado", detail_view_data.status_label, is_badge=True)
+        self._addField(content, 1, "Titulo playlist", detail_view_data.title)
+        self._addField(content, 2, "Artista playlist", detail_view_data.subtitle)
+        self._addField(content, 3, "Coincidencia local", detail_view_data.local_match)
+        self._addField(content, 4, "Score", detail_view_data.score_label)
+        self._addField(content, 5, "Revision", detail_view_data.review_note)
+        self._addField(content, 6, "Disponibilidad", detail_view_data.availability_summary)
+        self._addField(content, 7, "Motivo detectado", detail_view_data.reason_summary)
+        self._addField(content, 8, "Detalle", detail_view_data.raw_reason, multiline=True)
+        self._addField(content, 9, "Local enlazada", detail_view_data.linked_song_title)
+        self._addField(content, 10, "Ruta o detalle", detail_view_data.linked_song_detail, multiline=True)
+
+        footer = createFrame(modal, theme=self._theme, fg_color="transparent")
+        footer.grid(row=2, column=0, sticky="e", padx=12, pady=(0, 10))
+        footer.bind("<Button-1>", lambda _event: "break")
+        close_action = ActionButton(
+            footer,
+            text="Cerrar",
+            variant="secondary",
+            theme=self._theme,
+            height=30,
+        )
+        close_action.widget.configure(width=110, font=("Segoe UI", 10, "bold"))
+        close_action.clicked.connect(self._close)
+        close_action.widget.pack(side="right")
+
+    def _addField(
+        self,
+        parent,
+        row: int,
+        label: str,
+        value: str,
+        *,
+        is_badge: bool = False,
+        multiline: bool = False,
+    ) -> None:
         createLabel(
-            linked_song_card,
-            detail_view_data.linked_song_title,
-            theme=theme,
-            font=("Segoe UI", 13, "bold"),
-            wraplength=660,
-        ).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 4))
+            parent,
+            f"{label}:",
+            theme=self._theme,
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 10, "bold"),
+        ).grid(row=row, column=0, sticky="nw", padx=(10, 10), pady=(8 if row == 0 else 5, 0))
+        if is_badge:
+            badge = createFrame(
+                parent,
+                theme=self._theme,
+                fg_color=self._theme["accent_soft"],
+                corner_radius=int(self._theme["radius_sm"]),
+            )
+            badge.grid(row=row, column=1, sticky="w", pady=(8 if row == 0 else 5, 0))
+            createLabel(
+                badge,
+                value.upper(),
+                theme=self._theme,
+                text_color=self._theme["text"],
+                font=("Segoe UI", 9, "bold"),
+                anchor="center",
+                justify="center",
+            ).pack(padx=7, pady=3)
+            return
+
         createLabel(
-            linked_song_card,
-            detail_view_data.linked_song_detail,
-            theme=theme,
-            text_color=theme["text_secondary"],
+            parent,
+            value,
+            theme=self._theme,
+            text_color=self._theme["text"] if not multiline else self._theme["text_secondary"],
             font=("Segoe UI", 11),
-            wraplength=660,
-        ).grid(row=1, column=0, sticky="w", padx=12, pady=(0, 12))
-
-        reason_card = createFrame(
-            container,
-            theme=theme,
-            fg_color=theme["surface"],
-            border_width=1,
-            border_color=theme["border"],
-            corner_radius=int(theme["radius_md"]),
-        )
-        reason_card.grid(row=4, column=0, sticky="nsew")
-        reason_card.grid_columnconfigure(0, weight=1)
-        reason_card.grid_rowconfigure(1, weight=1)
-        container.grid_rowconfigure(4, weight=1)
-        createLabel(
-            reason_card,
-            "Motivo del resultado",
-            theme=theme,
-            font=("Segoe UI", 13, "bold"),
-        ).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 4))
-        createLabel(
-            reason_card,
-            (
-                f"Resumen: {detail_view_data.reason_summary}\n\n"
-                f"Detalle: {detail_view_data.raw_reason}"
-            ),
-            theme=theme,
-            text_color=theme["text_secondary"],
-            font=("Segoe UI", 11),
-            wraplength=660,
+            wraplength=460 if multiline else 0,
             justify="left",
-        ).grid(row=1, column=0, sticky="nw", padx=12, pady=(0, 12))
+        ).grid(
+            row=row,
+            column=1,
+            sticky="ew",
+            padx=(0, 10),
+            pady=(8 if row == 0 else 5, 0),
+        )
+
+    def _handleEscape(self, _event) -> None:
+        self._close()
+
+    def _bindEscapeShortcut(self) -> None:
+        self._escapeBindingTarget = self.winfo_toplevel()
+        self._escapeBindingId = self._escapeBindingTarget.bind(
+            "<Escape>",
+            self._handleEscape,
+            add="+",
+        )
+
+    def _close(self) -> None:
+        if self._escapeBindingTarget is not None and self._escapeBindingId is not None:
+            self._escapeBindingTarget.unbind("<Escape>", self._escapeBindingId)
+            self._escapeBindingTarget = None
+            self._escapeBindingId = None
+        self.destroy()

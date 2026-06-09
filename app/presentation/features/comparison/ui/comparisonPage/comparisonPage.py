@@ -38,10 +38,18 @@ from app.presentation.widgets.pageHeader.pageHeader import PageHeader
 
 
 class ComparisonPage(ctk.CTkFrame):
-    TOP_SECTION_RATIO = 0.23
-    MINIMUM_TOP_SECTION_HEIGHT = 196
+    TOP_SECTION_RATIO = 0.17
+    MINIMUM_TOP_SECTION_HEIGHT = 138
     DEFAULT_PRIMARY_ACTION_LABEL = "↻ Refrescar"
     RERUN_PRIMARY_ACTION_LABEL = "↻ Volver a comparar"
+    HISTORY_COLUMNS: tuple[tuple[str, int | None, int, str, int], ...] = (
+        ("Fecha", 132, 0, "w", 16),
+        ("Biblioteca", None, 2, "w", 16),
+        ("Playlist", None, 2, "w", 16),
+        ("Encontradas", 86, 0, "e", 12),
+        ("Posibles", 76, 0, "e", 10),
+        ("Faltan", 68, 0, "e", 10),
+    )
 
     def __init__(self, parent) -> None:
         self._theme = getPageTheme("comparison")
@@ -160,7 +168,7 @@ class ComparisonPage(ctk.CTkFrame):
             return
 
         content = createFrame(self, theme=self._theme, fg_color=self._theme["bg"])
-        content.pack(fill="both", expand=True, padx=int(self._theme["page_padding"]), pady=14)
+        content.pack(fill="both", expand=True, padx=int(self._theme["page_padding"]), pady=10)
         content.grid_columnconfigure(0, weight=1)
         content.grid_rowconfigure(0, weight=0)
         content.grid_rowconfigure(1, weight=1)
@@ -182,18 +190,18 @@ class ComparisonPage(ctk.CTkFrame):
         self.header.setActions(None, self.DEFAULT_PRIMARY_ACTION_LABEL)
         applyButtonStyle(self.header.primaryButton.widget, "primary", self._theme)
         self.header.primaryButton.widget.configure(
-            height=32,
-            width=176,
-            font=("Segoe UI", 12, "bold"),
+            height=30,
+            width=150,
+            font=("Segoe UI", 11, "bold"),
         )
         self.section = ComparisonSplitSection(content, self._theme)
         self._summaryCards = self._buildSummaryCards(top_section)
         self._historyCard = self._buildHistoryCard(top_section)
 
         self.header.grid(row=0, column=0, sticky="ew")
-        self._summaryCards.grid(row=1, column=0, sticky="ew", pady=(8, 0))
-        self._historyCard.grid(row=2, column=0, sticky="ew", pady=(8, 0))
-        self.section.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+        self._summaryCards.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+        self._historyCard.grid(row=2, column=0, sticky="ew", pady=(6, 0))
+        self.section.grid(row=1, column=0, sticky="nsew", pady=(6, 0))
         self.header.setActiveFolderName(self._active_folder_name)
         self.header.setActivePlaylistTitle(self._active_playlist_title)
         self._renderHistoryEntries()
@@ -224,7 +232,7 @@ class ComparisonPage(ctk.CTkFrame):
         wrapper.grid_columnconfigure(2, weight=0)
 
         summary_block = createFrame(wrapper, theme=self._theme, fg_color="transparent")
-        summary_block.grid(row=0, column=0, sticky="w", padx=(10, 8), pady=6)
+        summary_block.grid(row=0, column=0, sticky="w", padx=(8, 6), pady=6)
         self._foundCountValue = self._buildSummaryLine(
             summary_block,
             row=0,
@@ -250,7 +258,7 @@ class ComparisonPage(ctk.CTkFrame):
             buildComparisonLastRunSummary(self._history_entries),
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
         )
         self._lastComparisonLabel.grid(
             row=1,
@@ -261,19 +269,19 @@ class ComparisonPage(ctk.CTkFrame):
         )
 
         search_block = createFrame(wrapper, theme=self._theme, fg_color="transparent")
-        search_block.grid(row=0, column=1, columnspan=2, sticky="ew", padx=(4, 10), pady=6)
+        search_block.grid(row=0, column=1, columnspan=2, sticky="ew", padx=(4, 8), pady=6)
         search_block.grid_columnconfigure(0, weight=1)
         search_variable = ctk.StringVar(value="")
         self._search_variable = search_variable
         search_entry = createEntry(
             search_block,
             theme=self._theme,
-            width=520,
+            width=420,
             placeholder_text="Buscar por titulo o artista...",
             textvariable=search_variable,
         )
         search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
-        search_entry.configure(height=32, font=("Segoe UI", 12))
+        search_entry.configure(height=30, font=("Segoe UI", 11))
         search_variable.trace_add(
             "write",
             lambda *_args: self._scheduleSearchUpdate(),
@@ -286,7 +294,7 @@ class ComparisonPage(ctk.CTkFrame):
             "Filtro:",
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
         ).pack(side="left", padx=(0, 6))
         filter_variable = ctk.StringVar(value=ALL_COMPARISON_FILTER)
         filter_menu = createOptionMenu(
@@ -294,9 +302,9 @@ class ComparisonPage(ctk.CTkFrame):
             filter_variable,
             values=COMPARISON_FILTER_VALUES,
             theme=self._theme,
-            width=116,
+            width=126,
         )
-        filter_menu.configure(font=("Segoe UI", 11), height=32)
+        filter_menu.configure(font=("Segoe UI", 10), height=30)
         filter_menu.configure(command=self.section.setComparisonFilter)
         filter_menu.pack(side="left")
         return wrapper
@@ -313,24 +321,24 @@ class ComparisonPage(ctk.CTkFrame):
         card.grid_columnconfigure(0, weight=1)
 
         header = createFrame(card, theme=self._theme, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="ew", padx=10, pady=(8, 4))
+        header.grid(row=0, column=0, sticky="ew", padx=8, pady=(6, 2))
         header.grid_columnconfigure(0, weight=1)
         createLabel(
             header,
             "Historico reciente",
             theme=self._theme,
-            font=("Segoe UI", 13, "bold"),
+            font=("Segoe UI", 12, "bold"),
         ).grid(row=0, column=0, sticky="w")
         createLabel(
             header,
             "Ultimas comparaciones guardadas del ambito activo",
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
         ).grid(row=1, column=0, sticky="w", pady=(2, 0))
 
         body = createFrame(card, theme=self._theme, fg_color="transparent")
-        body.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
+        body.grid(row=1, column=0, sticky="ew", padx=8, pady=(0, 6))
         body.grid_columnconfigure(0, weight=1)
         self._historyBody = body
         return card
@@ -341,53 +349,90 @@ class ComparisonPage(ctk.CTkFrame):
 
         clearChildren(self._historyBody)
         if not self._history_entries:
-            createLabel(
+            self._historyCard.grid()
+            empty_row = createFrame(
                 self._historyBody,
-                "Todavia no hay comparaciones guardadas para la playlist activa y la biblioteca activa.",
+                theme=self._theme,
+                fg_color=self._theme["surface"],
+                corner_radius=int(self._theme["radius_sm"]),
+            )
+            empty_row.grid(row=0, column=0, sticky="ew")
+            self._configureHistoryGridColumns(empty_row)
+            empty_row.grid_propagate(False)
+            empty_row.configure(height=38)
+            createLabel(
+                empty_row,
+                "Sin comparaciones recientes",
                 theme=self._theme,
                 text_color=self._theme["text_secondary"],
-                font=("Segoe UI", 11),
-                wraplength=860,
-            ).grid(row=0, column=0, sticky="w")
+                font=("Segoe UI", 10),
+            ).grid(row=0, column=0, columnspan=len(self.HISTORY_COLUMNS), sticky="w", padx=8, pady=0)
             return
+        self._historyCard.grid()
+        header_row = createFrame(
+            self._historyBody,
+            theme=self._theme,
+            fg_color=self._theme["panel"],
+            corner_radius=int(self._theme["radius_sm"]),
+        )
+        header_row.grid(row=0, column=0, sticky="ew", pady=(0, 3))
+        self._configureHistoryGridColumns(header_row)
+        header_row.grid_propagate(False)
+        header_row.configure(height=28)
+        for column_index, (title, _minsize, _weight, anchor, _truncate) in enumerate(self.HISTORY_COLUMNS):
+            createLabel(
+                header_row,
+                title,
+                theme=self._theme,
+                text_color=self._theme["text_muted"],
+                font=("Segoe UI", 10, "bold"),
+                anchor=anchor,
+                justify="right" if anchor == "e" else "left",
+            ).grid(
+                row=0,
+                column=column_index,
+                sticky="ew",
+                padx=(8 if column_index == 0 else 6, 8 if column_index == len(self.HISTORY_COLUMNS) - 1 else 6),
+                pady=0,
+            )
 
-        for row_index, entry in enumerate(self._history_entries):
+        for row_index, entry in enumerate(self._history_entries, start=1):
             row = createFrame(
                 self._historyBody,
                 theme=self._theme,
                 fg_color=self._theme["surface"],
-                corner_radius=int(self._theme["radius_md"]),
+                corner_radius=int(self._theme["radius_sm"]),
             )
-            row.grid(row=row_index, column=0, sticky="ew", pady=(0, 6))
-            row.grid_columnconfigure(0, weight=1)
-            row.grid_columnconfigure(1, weight=0)
-            createLabel(
-                row,
-                self._buildHistoryEntryTitle(entry),
-                theme=self._theme,
-                font=("Segoe UI", 12, "bold"),
-            ).grid(row=0, column=0, sticky="w", padx=10, pady=(8, 2))
-            createLabel(
-                row,
-                (
-                    f"{entry.found_count} encontradas | "
-                    f"{entry.possible_match_count} coincidencias | "
-                    f"{entry.missing_count} faltan | "
-                    f"{entry.total_compared} comparadas"
-                ),
-                theme=self._theme,
-                text_color=self._theme["text_secondary"],
-                font=("Segoe UI", 11),
-            ).grid(row=1, column=0, sticky="w", padx=10, pady=(0, 8))
-            createLabel(
-                row,
-                f"#{entry.comparison_id}",
-                theme=self._theme,
-                text_color=self._theme["text_muted"],
-                font=("Segoe UI", 11),
-                anchor="e",
-                justify="right",
-            ).grid(row=0, column=1, rowspan=2, sticky="e", padx=(8, 10), pady=8)
+            row.grid(row=row_index, column=0, sticky="ew", pady=(0, 3))
+            self._configureHistoryGridColumns(row)
+            row.grid_propagate(False)
+            row.configure(height=30)
+            row_values = (
+                self._formatHistoryTimestamp(entry.compared_at),
+                self._active_folder_name,
+                self._active_playlist_title,
+                str(entry.found_count),
+                str(entry.possible_match_count),
+                str(entry.missing_count),
+            )
+            for column_index, value in enumerate(row_values):
+                _title, _minsize, _weight, anchor, max_length = self.HISTORY_COLUMNS[column_index]
+                createLabel(
+                    row,
+                    self._truncateText(value, max_length),
+                    theme=self._theme,
+                    text_color=self._theme["text_secondary"] if column_index < 3 else self._theme["text"],
+                    font=("Segoe UI", 10),
+                    anchor=anchor,
+                    justify="right" if anchor == "e" else "left",
+                    wraplength=0,
+                ).grid(
+                    row=0,
+                    column=column_index,
+                    sticky="ew",
+                    padx=(8 if column_index == 0 else 6, 8 if column_index == len(self.HISTORY_COLUMNS) - 1 else 6),
+                    pady=0,
+                )
 
     def _scheduleSearchUpdate(self) -> None:
         if self._search_variable is None:
@@ -424,7 +469,7 @@ class ComparisonPage(ctk.CTkFrame):
             title,
             theme=self._theme,
             text_color=self._theme["text_muted"],
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
         ).grid(row=row, column=column + 1, sticky="w", padx=(5, 12), pady=0)
         if column < 4:
             createLabel(
@@ -432,7 +477,7 @@ class ComparisonPage(ctk.CTkFrame):
                 "|",
                 theme=self._theme,
                 text_color=self._theme["border"],
-                font=("Segoe UI", 11),
+                font=("Segoe UI", 10),
             ).grid(row=row, column=column + 2, sticky="w", padx=(0, 10))
         return value_label
 
@@ -442,3 +487,19 @@ class ComparisonPage(ctk.CTkFrame):
     def _formatHistoryTimestamp(self, value: datetime) -> str:
         timestamp = value.astimezone() if value.tzinfo is not None else value
         return timestamp.strftime("%d/%m/%Y %H:%M")
+
+    def _configureHistoryGridColumns(self, widget) -> None:
+        for column_index, (_title, minsize, weight, _anchor, _truncate) in enumerate(self.HISTORY_COLUMNS):
+            widget.grid_columnconfigure(
+                column_index,
+                minsize=minsize if minsize is not None else 0,
+                weight=weight,
+            )
+
+    def _truncateText(self, value: str, max_length: int) -> str:
+        compact_value = " ".join(str(value).split())
+        if len(compact_value) <= max_length:
+            return compact_value
+        if max_length <= 3:
+            return compact_value[:max_length]
+        return f"{compact_value[: max_length - 3]}..."

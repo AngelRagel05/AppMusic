@@ -14,26 +14,26 @@ class BrandPanel(ctk.CTkFrame):
             self,
             theme=self._theme,
             fg_color=self._theme["primary"],
-            corner_radius=16,
+            corner_radius=12,
         )
         badge.pack(anchor="w")
         createLabel(
             badge,
             "AM",
             theme=self._theme,
-            font=("Segoe UI", 15, "bold"),
-        ).pack(padx=14, pady=10)
+            font=("Segoe UI", 13, "bold"),
+        ).pack(padx=10, pady=7)
 
         createLabel(
             self,
             "AppMusic",
             theme=self._theme,
-            font=("Segoe UI", 24, "bold"),
-        ).pack(anchor="w", pady=(18, 4))
+            font=("Segoe UI", 20, "bold"),
+        ).pack(anchor="w", pady=(12, 2))
         createLabel(
             self,
             "Configuración musical",
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 13),
+            font=("Segoe UI", 11),
         ).pack(anchor="w")

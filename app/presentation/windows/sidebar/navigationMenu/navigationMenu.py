@@ -30,7 +30,7 @@ class NavigationMenu(ctk.CTkFrame):
         }
 
         for button in self._buttons.values():
-            button.pack(fill="x", pady=(0, 10))
+            button.pack(fill="x", pady=(0, 6))
 
     def setActiveSection(self, section: str) -> None:
         for key, button in self._buttons.items():
@@ -48,9 +48,9 @@ class NavigationMenu(ctk.CTkFrame):
             command=handler,
             anchor="w",
             height=int(self._theme["sidebar_button_height"]),
-            corner_radius=int(self._theme["radius_md"]),
+            corner_radius=int(self._theme["radius_sm"]),
             fg_color="transparent",
             hover_color=self._theme["hover"],
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 13, "bold"),
+            font=("Segoe UI", 12, "bold"),
         )

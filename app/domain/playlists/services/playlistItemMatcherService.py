@@ -14,6 +14,9 @@ from app.domain.playlists.services.playlistItemMatchingRules import (
     scoreDuration,
     scoreNormalizedText,
 )
+from app.domain.playlists.services.youtubePlaylistItemNormalizationService import (
+    normalizeYoutubePlaylistItemMetadata,
+)
 from app.shared.constants.comparison import ComparisonStatus
 
 
@@ -30,12 +33,15 @@ def matchYoutubePlaylistItemToLocalSongs(
     local_songs: Sequence[LocalSong],
     ruleset: PlaylistItemMatchingRuleset = DEFAULT_PLAYLIST_ITEM_MATCHING_RULESET,
 ) -> PlaylistItemMatchResult:
+    comparable_youtube_playlist_item = _buildComparableYoutubePlaylistItem(
+        youtube_playlist_item
+    )
     best_result: PlaylistItemMatchResult | None = None
     best_sort_key: tuple[float, float, float, float, int] | None = None
 
     for local_song in local_songs:
         candidate_result, candidate_sort_key = _scoreCandidate(
-            youtube_playlist_item,
+            comparable_youtube_playlist_item,
             local_song,
             ruleset,
         )
@@ -63,6 +69,33 @@ def matchYoutubePlaylistItemToLocalSongs(
         )
 
     return best_result
+
+
+def _buildComparableYoutubePlaylistItem(
+    youtube_playlist_item: YoutubePlaylistItem,
+) -> YoutubePlaylistItem:
+    raw_title = youtube_playlist_item.raw_title or youtube_playlist_item.normalized_title
+    raw_channel_name = (
+        youtube_playlist_item.raw_channel_name or youtube_playlist_item.normalized_artist
+    )
+    normalized_metadata = normalizeYoutubePlaylistItemMetadata(
+        raw_title,
+        raw_channel_name,
+    )
+    return YoutubePlaylistItem(
+        id=youtube_playlist_item.id,
+        youtube_playlist_id=youtube_playlist_item.youtube_playlist_id,
+        external_video_id=youtube_playlist_item.external_video_id,
+        position=youtube_playlist_item.position,
+        raw_title=youtube_playlist_item.raw_title,
+        raw_channel_name=youtube_playlist_item.raw_channel_name,
+        normalized_title=normalized_metadata.normalized_title,
+        normalized_artist=normalized_metadata.normalized_artist,
+        duration_seconds=youtube_playlist_item.duration_seconds,
+        published_at=youtube_playlist_item.published_at,
+        created_at=youtube_playlist_item.created_at,
+        updated_at=youtube_playlist_item.updated_at,
+    )
 
 
 def _scoreCandidate(

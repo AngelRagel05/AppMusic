@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 from app.shared.constants.comparison import ComparisonStatus
 
@@ -25,11 +26,14 @@ class DurationMatchThresholds:
 
 @dataclass(frozen=True, slots=True)
 class MatchClassificationThresholds:
-    found_minimum_score: float = 85.0
-    possible_match_minimum_score: float = 55.0
+    found_minimum_score: float = 75.0
+    possible_match_minimum_score: float = 65.0
     found_duration_tolerance_seconds: float = 5.0
     found_minimum_title_score: float = 45.0
     found_minimum_artist_score: float = 10.0
+    strong_title_possible_match_score: float = 60.0
+    rescue_found_title_score: float = 54.0
+    rescue_found_artist_score: float = 18.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +77,13 @@ def scoreNormalizedText(
     if overlap_ratio >= 0.75:
         return weights.strong_overlap_score
     if overlap_ratio >= 0.5:
+        return weights.medium_overlap_score
+    similarity_ratio = normalizedSimilarityRatio(left, right)
+    if similarity_ratio >= 0.9:
+        return weights.contains_score
+    if similarity_ratio >= 0.78:
+        return weights.strong_overlap_score
+    if similarity_ratio >= 0.64:
         return weights.medium_overlap_score
     return 0.0
 
@@ -127,6 +138,13 @@ def classifyMatchStatus(
         and total_score >= thresholds.found_minimum_score
     ):
         return ComparisonStatus.FOUND
+    if (
+        title_score >= thresholds.rescue_found_title_score
+        and artist_score >= thresholds.rescue_found_artist_score
+    ):
+        return ComparisonStatus.FOUND
+    if title_score >= thresholds.strong_title_possible_match_score:
+        return ComparisonStatus.POSSIBLE_MATCH
     if total_score >= thresholds.possible_match_minimum_score:
         return ComparisonStatus.POSSIBLE_MATCH
     return ComparisonStatus.MISSING
@@ -156,7 +174,10 @@ def buildMatchReason(
             f"{duration_note}. Score {total_score:.1f} "
             f"(titulo {title_score:.1f}, artista {artist_score:.1f})."
         )
-    return "La candidata no alcanza score minimo de comparacion."
+    return (
+        "Coincidencia rechazada porque el score no alcanza el umbral minimo. "
+        f"Score {total_score:.1f} (titulo {title_score:.1f}, artista {artist_score:.1f})."
+    )
 
 
 def containsEitherWay(left: str, right: str) -> bool:
@@ -173,3 +194,7 @@ def tokenOverlapRatio(left: str, right: str) -> float:
     intersection_size = len(left_tokens & right_tokens)
     denominator = max(len(left_tokens), len(right_tokens))
     return intersection_size / denominator
+
+
+def normalizedSimilarityRatio(left: str, right: str) -> float:
+    return SequenceMatcher(a=left, b=right).ratio()

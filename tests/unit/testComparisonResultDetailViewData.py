@@ -41,7 +41,9 @@ def test_buildComparisonResultDetailViewData_returns_full_detail_for_linked_song
     assert view_data.title == "Numb"
     assert view_data.subtitle == "Linkin Park"
     assert view_data.status_label == "Encontrada"
+    assert view_data.local_match == "Numb · Linkin Park"
     assert view_data.score_label == "98.2%"
+    assert view_data.review_note == "Coincidencia confirmada"
     assert "Cancion local enlazada: Numb · Linkin Park" == view_data.linked_song_title
     assert "Coincidencia fuerte" in view_data.reason_summary
 
@@ -63,5 +65,7 @@ def test_buildComparisonResultDetailViewData_reports_missing_linked_song_when_ab
     )
 
     assert view_data.status_label == "Falta"
+    assert view_data.local_match == "Sin coincidencia local"
+    assert view_data.review_note == "Pendiente de descargar o escanear"
     assert view_data.linked_song_title == "Cancion local enlazada: no disponible"
     assert "no tiene una cancion local enlazada" in view_data.linked_song_detail

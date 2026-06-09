@@ -22,21 +22,21 @@ class ContextSummary(ctk.CTkFrame):
             "Estado del sistema",
             theme=self._theme,
             text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 13, "bold"),
-        ).pack(anchor="w", padx=18, pady=(18, 16))
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w", padx=12, pady=(10, 10))
 
         self._folderValue = self._build_metric("Biblioteca activa", "Sin biblioteca")
         self._playlistValue = self._build_metric("Playlist activa", "Sin playlist")
         self._songsValue = self._build_metric("Canciones detectadas", "Sin escaneo")
 
         statusRow = createFrame(self, theme=self._theme, fg_color="transparent")
-        statusRow.pack(fill="x", padx=18, pady=(12, 18))
+        statusRow.pack(fill="x", padx=12, pady=(4, 10))
         createLabel(
             statusRow,
             "Sincronización",
             theme=self._theme,
             text_color=self._theme["text_muted"],
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", 10, "bold"),
         ).pack(side="left")
         self._statusBadge = StatusBadge(statusRow, "Pendiente", "idle", self._theme)
         self._statusBadge.pack(side="right")
@@ -58,22 +58,22 @@ class ContextSummary(ctk.CTkFrame):
             self,
             theme=self._theme,
             fg_color=self._theme["surface"],
-            corner_radius=int(self._theme["radius_md"]),
+            corner_radius=int(self._theme["radius_sm"]),
         )
-        card.pack(fill="x", padx=18, pady=(0, 12))
+        card.pack(fill="x", padx=12, pady=(0, 8))
         createLabel(
             card,
             title,
             theme=self._theme,
             text_color=self._theme["text_muted"],
-            font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w", padx=14, pady=(12, 6))
+            font=("Segoe UI", 10, "bold"),
+        ).pack(anchor="w", padx=10, pady=(8, 3))
         valueLabel = createLabel(
             card,
             value,
             theme=self._theme,
-            font=("Segoe UI", 13, "bold"),
-            wraplength=180,
+            font=("Segoe UI", 11, "bold"),
+            wraplength=164,
         )
-        valueLabel.pack(anchor="w", padx=14, pady=(0, 12))
+        valueLabel.pack(anchor="w", padx=10, pady=(0, 8))
         return valueLabel

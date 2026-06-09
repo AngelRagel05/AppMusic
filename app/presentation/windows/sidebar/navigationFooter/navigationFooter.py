@@ -15,6 +15,6 @@ class NavigationFooter(ctk.CTkFrame):
             "AppMusic organiza bibliotecas, playlists y filtros desde una única consola.",
             theme=self._theme,
             text_color=self._theme["text_muted"],
-            font=("Segoe UI", 12),
-            wraplength=190,
+            font=("Segoe UI", 10),
+            wraplength=172,
         ).pack(anchor="w")

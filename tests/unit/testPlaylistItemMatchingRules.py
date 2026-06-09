@@ -6,6 +6,7 @@ from app.domain.playlists.services import (
     TextMatchWeights,
     buildMatchReason,
     classifyMatchStatus,
+    normalizedSimilarityRatio,
     scoreDuration,
     scoreNormalizedText,
 )
@@ -72,3 +73,35 @@ def test_build_match_reason_returns_possible_match_reason_with_score_breakdown()
     assert "Score 58.0" in reason
     assert "titulo 45.0" in reason
     assert "artista 10.0" in reason
+
+
+def test_classify_match_status_rescues_strong_title_and_partial_artist_matches() -> None:
+    status = classifyMatchStatus(
+        title_score=60.0,
+        artist_score=20.0,
+        youtube_duration_seconds=180.0,
+        local_duration_seconds=196.0,
+        duration_distance=16.0,
+        total_score=80.0,
+        thresholds=MatchClassificationThresholds(),
+    )
+
+    assert status is ComparisonStatus.FOUND
+
+
+def test_classify_match_status_returns_found_with_lower_total_threshold_when_text_is_strong() -> None:
+    status = classifyMatchStatus(
+        title_score=45.0,
+        artist_score=20.0,
+        youtube_duration_seconds=180.0,
+        local_duration_seconds=181.0,
+        duration_distance=1.0,
+        total_score=75.0,
+        thresholds=MatchClassificationThresholds(),
+    )
+
+    assert status is ComparisonStatus.FOUND
+
+
+def test_normalized_similarity_ratio_detects_near_equivalent_strings() -> None:
+    assert normalizedSimilarityRatio("perdiendo la fe", "perdiendo fe") >= 0.78
