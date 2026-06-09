@@ -2,8 +2,31 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from difflib import SequenceMatcher
+from enum import Enum
 
 from app.shared.constants.comparison import ComparisonStatus
+
+
+class TitleMatchEvidence(str, Enum):
+    EXACT = "exact"
+    NEAR_EXACT = "near_exact"
+    CONTAINS = "contains"
+    WEAK = "weak"
+    NONE = "none"
+
+
+class ArtistMatchEvidence(str, Enum):
+    STRONG = "strong"
+    MEDIUM = "medium"
+    WEAK = "weak"
+    NONE = "none"
+
+
+class DurationMatchEvidence(str, Enum):
+    STRONG = "lte_1s"
+    MEDIUM = "lte_3s"
+    WEAK = "gt_3s"
+    UNKNOWN = "unknown"
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,24 +39,29 @@ class TextMatchWeights:
 
 @dataclass(frozen=True, slots=True)
 class DurationMatchThresholds:
-    strong_seconds: float = 3.0
-    medium_seconds: float = 5.0
-    weak_seconds: float = 8.0
+    strong_seconds: float = 1.0
+    medium_seconds: float = 3.0
     strong_score: float = 10.0
     medium_score: float = 6.0
-    weak_score: float = 3.0
+    weak_score: float = 2.0
+
+
+@dataclass(frozen=True, slots=True)
+class ConsistencyScoreWeights:
+    title_artist_bonus: float = 8.0
+    title_duration_bonus: float = 5.0
+    global_consistency_bonus: float = 7.0
+
+
+@dataclass(frozen=True, slots=True)
+class AmbiguityPenaltyThresholds:
+    close_score_margin: float = 5.0
+    per_competitor_penalty: float = 6.0
 
 
 @dataclass(frozen=True, slots=True)
 class MatchClassificationThresholds:
-    found_minimum_score: float = 75.0
-    possible_match_minimum_score: float = 65.0
-    found_duration_tolerance_seconds: float = 5.0
-    found_minimum_title_score: float = 45.0
-    found_minimum_artist_score: float = 10.0
-    strong_title_possible_match_score: float = 60.0
-    rescue_found_title_score: float = 54.0
-    rescue_found_artist_score: float = 18.0
+    ambiguity_score_margin: float = 5.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +79,8 @@ class PlaylistItemMatchingRuleset:
         medium_overlap_score=10.0,
     )
     duration_thresholds: DurationMatchThresholds = DurationMatchThresholds()
+    consistency_weights: ConsistencyScoreWeights = ConsistencyScoreWeights()
+    ambiguity_thresholds: AmbiguityPenaltyThresholds = AmbiguityPenaltyThresholds()
     classification_thresholds: MatchClassificationThresholds = (
         MatchClassificationThresholds()
     )
@@ -59,33 +89,119 @@ class PlaylistItemMatchingRuleset:
 DEFAULT_PLAYLIST_ITEM_MATCHING_RULESET = PlaylistItemMatchingRuleset()
 
 
+@dataclass(frozen=True, slots=True)
+class CandidateMatchEvidence:
+    title_match: TitleMatchEvidence
+    artist_match: ArtistMatchEvidence
+    duration_match: DurationMatchEvidence
+    ambiguity_count: int = 1
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateScoreBreakdown:
+    title_score: float
+    artist_score: float
+    duration_score: float
+    consistency_bonus: float
+    ambiguity_penalty: float = 0.0
+
+    @property
+    def base_score(self) -> float:
+        return (
+            self.title_score
+            + self.artist_score
+            + self.duration_score
+            + self.consistency_bonus
+        )
+
+    @property
+    def total_score(self) -> float:
+        return self.base_score - self.ambiguity_penalty
+
+
+def buildTextMatchEvidence(
+    left_value: str,
+    right_value: str,
+) -> TitleMatchEvidence:
+    left = left_value.strip()
+    right = right_value.strip()
+    if not left or not right:
+        return TitleMatchEvidence.NONE
+    if left == right:
+        return TitleMatchEvidence.EXACT
+    if containsEitherWay(left, right):
+        return TitleMatchEvidence.CONTAINS
+
+    overlap_ratio = tokenOverlapRatio(left, right)
+    similarity_ratio = normalizedSimilarityRatio(left, right)
+    if overlap_ratio >= 0.75 or similarity_ratio >= 0.9 or similarity_ratio >= 0.78:
+        return TitleMatchEvidence.NEAR_EXACT
+    if overlap_ratio >= 0.5 or similarity_ratio >= 0.64:
+        return TitleMatchEvidence.WEAK
+    return TitleMatchEvidence.NONE
+
+
+def buildArtistMatchEvidence(
+    left_value: str,
+    right_value: str,
+) -> ArtistMatchEvidence:
+    title_like_evidence = buildTextMatchEvidence(left_value, right_value)
+    return {
+        TitleMatchEvidence.EXACT: ArtistMatchEvidence.STRONG,
+        TitleMatchEvidence.CONTAINS: ArtistMatchEvidence.STRONG,
+        TitleMatchEvidence.NEAR_EXACT: ArtistMatchEvidence.MEDIUM,
+        TitleMatchEvidence.WEAK: ArtistMatchEvidence.WEAK,
+        TitleMatchEvidence.NONE: ArtistMatchEvidence.NONE,
+    }[title_like_evidence]
+
+
+def buildDurationMatchEvidence(
+    youtube_duration_seconds: float | None,
+    local_duration_seconds: float,
+) -> tuple[DurationMatchEvidence, float]:
+    if (
+        youtube_duration_seconds is None
+        or youtube_duration_seconds <= 0
+        or local_duration_seconds <= 0
+    ):
+        return DurationMatchEvidence.UNKNOWN, float("inf")
+
+    distance = abs(youtube_duration_seconds - local_duration_seconds)
+    if distance <= 1.0:
+        return DurationMatchEvidence.STRONG, distance
+    if distance <= 3.0:
+        return DurationMatchEvidence.MEDIUM, distance
+    return DurationMatchEvidence.WEAK, distance
+
+
+def buildCandidateMatchEvidence(
+    *,
+    title_match: TitleMatchEvidence,
+    artist_match: ArtistMatchEvidence,
+    duration_match: DurationMatchEvidence,
+    ambiguity_count: int = 1,
+) -> CandidateMatchEvidence:
+    return CandidateMatchEvidence(
+        title_match=title_match,
+        artist_match=artist_match,
+        duration_match=duration_match,
+        ambiguity_count=max(ambiguity_count, 1),
+    )
+
+
 def scoreNormalizedText(
     left_value: str,
     right_value: str,
     weights: TextMatchWeights,
 ) -> float:
-    left = left_value.strip()
-    right = right_value.strip()
-    if not left or not right:
-        return 0.0
-    if left == right:
-        return weights.exact_score
-    if containsEitherWay(left, right):
-        return weights.contains_score
-
-    overlap_ratio = tokenOverlapRatio(left, right)
-    if overlap_ratio >= 0.75:
-        return weights.strong_overlap_score
-    if overlap_ratio >= 0.5:
-        return weights.medium_overlap_score
-    similarity_ratio = normalizedSimilarityRatio(left, right)
-    if similarity_ratio >= 0.9:
-        return weights.contains_score
-    if similarity_ratio >= 0.78:
-        return weights.strong_overlap_score
-    if similarity_ratio >= 0.64:
-        return weights.medium_overlap_score
-    return 0.0
+    evidence = buildTextMatchEvidence(left_value, right_value)
+    return {
+        TitleMatchEvidence.EXACT: weights.exact_score,
+        TitleMatchEvidence.CONTAINS: weights.contains_score,
+        TitleMatchEvidence.NEAR_EXACT: weights.strong_overlap_score,
+        TitleMatchEvidence.WEAK: weights.medium_overlap_score,
+        TitleMatchEvidence.NONE: 0.0,
+    }[evidence]
 
 
 def scoreDuration(
@@ -97,86 +213,181 @@ def scoreDuration(
 ) -> tuple[float, float]:
     if not has_textual_signal:
         return 0.0, float("inf")
-    if youtube_duration_seconds is None or youtube_duration_seconds <= 0:
+    duration_evidence, distance = buildDurationMatchEvidence(
+        youtube_duration_seconds,
+        local_duration_seconds,
+    )
+    if duration_evidence is DurationMatchEvidence.UNKNOWN:
         return 0.0, float("inf")
-    if local_duration_seconds <= 0:
-        return 0.0, float("inf")
-
-    distance = abs(youtube_duration_seconds - local_duration_seconds)
-    if distance <= thresholds.strong_seconds:
+    if duration_evidence is DurationMatchEvidence.STRONG:
         return thresholds.strong_score, distance
-    if distance <= thresholds.medium_seconds:
+    if duration_evidence is DurationMatchEvidence.MEDIUM:
         return thresholds.medium_score, distance
-    if distance <= thresholds.weak_seconds:
+    if duration_evidence is DurationMatchEvidence.WEAK:
         return thresholds.weak_score, distance
     return 0.0, distance
 
 
+def scoreEvidenceConsistency(
+    evidence: CandidateMatchEvidence,
+    weights: ConsistencyScoreWeights,
+) -> float:
+    bonus = 0.0
+
+    if evidence.title_match is TitleMatchEvidence.EXACT and evidence.artist_match in (
+        ArtistMatchEvidence.STRONG,
+        ArtistMatchEvidence.MEDIUM,
+    ):
+        bonus += weights.title_artist_bonus
+    elif (
+        evidence.title_match is TitleMatchEvidence.NEAR_EXACT
+        and evidence.artist_match is ArtistMatchEvidence.STRONG
+    ):
+        bonus += weights.title_artist_bonus * 0.75
+
+    if evidence.title_match is TitleMatchEvidence.EXACT and evidence.duration_match in (
+        DurationMatchEvidence.STRONG,
+        DurationMatchEvidence.MEDIUM,
+    ):
+        bonus += weights.title_duration_bonus
+    elif (
+        evidence.title_match is TitleMatchEvidence.NEAR_EXACT
+        and evidence.duration_match is DurationMatchEvidence.STRONG
+    ):
+        bonus += weights.title_duration_bonus * 0.8
+
+    if _isFoundMatch(evidence):
+        bonus += weights.global_consistency_bonus
+
+    return bonus
+
+
+def calculateAmbiguityPenalty(
+    ambiguity_count: int,
+    thresholds: AmbiguityPenaltyThresholds,
+) -> float:
+    competitive_neighbors = max(ambiguity_count - 1, 0)
+    return competitive_neighbors * thresholds.per_competitor_penalty
+
+
 def classifyMatchStatus(
     *,
-    title_score: float,
-    artist_score: float,
-    youtube_duration_seconds: float | None,
-    local_duration_seconds: float,
-    duration_distance: float,
-    total_score: float,
-    thresholds: MatchClassificationThresholds,
+    evidence: CandidateMatchEvidence,
 ) -> ComparisonStatus:
-    has_comparable_duration = (
-        youtube_duration_seconds is not None
-        and youtube_duration_seconds > 0
-        and local_duration_seconds > 0
-    )
-    duration_is_strong = (not has_comparable_duration) or (
-        duration_distance <= thresholds.found_duration_tolerance_seconds
-    )
+    if _hasRealAmbiguity(evidence):
+        return ComparisonStatus.POSSIBLE_MATCH
 
-    if (
-        title_score >= thresholds.found_minimum_title_score
-        and artist_score >= thresholds.found_minimum_artist_score
-        and duration_is_strong
-        and total_score >= thresholds.found_minimum_score
-    ):
+    if _isFoundMatch(evidence):
         return ComparisonStatus.FOUND
-    if (
-        title_score >= thresholds.rescue_found_title_score
-        and artist_score >= thresholds.rescue_found_artist_score
-    ):
-        return ComparisonStatus.FOUND
-    if title_score >= thresholds.strong_title_possible_match_score:
+
+    if _isPossibleMatch(evidence):
         return ComparisonStatus.POSSIBLE_MATCH
-    if total_score >= thresholds.possible_match_minimum_score:
-        return ComparisonStatus.POSSIBLE_MATCH
+
     return ComparisonStatus.MISSING
 
 
 def buildMatchReason(
     *,
     status: ComparisonStatus,
-    title_score: float,
-    artist_score: float,
-    duration_distance: float,
-    total_score: float,
+    evidence: CandidateMatchEvidence,
+    score_breakdown: CandidateScoreBreakdown,
 ) -> str:
     if status is ComparisonStatus.FOUND:
-        if duration_distance != float("inf"):
-            return (
-                "Coincidencia ponderada fuerte en titulo y artista normalizados; "
-                f"duracion dentro de tolerancia ({duration_distance:.1f}s)."
-            )
-        return "Coincidencia ponderada fuerte en titulo y artista normalizados."
+        return _buildFoundReason(evidence)
     if status is ComparisonStatus.POSSIBLE_MATCH:
-        duration_note = ""
-        if duration_distance != float("inf") and duration_distance <= 8:
-            duration_note = f" y duracion cercana ({duration_distance:.1f}s)"
-        return (
-            "Coincidencia parcial detectada"
-            f"{duration_note}. Score {total_score:.1f} "
-            f"(titulo {title_score:.1f}, artista {artist_score:.1f})."
-        )
+        return _buildPossibleReason(evidence)
+    return _buildMissingReason(evidence, score_breakdown)
+
+
+def _buildFoundReason(evidence: CandidateMatchEvidence) -> str:
+    if evidence.title_match is TitleMatchEvidence.EXACT:
+        return "Titulo exacto con artista fuerte y duracion razonable."
+    if evidence.title_match is TitleMatchEvidence.NEAR_EXACT:
+        return "Titulo casi exacto con artista fuerte."
+    return "Coincidencia validada por titulo y artista fuertes."
+
+
+def _buildPossibleReason(evidence: CandidateMatchEvidence) -> str:
+    if evidence.ambiguity_count > 1:
+        return "Ambiguedad entre dos candidatas plausibles."
+    if evidence.duration_match is DurationMatchEvidence.WEAK:
+        return "Titulo exacto pero artista inconsistente y duracion debil."
+    return "Titulo exacto pero artista inconsistente."
+
+
+def _buildMissingReason(
+    evidence: CandidateMatchEvidence,
+    score_breakdown: CandidateScoreBreakdown,
+) -> str:
+    if evidence.title_match in (
+        TitleMatchEvidence.EXACT,
+        TitleMatchEvidence.NEAR_EXACT,
+        TitleMatchEvidence.CONTAINS,
+    ) and evidence.artist_match in (
+        ArtistMatchEvidence.NONE,
+        ArtistMatchEvidence.WEAK,
+        ArtistMatchEvidence.MEDIUM,
+    ):
+        if evidence.duration_match is DurationMatchEvidence.WEAK:
+            return "Duracion fuera de tolerancia fuerte."
+        return "Titulo competitivo pero artista inconsistente."
+
+    if score_breakdown.base_score <= 0:
+        return "No hay canciones locales candidatas para comparar."
+
+    return "No hay candidata suficientemente competitiva."
+
+
+def _isFoundMatch(evidence: CandidateMatchEvidence) -> bool:
+    if _hasStrongTitleAndArtist(evidence):
+        return True
+    return _hasExactTitleStrongArtistAndReasonableDuration(evidence)
+
+
+def _isPossibleMatch(evidence: CandidateMatchEvidence) -> bool:
+    if _hasRealAmbiguity(evidence):
+        return True
+    return _hasExactTitleWithoutArtistAndDurationOverOneSecond(evidence)
+
+
+def _hasRealAmbiguity(evidence: CandidateMatchEvidence) -> bool:
+    return evidence.ambiguity_count > 1
+
+
+def _hasStrongTitleAndArtist(evidence: CandidateMatchEvidence) -> bool:
     return (
-        "Coincidencia rechazada porque el score no alcanza el umbral minimo. "
-        f"Score {total_score:.1f} (titulo {title_score:.1f}, artista {artist_score:.1f})."
+        evidence.title_match in (
+            TitleMatchEvidence.EXACT,
+            TitleMatchEvidence.NEAR_EXACT,
+        )
+        and evidence.artist_match is ArtistMatchEvidence.STRONG
+    )
+
+
+def _hasExactTitleStrongArtistAndReasonableDuration(
+    evidence: CandidateMatchEvidence,
+) -> bool:
+    return (
+        evidence.title_match is TitleMatchEvidence.EXACT
+        and evidence.artist_match is ArtistMatchEvidence.STRONG
+        and evidence.duration_match in (
+            DurationMatchEvidence.STRONG,
+            DurationMatchEvidence.MEDIUM,
+            DurationMatchEvidence.UNKNOWN,
+        )
+    )
+
+
+def _hasExactTitleWithoutArtistAndDurationOverOneSecond(
+    evidence: CandidateMatchEvidence,
+) -> bool:
+    return (
+        evidence.title_match is TitleMatchEvidence.EXACT
+        and evidence.artist_match is ArtistMatchEvidence.NONE
+        and evidence.duration_match in (
+            DurationMatchEvidence.MEDIUM,
+            DurationMatchEvidence.WEAK,
+        )
     )
 
 

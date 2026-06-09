@@ -4,18 +4,16 @@ from dataclasses import dataclass
 import re
 
 from app.domain.metadata.services.musicComparisonNormalizationService import (
-    normalizeMusicComparisonMetadata,
     normalizeMusicComparisonArtist,
-    normalizeMusicComparisonTitle,
+    normalizeMusicComparisonMetadata,
     normalizeMusicComparisonText,
+    normalizeMusicComparisonTitle,
+    splitMusicComparisonSegments,
 )
 from app.domain.playlists.services.playlistItemMatchingRules import (
-    normalizedSimilarityRatio,
+    TitleMatchEvidence,
+    buildTextMatchEvidence,
 )
-
-_BRACKET_PATTERN = re.compile(r"(\([^)]*\)|\[[^\]]*\])")
-_SEPARATOR_PATTERN = re.compile(r"\s*(?:-{1,3}|[–—|·~]+|/{1,3})\s*", re.IGNORECASE)
-_TRACK_INDEX_PATTERN = re.compile(r"^\d{1,3}[a-z]?$", re.IGNORECASE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,18 +22,24 @@ class NormalizedYoutubePlaylistItemMetadata:
     normalized_artist: str
 
 
+@dataclass(frozen=True, slots=True)
+class _SplitCandidate:
+    normalized_artist: str
+    normalized_title: str
+    channel_rank: int
+    title_token_count: int
+    artist_token_count: int
+
+
+_TRACK_INDEX_PATTERN = re.compile(r"^\d{1,3}[a-z]?$", re.IGNORECASE)
+
+
 def normalizeYoutubePlaylistItemMetadata(
     raw_title: str,
     raw_channel_name: str,
 ) -> NormalizedYoutubePlaylistItemMetadata:
-    cleaned_raw_title = _removeDecorativeBrackets(raw_title)
-    cleaned_title = normalizeMusicComparisonTitle(cleaned_raw_title)
-    cleaned_channel_name = normalizeMusicComparisonText(
-        _removeDecorativeBrackets(raw_channel_name)
-    )
-
     artist_from_title, title_from_title = _splitArtistAndTitle(
-        cleaned_raw_title,
+        raw_title,
         raw_channel_name,
     )
     if artist_from_title and title_from_title:
@@ -44,67 +48,98 @@ def normalizeYoutubePlaylistItemMetadata(
             normalized_artist=artist_from_title,
         )
 
-    normalized_metadata = normalizeMusicComparisonMetadata(cleaned_title, cleaned_channel_name)
+    normalized_metadata = normalizeMusicComparisonMetadata(
+        title=raw_title,
+        artist=raw_channel_name,
+    )
     return NormalizedYoutubePlaylistItemMetadata(
         normalized_title=normalized_metadata.normalized_title,
         normalized_artist=normalized_metadata.normalized_artist,
     )
 
 
-def _removeDecorativeBrackets(value: str) -> str:
-    result = value
-    for match in _BRACKET_PATTERN.findall(value):
-        normalized_content = normalizeMusicComparisonText(match[1:-1])
-        if normalized_content != match[1:-1].strip().lower():
-            result = result.replace(match, " ")
-    return result
-
-
 def _splitArtistAndTitle(
     value: str,
     raw_channel_name: str,
 ) -> tuple[str | None, str | None]:
-    raw_parts = [part.strip() for part in _SEPARATOR_PATTERN.split(value) if part.strip()]
+    raw_parts = list(splitMusicComparisonSegments(value))
+    if len(raw_parts) < 2:
+        return None, None
+
+    if _looksLikeTrackIndex(raw_parts[0]):
+        raw_parts = raw_parts[1:]
     if len(raw_parts) < 2:
         return None, None
 
     normalized_channel = normalizeMusicComparisonArtist(raw_channel_name)
-    if len(raw_parts) >= 3 and _looksLikeTrackIndex(raw_parts[0]):
-        title = normalizeMusicComparisonTitle(" ".join(raw_parts[1:-1]))
-        artist = normalizeMusicComparisonArtist(raw_parts[-1])
-        if artist and title:
-            return artist, title
+    split_candidates = _buildSplitCandidates(raw_parts, normalized_channel)
+    if split_candidates:
+        best_candidate = max(
+            split_candidates,
+            key=lambda candidate: (
+                candidate.channel_rank,
+                candidate.title_token_count,
+                -candidate.artist_token_count,
+            ),
+        )
+        if best_candidate.channel_rank >= 2:
+            return (
+                best_candidate.normalized_artist or None,
+                best_candidate.normalized_title or None,
+            )
 
-    if len(raw_parts) == 2:
-        first_artist = normalizeMusicComparisonArtist(raw_parts[0])
-        second_artist = normalizeMusicComparisonArtist(raw_parts[1])
-        first_title = normalizeMusicComparisonTitle(raw_parts[0])
-        second_title = normalizeMusicComparisonTitle(raw_parts[1])
-
-        if _channelMatchesPart(normalized_channel, first_artist):
-            return first_artist or None, second_title or None
-        if _channelMatchesPart(normalized_channel, second_artist):
-            return first_title or None, second_artist or None
-
-        return first_artist or None, second_title or None
-
-    first_artist = normalizeMusicComparisonArtist(raw_parts[0])
-    trailing_artist = normalizeMusicComparisonArtist(" ".join(raw_parts[1:]))
-    joined_title = normalizeMusicComparisonTitle(" ".join(raw_parts[1:]))
-    if _channelMatchesPart(normalized_channel, first_artist):
-        return first_artist or None, joined_title or None
-
-    if _channelMatchesPart(normalized_channel, trailing_artist):
-        title = normalizeMusicComparisonTitle(raw_parts[0])
-        artist = trailing_artist
-        if artist and title:
-            return artist, title
-
-    title = normalizeMusicComparisonTitle(raw_parts[0])
-    artist = trailing_artist
-    if artist and title:
-        return artist, title
+    default_artist = normalizeMusicComparisonArtist(raw_parts[0])
+    default_title = normalizeMusicComparisonTitle(" ".join(raw_parts[1:]))
+    if default_artist and default_title:
+        return default_artist, default_title
     return None, None
+
+
+def _buildSplitCandidates(
+    raw_parts: list[str],
+    normalized_channel: str,
+) -> list[_SplitCandidate]:
+    split_candidates: list[_SplitCandidate] = []
+    for split_index in range(1, len(raw_parts)):
+        left_raw_value = " ".join(raw_parts[:split_index])
+        right_raw_value = " ".join(raw_parts[split_index:])
+        left_artist = normalizeMusicComparisonArtist(left_raw_value)
+        right_artist = normalizeMusicComparisonArtist(right_raw_value)
+        left_title = normalizeMusicComparisonTitle(left_raw_value)
+        right_title = normalizeMusicComparisonTitle(right_raw_value)
+
+        if left_artist and right_title:
+            split_candidates.append(
+                _buildSplitCandidate(
+                    normalized_artist=left_artist,
+                    normalized_title=right_title,
+                    normalized_channel=normalized_channel,
+                )
+            )
+        if right_artist and left_title:
+            split_candidates.append(
+                _buildSplitCandidate(
+                    normalized_artist=right_artist,
+                    normalized_title=left_title,
+                    normalized_channel=normalized_channel,
+                )
+            )
+    return split_candidates
+
+
+def _buildSplitCandidate(
+    *,
+    normalized_artist: str,
+    normalized_title: str,
+    normalized_channel: str,
+) -> _SplitCandidate:
+    return _SplitCandidate(
+        normalized_artist=normalized_artist,
+        normalized_title=normalized_title,
+        channel_rank=_rankChannelMatch(normalized_channel, normalized_artist),
+        title_token_count=len([token for token in normalized_title.split(" ") if token]),
+        artist_token_count=len([token for token in normalized_artist.split(" ") if token]),
+    )
 
 
 def _looksLikeTrackIndex(value: str) -> bool:
@@ -112,11 +147,15 @@ def _looksLikeTrackIndex(value: str) -> bool:
     return bool(normalized_value and _TRACK_INDEX_PATTERN.fullmatch(normalized_value))
 
 
-def _channelMatchesPart(normalized_channel: str, normalized_part: str) -> bool:
-    if not normalized_channel or not normalized_part:
-        return False
-    if normalized_channel == normalized_part:
-        return True
-    if normalized_channel in normalized_part or normalized_part in normalized_channel:
-        return True
-    return normalizedSimilarityRatio(normalized_channel, normalized_part) >= 0.82
+def _rankChannelMatch(normalized_channel: str, normalized_artist: str) -> int:
+    if not normalized_channel or not normalized_artist:
+        return 0
+
+    evidence = buildTextMatchEvidence(normalized_channel, normalized_artist)
+    return {
+        TitleMatchEvidence.EXACT: 3,
+        TitleMatchEvidence.NEAR_EXACT: 2,
+        TitleMatchEvidence.CONTAINS: 1,
+        TitleMatchEvidence.WEAK: 0,
+        TitleMatchEvidence.NONE: 0,
+    }[evidence]

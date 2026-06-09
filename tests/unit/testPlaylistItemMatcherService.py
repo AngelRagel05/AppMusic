@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from app.domain.library.entities.localSong import LocalSong
 from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistItem
 from app.domain.playlists.services import matchYoutubePlaylistItemToLocalSongs
@@ -60,7 +62,7 @@ def test_match_youtube_playlist_item_to_local_songs_returns_missing_without_viab
     assert result.score == 0.0
 
 
-def test_match_youtube_playlist_item_to_local_songs_returns_possible_match_for_title_similarity() -> None:
+def test_match_youtube_playlist_item_to_local_songs_returns_missing_for_title_similarity_without_artist_or_duration_support() -> None:
     youtube_item = YoutubePlaylistItem(
         id=1,
         youtube_playlist_id=9,
@@ -82,12 +84,12 @@ def test_match_youtube_playlist_item_to_local_songs_returns_possible_match_for_t
 
     result = matchYoutubePlaylistItemToLocalSongs(youtube_item, [local_song])
 
-    assert result.local_song == local_song
-    assert result.comparison_status is ComparisonStatus.POSSIBLE_MATCH
-    assert 55.0 <= result.score < 85.0
+    assert result.local_song is None
+    assert result.comparison_status is ComparisonStatus.MISSING
+    assert result.score == 0.0
 
 
-def test_match_youtube_playlist_item_to_local_songs_returns_possible_match_for_near_duration() -> None:
+def test_match_youtube_playlist_item_to_local_songs_returns_missing_for_contains_title_when_duration_is_over_3_seconds() -> None:
     youtube_item = YoutubePlaylistItem(
         id=1,
         youtube_playlist_id=9,
@@ -109,9 +111,9 @@ def test_match_youtube_playlist_item_to_local_songs_returns_possible_match_for_n
 
     result = matchYoutubePlaylistItemToLocalSongs(youtube_item, [local_song])
 
-    assert result.local_song == local_song
-    assert result.comparison_status is ComparisonStatus.POSSIBLE_MATCH
-    assert result.score >= 55.0
+    assert result.local_song is None
+    assert result.comparison_status is ComparisonStatus.MISSING
+    assert result.score == 0.0
 
 
 def test_match_youtube_playlist_item_to_local_songs_returns_found_for_partial_featured_artist_with_strong_total_score() -> None:
@@ -174,6 +176,78 @@ def test_match_youtube_playlist_item_to_local_songs_breaks_ties_using_title_and_
     )
 
     assert result.local_song == stronger_candidate
+    assert result.comparison_status is ComparisonStatus.FOUND
+
+
+def test_match_youtube_playlist_item_to_local_songs_returns_possible_for_real_ambiguity() -> None:
+    youtube_item = YoutubePlaylistItem(
+        id=1,
+        youtube_playlist_id=9,
+        external_video_id="abc123",
+        position=1,
+        raw_title="Song One",
+        raw_channel_name="Artist One",
+        normalized_title="song one",
+        normalized_artist="artist one",
+        duration_seconds=180.0,
+    )
+    first_candidate = LocalSong(
+        id=4,
+        file_name="song-one.mp3",
+        title="Song One",
+        artist="Artist One ft Guest A",
+        duration_seconds=180.4,
+    )
+    second_candidate = LocalSong(
+        id=9,
+        file_name="song-one-alt.mp3",
+        title="Song One",
+        artist="Artist One ft Guest B",
+        duration_seconds=180.5,
+    )
+
+    result = matchYoutubePlaylistItemToLocalSongs(
+        youtube_item,
+        [first_candidate, second_candidate],
+    )
+
+    assert result.local_song is not None
+    assert result.comparison_status is ComparisonStatus.POSSIBLE_MATCH
+
+
+def test_match_youtube_playlist_item_to_local_songs_resolves_close_top_candidates_by_duration() -> None:
+    youtube_item = YoutubePlaylistItem(
+        id=1,
+        youtube_playlist_id=9,
+        external_video_id="abc123",
+        position=1,
+        raw_title="Song One",
+        raw_channel_name="Artist One",
+        normalized_title="song one",
+        normalized_artist="artist one",
+        duration_seconds=180.0,
+    )
+    best_candidate = LocalSong(
+        id=4,
+        file_name="song-one.mp3",
+        title="Song One",
+        artist="Artist One ft Guest A",
+        duration_seconds=180.1,
+    )
+    second_candidate = LocalSong(
+        id=9,
+        file_name="song-one-alt.mp3",
+        title="Song One",
+        artist="Artist One ft Guest B",
+        duration_seconds=180.8,
+    )
+
+    result = matchYoutubePlaylistItemToLocalSongs(
+        youtube_item,
+        [best_candidate, second_candidate],
+    )
+
+    assert result.local_song == best_candidate
     assert result.comparison_status is ComparisonStatus.FOUND
 
 
@@ -256,3 +330,155 @@ def test_match_youtube_playlist_item_to_local_songs_recomputes_youtube_normaliza
     assert result.local_song == local_song
     assert result.comparison_status is ComparisonStatus.FOUND
     assert result.score >= 75.0
+
+
+@pytest.mark.parametrize(
+    ("raw_title", "raw_channel_name", "local_title", "local_artist", "local_duration"),
+    [
+        (
+            "Cruz Cafuné - Folelé ft. BOJ (Visualizer)",
+            "Cruz Cafuné",
+            "Folelé",
+            "Cruz Cafuné",
+            227.8,
+        ),
+        (
+            "CRUZ CAFUNÉ - Practice ft. HOKE (Visualizer)",
+            "Cruz Cafuné",
+            "Practice",
+            "Cruz Cafuné ft Hoke",
+            227.8,
+        ),
+        (
+            "CRUZ CAFUNÉ - G WAGON ft. LA PANTERA (Visualizer)",
+            "Cruz Cafuné",
+            "G Wagon",
+            "Cruz Cafuné ft La Pantera",
+            201.0,
+        ),
+        (
+            "SFDK & Mama San - Éshate Pa Cá",
+            "SFDK Oficial",
+            "Éshate Pa Cá",
+            "SFDK & Mama San",
+            246.0,
+        ),
+        (
+            "SFDK & Abbi Fernández - Donde Duele Más",
+            "SFDK Oficial",
+            "Donde Duele Más",
+            "SFDK & Abbi Fernández",
+            232.0,
+        ),
+    ],
+)
+def test_match_youtube_playlist_item_to_local_songs_finds_real_catalog_regressions(
+    raw_title: str,
+    raw_channel_name: str,
+    local_title: str,
+    local_artist: str,
+    local_duration: float,
+) -> None:
+    youtube_item = YoutubePlaylistItem(
+        id=40,
+        youtube_playlist_id=9,
+        external_video_id="real-case",
+        position=1,
+        raw_title=raw_title,
+        raw_channel_name=raw_channel_name,
+        normalized_title=raw_title.lower(),
+        normalized_artist=raw_channel_name.lower(),
+        duration_seconds=local_duration,
+    )
+    local_song = LocalSong(
+        id=41,
+        file_name="real-case.mp3",
+        title=local_title,
+        artist=local_artist,
+        duration_seconds=local_duration,
+    )
+
+    result = matchYoutubePlaylistItemToLocalSongs(youtube_item, [local_song])
+
+    assert result.local_song == local_song
+    assert result.comparison_status is ComparisonStatus.FOUND
+
+
+def test_match_youtube_playlist_item_to_local_songs_returns_missing_for_platos_rotos_with_exact_title_and_inconsistent_artist() -> None:
+    youtube_item = YoutubePlaylistItem(
+        id=50,
+        youtube_playlist_id=9,
+        external_video_id="platos-rotos",
+        position=3,
+        raw_title="Platos Rotos",
+        raw_channel_name="Natos y Waor",
+        normalized_title="platos rotos",
+        normalized_artist="natos y waor",
+        duration_seconds=180.0,
+    )
+    local_song = LocalSong(
+        id=51,
+        file_name="platos-rotos.mp3",
+        title="Platos Rotos",
+        artist="Otro Artista",
+        duration_seconds=180.4,
+    )
+
+    result = matchYoutubePlaylistItemToLocalSongs(youtube_item, [local_song])
+
+    assert result.local_song is None
+    assert result.comparison_status is ComparisonStatus.MISSING
+    assert result.reason == "Titulo competitivo pero artista inconsistente."
+
+
+def test_match_youtube_playlist_item_to_local_songs_returns_missing_for_exact_title_without_artist_and_duration_under_1s() -> None:
+    youtube_item = YoutubePlaylistItem(
+        id=60,
+        youtube_playlist_id=9,
+        external_video_id="exact-no-artist-strong-duration",
+        position=1,
+        raw_title="Cancion Exacta",
+        raw_channel_name="Canal Ruido",
+        normalized_title="cancion exacta",
+        normalized_artist="canal ruido",
+        duration_seconds=180.0,
+    )
+    local_song = LocalSong(
+        id=61,
+        file_name="cancion-exacta.mp3",
+        title="Cancion Exacta",
+        artist="",
+        duration_seconds=180.6,
+    )
+
+    result = matchYoutubePlaylistItemToLocalSongs(youtube_item, [local_song])
+
+    assert result.local_song is None
+    assert result.comparison_status is ComparisonStatus.MISSING
+
+
+def test_match_youtube_playlist_item_to_local_songs_returns_possible_for_exact_title_without_artist_and_duration_over_1s() -> None:
+    youtube_item = YoutubePlaylistItem(
+        id=62,
+        youtube_playlist_id=9,
+        external_video_id="exact-no-artist-medium-duration",
+        position=1,
+        raw_title="Cancion Exacta",
+        raw_channel_name="Canal Ruido",
+        normalized_title="cancion exacta",
+        normalized_artist="canal ruido",
+        duration_seconds=180.0,
+    )
+    local_song = LocalSong(
+        id=63,
+        file_name="cancion-exacta.mp3",
+        title="Cancion Exacta",
+        artist="",
+        duration_seconds=182.0,
+    )
+
+    result = matchYoutubePlaylistItemToLocalSongs(youtube_item, [local_song])
+
+    assert result.local_song == local_song
+    assert result.comparison_status is ComparisonStatus.POSSIBLE_MATCH
+    assert result.reason == "Titulo exacto pero artista inconsistente."

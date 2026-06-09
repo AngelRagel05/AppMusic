@@ -1,13 +1,25 @@
 from __future__ import annotations
 
+import pytest
+
 from app.domain.playlists.services import (
+    AmbiguityPenaltyThresholds,
+    ArtistMatchEvidence,
+    CandidateMatchEvidence,
+    CandidateScoreBreakdown,
+    ConsistencyScoreWeights,
     DurationMatchThresholds,
-    MatchClassificationThresholds,
     TextMatchWeights,
+    TitleMatchEvidence,
+    calculateAmbiguityPenalty,
     buildMatchReason,
+    buildArtistMatchEvidence,
+    buildDurationMatchEvidence,
+    buildTextMatchEvidence,
     classifyMatchStatus,
     normalizedSimilarityRatio,
     scoreDuration,
+    scoreEvidenceConsistency,
     scoreNormalizedText,
 )
 from app.shared.constants.comparison import ComparisonStatus
@@ -35,6 +47,30 @@ def test_score_normalized_text_returns_contains_score_for_embedded_text() -> Non
     assert scoreNormalizedText("artist one", "artist one feat guest", weights) == 45.0
 
 
+def test_build_text_match_evidence_returns_exact_for_same_values() -> None:
+    assert buildTextMatchEvidence("song one", "song one") is TitleMatchEvidence.EXACT
+
+
+def test_build_artist_match_evidence_returns_strong_for_artist_with_collaborator_noise() -> None:
+    assert (
+        buildArtistMatchEvidence("artist one", "artist one feat guest")
+        is ArtistMatchEvidence.STRONG
+    )
+
+
+def test_build_duration_match_evidence_uses_new_lte_1s_and_lte_3s_buckets() -> None:
+    strong_evidence, strong_distance = buildDurationMatchEvidence(180.0, 180.8)
+    medium_evidence, medium_distance = buildDurationMatchEvidence(180.0, 182.5)
+    weak_evidence, weak_distance = buildDurationMatchEvidence(180.0, 185.0)
+
+    assert strong_evidence.value == "lte_1s"
+    assert strong_distance == pytest.approx(0.8)
+    assert medium_evidence.value == "lte_3s"
+    assert medium_distance == pytest.approx(2.5)
+    assert weak_evidence.value == "gt_3s"
+    assert weak_distance == pytest.approx(5.0)
+
+
 def test_score_duration_returns_zero_without_textual_signal() -> None:
     score, distance = scoreDuration(
         180.0,
@@ -47,15 +83,47 @@ def test_score_duration_returns_zero_without_textual_signal() -> None:
     assert distance == float("inf")
 
 
-def test_classify_match_status_returns_found_with_weighted_thresholds() -> None:
+def test_score_duration_returns_weak_score_for_any_duration_over_3_seconds() -> None:
+    score, distance = scoreDuration(
+        180.0,
+        195.0,
+        has_textual_signal=True,
+        thresholds=DurationMatchThresholds(),
+    )
+
+    assert score == 2.0
+    assert distance == pytest.approx(15.0)
+
+
+def test_score_evidence_consistency_adds_bonus_for_global_alignment() -> None:
+    bonus = scoreEvidenceConsistency(
+        CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.EXACT,
+            artist_match=ArtistMatchEvidence.STRONG,
+            duration_match=buildDurationMatchEvidence(180.0, 180.4)[0],
+        ),
+        ConsistencyScoreWeights(),
+    )
+
+    assert bonus == pytest.approx(20.0)
+
+
+def test_calculate_ambiguity_penalty_scales_with_competitors() -> None:
+    penalty = calculateAmbiguityPenalty(
+        3,
+        AmbiguityPenaltyThresholds(per_competitor_penalty=6.0),
+    )
+
+    assert penalty == 12.0
+
+
+def test_classify_match_status_returns_found_for_exact_title_artist_and_good_duration() -> None:
     status = classifyMatchStatus(
-        title_score=60.0,
-        artist_score=20.0,
-        youtube_duration_seconds=180.0,
-        local_duration_seconds=181.0,
-        duration_distance=1.0,
-        total_score=90.0,
-        thresholds=MatchClassificationThresholds(),
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.EXACT,
+            artist_match=ArtistMatchEvidence.STRONG,
+            duration_match=buildDurationMatchEvidence(180.0, 181.0)[0],
+        )
     )
 
     assert status is ComparisonStatus.FOUND
@@ -64,43 +132,126 @@ def test_classify_match_status_returns_found_with_weighted_thresholds() -> None:
 def test_build_match_reason_returns_possible_match_reason_with_score_breakdown() -> None:
     reason = buildMatchReason(
         status=ComparisonStatus.POSSIBLE_MATCH,
-        title_score=45.0,
-        artist_score=10.0,
-        duration_distance=3.0,
-        total_score=58.0,
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.EXACT,
+            artist_match=ArtistMatchEvidence.NONE,
+            duration_match=buildDurationMatchEvidence(180.0, 182.0)[0],
+            ambiguity_count=2,
+        ),
+        score_breakdown=CandidateScoreBreakdown(
+            title_score=60.0,
+            artist_score=0.0,
+            duration_score=6.0,
+            consistency_bonus=5.0,
+            ambiguity_penalty=6.0,
+        ),
     )
 
-    assert "Score 58.0" in reason
-    assert "titulo 45.0" in reason
-    assert "artista 10.0" in reason
+    assert reason == "Ambiguedad entre dos candidatas plausibles."
 
 
-def test_classify_match_status_rescues_strong_title_and_partial_artist_matches() -> None:
+def test_classify_match_status_returns_missing_for_contains_title_even_with_strong_artist() -> None:
     status = classifyMatchStatus(
-        title_score=60.0,
-        artist_score=20.0,
-        youtube_duration_seconds=180.0,
-        local_duration_seconds=196.0,
-        duration_distance=16.0,
-        total_score=80.0,
-        thresholds=MatchClassificationThresholds(),
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.CONTAINS,
+            artist_match=ArtistMatchEvidence.STRONG,
+            duration_match=buildDurationMatchEvidence(180.0, 180.8)[0],
+        )
+    )
+
+    assert status is ComparisonStatus.MISSING
+
+
+def test_classify_match_status_returns_found_for_near_exact_title_and_strong_artist() -> None:
+    status = classifyMatchStatus(
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.NEAR_EXACT,
+            artist_match=ArtistMatchEvidence.STRONG,
+            duration_match=buildDurationMatchEvidence(180.0, 188.0)[0],
+        )
     )
 
     assert status is ComparisonStatus.FOUND
 
 
-def test_classify_match_status_returns_found_with_lower_total_threshold_when_text_is_strong() -> None:
+def test_classify_match_status_returns_possible_for_exact_title_without_artist_and_duration_over_1s() -> None:
     status = classifyMatchStatus(
-        title_score=45.0,
-        artist_score=20.0,
-        youtube_duration_seconds=180.0,
-        local_duration_seconds=181.0,
-        duration_distance=1.0,
-        total_score=75.0,
-        thresholds=MatchClassificationThresholds(),
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.EXACT,
+            artist_match=ArtistMatchEvidence.NONE,
+            duration_match=buildDurationMatchEvidence(180.0, 182.0)[0],
+        )
     )
 
-    assert status is ComparisonStatus.FOUND
+    assert status is ComparisonStatus.POSSIBLE_MATCH
+
+
+def test_classify_match_status_returns_possible_for_real_ambiguity() -> None:
+    status = classifyMatchStatus(
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.NEAR_EXACT,
+            artist_match=ArtistMatchEvidence.STRONG,
+            duration_match=buildDurationMatchEvidence(180.0, 180.6)[0],
+            ambiguity_count=2,
+        )
+    )
+
+    assert status is ComparisonStatus.POSSIBLE_MATCH
+
+
+def test_classify_match_status_returns_missing_without_competitive_title_signal() -> None:
+    status = classifyMatchStatus(
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.WEAK,
+            artist_match=ArtistMatchEvidence.NONE,
+            duration_match=buildDurationMatchEvidence(180.0, 189.0)[0],
+        )
+    )
+
+    assert status is ComparisonStatus.MISSING
+
+
+def test_classify_match_status_returns_missing_for_exact_title_with_medium_artist() -> None:
+    status = classifyMatchStatus(
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.EXACT,
+            artist_match=ArtistMatchEvidence.MEDIUM,
+            duration_match=buildDurationMatchEvidence(180.0, 180.4)[0],
+        )
+    )
+
+    assert status is ComparisonStatus.MISSING
+
+
+def test_classify_match_status_returns_missing_for_exact_title_without_artist_and_duration_under_1s() -> None:
+    status = classifyMatchStatus(
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.EXACT,
+            artist_match=ArtistMatchEvidence.NONE,
+            duration_match=buildDurationMatchEvidence(180.0, 180.6)[0],
+        )
+    )
+
+    assert status is ComparisonStatus.MISSING
+
+
+def test_build_match_reason_returns_specific_reason_for_exact_title_inconsistent_artist() -> None:
+    reason = buildMatchReason(
+        status=ComparisonStatus.POSSIBLE_MATCH,
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.EXACT,
+            artist_match=ArtistMatchEvidence.NONE,
+            duration_match=buildDurationMatchEvidence(180.0, 182.0)[0],
+        ),
+        score_breakdown=CandidateScoreBreakdown(
+            title_score=60.0,
+            artist_score=0.0,
+            duration_score=6.0,
+            consistency_bonus=0.0,
+        ),
+    )
+
+    assert reason == "Titulo exacto pero artista inconsistente."
 
 
 def test_normalized_similarity_ratio_detects_near_equivalent_strings() -> None:
