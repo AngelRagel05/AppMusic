@@ -14,6 +14,9 @@ from app.application.dto.playlistComparisonResultDto import PlaylistComparisonRe
 from app.application.dto.playlistComparisonItemResultDto import (
     PlaylistComparisonItemResultDto,
 )
+from app.presentation.features.comparison.comparisonLastRunSummary import (
+    buildComparisonLastRunSummary,
+)
 from app.presentation.features.comparison.comparisonResultFilter import (
     ALL_COMPARISON_FILTER,
     COMPARISON_FILTER_VALUES,
@@ -115,6 +118,9 @@ class ComparisonPage(ctk.CTkFrame):
     ) -> None:
         self._history_entries = list(comparison_history)
         self._ensureBuilt()
+        self._lastComparisonLabel.configure(
+            text=buildComparisonLastRunSummary(self._history_entries)
+        )
         self._renderHistoryEntries()
 
     def setActiveFolderName(self, name: str) -> None:
@@ -239,6 +245,20 @@ class ComparisonPage(ctk.CTkFrame):
             title="Coincidencias",
             accent=self._theme["accent"],
         )
+        self._lastComparisonLabel = createLabel(
+            summary_block,
+            buildComparisonLastRunSummary(self._history_entries),
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 11),
+        )
+        self._lastComparisonLabel.grid(
+            row=1,
+            column=0,
+            columnspan=6,
+            sticky="w",
+            pady=(6, 0),
+        )
 
         search_block = createFrame(wrapper, theme=self._theme, fg_color="transparent")
         search_block.grid(row=0, column=1, columnspan=2, sticky="ew", padx=(4, 10), pady=6)
@@ -249,7 +269,7 @@ class ComparisonPage(ctk.CTkFrame):
             search_block,
             theme=self._theme,
             width=520,
-            placeholder_text="Buscar...",
+            placeholder_text="Buscar por titulo o artista...",
             textvariable=search_variable,
         )
         search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))

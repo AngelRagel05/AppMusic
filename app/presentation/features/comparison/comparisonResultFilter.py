@@ -6,10 +6,10 @@ from app.application.dto.playlistComparisonItemResultDto import (
 from app.shared.constants.comparison import ComparisonStatus
 
 
-ALL_COMPARISON_FILTER = "Todos"
-FOUND_COMPARISON_FILTER = "Encontradas"
-MISSING_COMPARISON_FILTER = "Faltan"
-POSSIBLE_MATCH_COMPARISON_FILTER = "Posibles coincidencias"
+ALL_COMPARISON_FILTER = "all"
+FOUND_COMPARISON_FILTER = "matched"
+MISSING_COMPARISON_FILTER = "missing"
+POSSIBLE_MATCH_COMPARISON_FILTER = "possible_match"
 COMPARISON_FILTER_VALUES = (
     ALL_COMPARISON_FILTER,
     FOUND_COMPARISON_FILTER,

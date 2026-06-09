@@ -75,6 +75,37 @@ def test_filter_comparison_items_by_query_matches_both_youtube_and_local_text() 
     assert filterComparisonItemsByQuery(comparison_items, "rare crew") == [comparison_items[1]]
     assert filterComparisonItemsByQuery(comparison_items, "song one") == [comparison_items[0]]
     assert filterComparisonItemsByQuery(comparison_items, "score minimo") == [comparison_items[1]]
+    assert filterComparisonItemsByQuery(comparison_items, "artist one") == [comparison_items[0]]
+
+
+def test_filter_comparison_items_by_query_matches_local_title_or_artist_in_results() -> None:
+    comparison_items = [
+        PlaylistComparisonItemResultDto(
+            youtube_playlist_item_id=1,
+            local_song_id=7,
+            comparison_status=ComparisonStatus.POSSIBLE_MATCH,
+            youtube_title="Numb Live",
+            youtube_artist="Linkin Park",
+            local_title="Numb",
+            local_artist="Linkin Park Tribute",
+            score=78.0,
+            reason="Coincidencia parcial por variantes en el titulo.",
+        ),
+        PlaylistComparisonItemResultDto(
+            youtube_playlist_item_id=2,
+            local_song_id=8,
+            comparison_status=ComparisonStatus.FOUND,
+            youtube_title="Faint",
+            youtube_artist="Linkin Park",
+            local_title="Faint",
+            local_artist="Linkin Park",
+            score=99.0,
+            reason="Coincidencia fuerte en titulo y artista.",
+        ),
+    ]
+
+    assert filterComparisonItemsByQuery(comparison_items, "tribute") == [comparison_items[0]]
+    assert filterComparisonItemsByQuery(comparison_items, "numb") == [comparison_items[0]]
 
 
 def test_filter_comparison_items_by_query_requires_all_tokens() -> None:

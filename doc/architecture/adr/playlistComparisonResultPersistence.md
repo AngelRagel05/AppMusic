@@ -31,6 +31,7 @@ La comparacion:
 * genera un snapshot persistido de ese estado comparado
 
 Ademas, la aplicacion puede consultar varias cabeceras `playlist_comparison` del mismo ambito activo para construir un historico reciente de ejecuciones.
+La pantalla de comparacion debe exponer de forma directa la fecha y hora de la ultima comparacion ejecutada sin obligar al usuario a inspeccionar toda la lista historica.
 
 ## Motivos
 
@@ -41,6 +42,7 @@ Persistir ahora aporta valor funcional directo:
 * desacopla el calculo del consumo posterior del resultado
 * reutiliza tablas ya presentes en el esquema relacional del proyecto
 * permite exponer al usuario un historico resumido de comparaciones por playlist y biblioteca activas
+* permite mostrar en cabecera cuando se ejecuto por ultima vez la comparacion vigente
 
 ## Gestion de obsolescencia
 
@@ -55,3 +57,4 @@ La aplicacion debe tratar el snapshot como el resultado de una ejecucion concret
 * `score` queda disponible para analitica, depuracion y futuras reglas de UI
 * la aplicacion debe seguir controlando cuando un resultado persistido esta obsoleto
 * el historico visible se construye leyendo varias ejecuciones del mismo ambito activo
+* la UI puede destacar la ultima ejecucion con una referencia temporal explicita

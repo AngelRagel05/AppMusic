@@ -86,3 +86,16 @@ def test_filter_comparison_items_by_status_returns_only_possible_matches() -> No
     filtered_items = filterComparisonItemsByStatus(items, POSSIBLE_MATCH_COMPARISON_FILTER)
 
     assert filtered_items == [items[2]]
+
+
+def test_comparison_filter_values_expose_stable_requested_keys() -> None:
+    from app.presentation.features.comparison.comparisonResultFilter import (
+        COMPARISON_FILTER_VALUES,
+    )
+
+    assert COMPARISON_FILTER_VALUES == (
+        "all",
+        "matched",
+        "missing",
+        "possible_match",
+    )

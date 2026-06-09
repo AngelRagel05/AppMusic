@@ -18,17 +18,17 @@ Se anaden dos elementos a la feature:
   * faltan
   * posibles coincidencias
 * filtro visual por estado:
-  * todos
-  * encontradas
-  * faltan
-  * posibles coincidencias
+  * `all`
+  * `matched`
+  * `missing`
+  * `possible_match`
 * texto explicito por item para indicar si existe en local, si no existe o si solo hay posible coincidencia
 
 La logica de filtro se extrae a `comparisonResultFilter.py` para no mezclarla con el render de widgets.
 
 La logica textual de disponibilidad por item se extrae a `comparisonAvailabilitySummary.py` para mantener la UI de `comparisonSplitSection` centrada en render.
 
-Cuando el filtro activo es `Todos`, la vista prioriza visualmente:
+Cuando el filtro activo es `all`, la vista prioriza visualmente:
 
 * faltan
 * posibles coincidencias

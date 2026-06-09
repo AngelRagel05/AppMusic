@@ -1,33 +1,34 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable
-
 import customtkinter as ctk
 
 from app.application.dto.localSongDto import LocalSongDto
 from app.application.dto.playlistComparisonItemResultDto import (
     PlaylistComparisonItemResultDto,
 )
+from app.presentation.features.comparison.comparisonLinkedLocalSongSummary import (
+    buildComparisonLinkedLocalSongSummary,
+)
+from app.presentation.features.comparison.comparisonResultDetailViewData import (
+    buildComparisonResultDetailViewData,
+)
+from app.presentation.features.comparison.comparisonTableRowViewData import (
+    buildComparisonTableRowViewData,
+)
+from app.presentation.features.comparison.ui.comparisonPage.comparisonResultDetailDialog.comparisonResultDetailDialog import (
+    ComparisonResultDetailDialog,
+)
 from app.presentation.features.comparison.comparisonSearch import (
     filterComparisonItemsByQuery,
-    filterLocalSongsByQuery,
-)
-from app.presentation.features.comparison.comparisonAvailabilitySummary import (
-    buildComparisonAvailabilitySummary,
 )
 from app.presentation.features.comparison.comparisonPaginationState import (
     ComparisonPaginationState,
-)
-from app.presentation.features.comparison.comparisonReasonSummary import (
-    buildComparisonReasonSummary,
 )
 from app.presentation.features.comparison.comparisonResultFilter import (
     ALL_COMPARISON_FILTER,
     filterComparisonItemsByStatus,
 )
 from app.presentation.styles import (
-    ActionButton,
     bindRecursive,
     clearChildren,
     createFrame,
@@ -43,71 +44,37 @@ DEFAULT_PAGE_SIZE = 25
 RENDER_BATCH_SIZE = 25
 FAST_MOUSE_WHEEL_UNITS = 4
 SCROLL_INCREMENT_PIXELS = 36
-ROW_HEIGHT = 32
-
-
-@dataclass
-class ComparisonColumnState:
-    card: ctk.CTkFrame
-    rowsHost: ctk.CTkScrollableFrame
-    countLabel: ctk.CTkLabel
-    pageLabel: ctk.CTkLabel
-    pageSizeVariable: ctk.StringVar
-    previousButton: ActionButton
-    nextButton: ActionButton
-    singularLabel: str
-    pluralLabel: str
-    emptyTitle: str
-    emptyMessage: str
-    buildRow: Callable
-    rowKeyAccessor: Callable
-    pagination: ComparisonPaginationState
-    renderToken: int = 0
-    selectedItemKey: object | None = None
+TABLE_COLUMNS: tuple[tuple[str, int, str], ...] = (
+    ("Estado", 1, "w"),
+    ("Titulo playlist", 3, "w"),
+    ("Artista", 2, "w"),
+    ("Coincidencia local", 3, "w"),
+    ("Score", 1, "center"),
+    ("Revision", 2, "w"),
+)
 
 
 class ComparisonSplitSection(ctk.CTkFrame):
     def __init__(self, parent, theme) -> None:
         self._theme = theme
         self._allLocalSongs: list[LocalSongDto] = []
+        self._localSongsById: dict[int, LocalSongDto] = {}
         self._allComparisonItems: list[PlaylistComparisonItemResultDto] = []
         self._selectedComparisonFilter = ALL_COMPARISON_FILTER
         self._searchQuery = ""
+        self._selectedItemKey: int | None = None
+        self._detailDialog: ComparisonResultDetailDialog | None = None
+        self._renderToken = 0
+        self._pagination = ComparisonPaginationState(DEFAULT_PAGE_SIZE)
         super().__init__(parent, fg_color="transparent", corner_radius=0)
         self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
-
-        self._localSongsColumn = self._buildColumnCard(
-            title="Canciones de biblioteca local",
-            empty_title="Todavía no hay canciones locales visibles",
-            empty_message="Activa una biblioteca local y sincronizala para ver aqui su detalle.",
-            singular_label="canción local",
-            plural_label="canciones locales",
-            build_row=self._buildLocalSongRow,
-            row_key_accessor=lambda local_song: local_song.id or local_song.file_path,
-        )
-        self._localSongsColumn.card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
-
-        self._comparisonResultsColumn = self._buildColumnCard(
-            title="Resultados de comparación",
-            empty_title="Todavía no hay resultados de comparación",
-            empty_message="Activa una playlist de YouTube y una biblioteca local para comparar.",
-            singular_label="resultado",
-            plural_label="resultados",
-            build_row=self._buildComparisonResultRow,
-            row_key_accessor=lambda comparison_item: comparison_item.youtube_playlist_item_id,
-        )
-        self._comparisonResultsColumn.card.grid(
-            row=0,
-            column=1,
-            sticky="nsew",
-            padx=(6, 0),
-        )
+        self._buildLayout()
 
     def showLocalSongs(self, local_songs: list[LocalSongDto]) -> None:
         self._allLocalSongs = list(local_songs)
-        self._refreshLocalSongsColumn()
+        self._localSongsById = {local_song.id: local_song for local_song in self._allLocalSongs}
+        self._refreshResultsTable()
 
     def showComparisonData(
         self,
@@ -115,37 +82,26 @@ class ComparisonSplitSection(ctk.CTkFrame):
         comparison_items: list[PlaylistComparisonItemResultDto],
     ) -> None:
         self._allLocalSongs = list(local_songs)
+        self._localSongsById = {local_song.id: local_song for local_song in self._allLocalSongs}
         self._allComparisonItems = list(comparison_items)
-        self._refreshLocalSongsColumn()
-        self._refreshComparisonResultsColumn()
+        self._refreshResultsTable()
 
     def showComparisonResults(
         self,
         comparison_items: list[PlaylistComparisonItemResultDto],
     ) -> None:
         self._allComparisonItems = list(comparison_items)
-        self._refreshComparisonResultsColumn()
+        self._refreshResultsTable()
 
     def setComparisonFilter(self, selected_filter: str) -> None:
         self._selectedComparisonFilter = selected_filter
-        self._refreshComparisonResultsColumn()
+        self._refreshResultsTable()
 
     def setSearchQuery(self, query: str) -> None:
         self._searchQuery = query
-        self._refreshLocalSongsColumn()
-        self._refreshComparisonResultsColumn()
+        self._refreshResultsTable()
 
-    def _buildColumnCard(
-        self,
-        *,
-        title: str,
-        empty_title: str,
-        empty_message: str,
-        singular_label: str,
-        plural_label: str,
-        build_row: Callable,
-        row_key_accessor: Callable,
-    ) -> ComparisonColumnState:
+    def _buildLayout(self) -> None:
         card = createFrame(
             self,
             theme=self._theme,
@@ -155,37 +111,40 @@ class ComparisonSplitSection(ctk.CTkFrame):
             corner_radius=int(self._theme["radius_lg"]),
         )
         card.grid_rowconfigure(2, weight=1)
+        card.grid_rowconfigure(3, weight=0)
         card.grid_columnconfigure(0, weight=1)
+        card.grid(row=0, column=0, sticky="nsew")
+        self._card = card
 
         header = createFrame(card, theme=self._theme, fg_color="transparent")
         header.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 2))
         header.grid_columnconfigure(0, weight=1)
         createLabel(
             header,
-            title,
+            "Tabla de resultados de comparacion",
             theme=self._theme,
             font=("Segoe UI", 15, "bold"),
         ).grid(row=0, column=0, sticky="w")
-        count_label = createLabel(
+        self._countLabel = createLabel(
             header,
-            "0",
+            "0 resultados",
             theme=self._theme,
             text_color=self._theme["text_muted"],
             font=("Segoe UI", 12),
         )
-        count_label.grid(row=0, column=1, sticky="e")
+        self._countLabel.grid(row=0, column=1, sticky="e")
 
         controls = createFrame(card, theme=self._theme, fg_color="transparent")
         controls.grid(row=1, column=0, sticky="ew", padx=8, pady=(0, 4))
         controls.grid_columnconfigure(0, weight=1)
-        page_label = createLabel(
+        self._pageLabel = createLabel(
             controls,
             "Sin resultados",
             theme=self._theme,
             text_color=self._theme["text_secondary"],
             font=("Segoe UI", 11),
         )
-        page_label.grid(row=0, column=0, sticky="w")
+        self._pageLabel.grid(row=0, column=0, sticky="w")
 
         controls_right = createFrame(controls, theme=self._theme, fg_color="transparent")
         controls_right.grid(row=0, column=1, sticky="e")
@@ -196,75 +155,146 @@ class ComparisonSplitSection(ctk.CTkFrame):
             text_color=self._theme["text_secondary"],
             font=("Segoe UI", 11),
         ).pack(side="left", padx=(0, 8))
-        page_size_variable = ctk.StringVar(value=str(DEFAULT_PAGE_SIZE))
+        self._pageSizeVariable = ctk.StringVar(value=str(DEFAULT_PAGE_SIZE))
         page_size_menu = createOptionMenu(
             controls_right,
-            page_size_variable,
+            self._pageSizeVariable,
             values=PAGE_SIZE_VALUES,
             theme=self._theme,
             width=70,
         )
         page_size_menu.configure(font=("Segoe UI", 11))
         page_size_menu.pack(side="left", padx=(0, 8))
-        previous_button = ActionButton(
+        self._previousButton = ctk.CTkButton(
             controls_right,
             text="< Anterior",
-            variant="secondary",
-            theme=self._theme,
             height=28,
+            width=84,
+            corner_radius=int(self._theme["radius_md"]),
+            fg_color=self._theme["surface"],
+            hover_color=self._theme["hover"],
+            text_color=self._theme["text_secondary"],
+            border_width=0,
+            font=("Segoe UI", 11),
+            command=self._handlePreviousPageRequested,
         )
-        previous_button.widget.configure(width=84, font=("Segoe UI", 11))
-        previous_button.widget.pack(side="left", padx=(0, 6))
-        next_button = ActionButton(
+        self._previousButton.pack(side="left", padx=(0, 6))
+        self._nextButton = ctk.CTkButton(
             controls_right,
             text="Siguiente >",
-            variant="secondary",
-            theme=self._theme,
             height=28,
+            width=84,
+            corner_radius=int(self._theme["radius_md"]),
+            fg_color=self._theme["surface"],
+            hover_color=self._theme["hover"],
+            text_color=self._theme["text_secondary"],
+            border_width=0,
+            font=("Segoe UI", 11),
+            command=self._handleNextPageRequested,
         )
-        next_button.widget.configure(width=84, font=("Segoe UI", 11))
-        next_button.widget.pack(side="left")
+        self._nextButton.pack(side="left")
 
-        rows_host = createScrollableFrame(card, theme=self._theme, fg_color="transparent")
-        rows_host.grid(row=2, column=0, sticky="nsew", padx=8, pady=(0, 8))
-
-        column_state = ComparisonColumnState(
-            card=card,
-            rowsHost=rows_host,
-            countLabel=count_label,
-            pageLabel=page_label,
-            pageSizeVariable=page_size_variable,
-            previousButton=previous_button,
-            nextButton=next_button,
-            singularLabel=singular_label,
-            pluralLabel=plural_label,
-            emptyTitle=empty_title,
-            emptyMessage=empty_message,
-            buildRow=build_row,
-            rowKeyAccessor=row_key_accessor,
-            pagination=ComparisonPaginationState(DEFAULT_PAGE_SIZE),
-        )
-        previous_button.clicked.connect(lambda: self._handlePreviousPageRequested(column_state))
-        next_button.clicked.connect(lambda: self._handleNextPageRequested(column_state))
         page_size_menu.configure(
-            command=lambda selected_value: self._handlePageSizeChanged(column_state, selected_value)
+            command=self._handlePageSizeChanged
         )
-        self._configureFastScroll(column_state.rowsHost)
-        self._refreshColumn(column_state)
-        return column_state
-
-    def _setItems(self, column_state: ComparisonColumnState, items) -> None:
-        column_state.pagination.setItems(items)
-        self._refreshColumn(column_state)
-
-    def _refreshLocalSongsColumn(self) -> None:
-        filtered_local_songs = filterLocalSongsByQuery(
-            self._allLocalSongs,
-            self._searchQuery,
+        table = createFrame(
+            card,
+            theme=self._theme,
+            fg_color=self._theme["surface"],
+            border_width=1,
+            border_color=self._theme["border"],
+            corner_radius=int(self._theme["radius_md"]),
         )
-        self._setItems(self._localSongsColumn, filtered_local_songs)
+        table.grid(row=2, column=0, sticky="nsew", padx=8, pady=(0, 8))
+        table.grid_columnconfigure(0, weight=1)
+        table.grid_rowconfigure(1, weight=1)
 
-    def _refreshComparisonResultsColumn(self) -> None:
+        self._tableHeader = createFrame(table, theme=self._theme, fg_color=self._theme["panel"])
+        self._tableHeader.grid(row=0, column=0, sticky="ew")
+        self._configureTableColumns(self._tableHeader)
+        for column_index, (title, _weight, anchor) in enumerate(TABLE_COLUMNS):
+            createLabel(
+                self._tableHeader,
+                title,
+                theme=self._theme,
+                text_color=self._theme["text_muted"],
+                font=("Segoe UI", 11, "bold"),
+                anchor=anchor,
+                justify="center" if anchor == "center" else "left",
+            ).grid(
+                row=0,
+                column=column_index,
+                sticky="ew",
+                padx=(10 if column_index == 0 else 6, 10 if column_index == len(TABLE_COLUMNS) - 1 else 6),
+                pady=(8, 8),
+            )
+
+        self._rowsHost = createScrollableFrame(table, theme=self._theme, fg_color="transparent")
+        self._rowsHost.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
+        self._configureFastScroll(self._rowsHost)
+
+        self._detailCard = createFrame(
+            card,
+            theme=self._theme,
+            fg_color=self._theme["surface"],
+            border_width=1,
+            border_color=self._theme["border"],
+            corner_radius=int(self._theme["radius_md"]),
+        )
+        self._detailCard.grid(row=3, column=0, sticky="ew", padx=8, pady=(0, 8))
+        self._detailCard.grid_columnconfigure(0, weight=1)
+        createLabel(
+            self._detailCard,
+            "Detalle del resultado",
+            theme=self._theme,
+            font=("Segoe UI", 13, "bold"),
+        ).grid(row=0, column=0, sticky="w", padx=10, pady=(8, 2))
+        self._detailSummaryLabel = createLabel(
+            self._detailCard,
+            "Selecciona una fila para revisar la coincidencia local y el motivo detectado.",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 11),
+            wraplength=920,
+        )
+        self._detailSummaryLabel.grid(row=1, column=0, sticky="w", padx=10, pady=(0, 4))
+        self._detailLinkedSongLabel = createLabel(
+            self._detailCard,
+            "",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 11),
+            wraplength=920,
+        )
+        self._detailLinkedSongLabel.grid(row=2, column=0, sticky="w", padx=10, pady=(0, 4))
+        self._detailReasonLabel = createLabel(
+            self._detailCard,
+            "",
+            theme=self._theme,
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 11),
+            wraplength=920,
+        )
+        self._detailReasonLabel.grid(row=3, column=0, sticky="w", padx=10, pady=(0, 8))
+        self._openDetailButton = ctk.CTkButton(
+            self._detailCard,
+            text="Abrir detalle",
+            height=30,
+            width=132,
+            corner_radius=int(self._theme["radius_md"]),
+            fg_color=self._theme["accent"],
+            hover_color=self._theme["hover"],
+            text_color=self._theme["text"],
+            border_width=0,
+            font=("Segoe UI", 11, "bold"),
+            state="disabled",
+            command=self._openSelectedResultDetail,
+        )
+        self._openDetailButton.grid(row=4, column=0, sticky="e", padx=10, pady=(0, 10))
+
+        self._refreshResultsTable()
+
+    def _refreshResultsTable(self) -> None:
         filtered_comparison_items = filterComparisonItemsByStatus(
             self._allComparisonItems,
             self._selectedComparisonFilter,
@@ -273,120 +303,89 @@ class ComparisonSplitSection(ctk.CTkFrame):
             filtered_comparison_items,
             self._searchQuery,
         )
-        self._setItems(self._comparisonResultsColumn, filtered_comparison_items)
-
-    def _handlePageSizeChanged(
-        self,
-        column_state: ComparisonColumnState,
-        selected_value: str,
-    ) -> None:
-        column_state.pagination.setPageSize(int(selected_value))
-        self._refreshColumn(column_state)
-
-    def _handlePreviousPageRequested(self, column_state: ComparisonColumnState) -> None:
-        column_state.pagination.previousPage()
-        self._refreshColumn(column_state)
-
-    def _handleNextPageRequested(self, column_state: ComparisonColumnState) -> None:
-        column_state.pagination.nextPage()
-        self._refreshColumn(column_state)
-
-    def _refreshColumn(self, column_state: ComparisonColumnState) -> None:
-        column_state.renderToken += 1
-        token = column_state.renderToken
-        self._scrollColumnToTop(column_state.rowsHost)
-        clearChildren(column_state.rowsHost)
-        self._refreshColumnLabels(column_state)
-        page_items = column_state.pagination.currentItems()
+        self._pagination.setItems(filtered_comparison_items)
+        visible_ids = {item.youtube_playlist_item_id for item in filtered_comparison_items}
+        if self._selectedItemKey not in visible_ids:
+            self._selectedItemKey = None
+        self._renderToken += 1
+        token = self._renderToken
+        self._scrollRowsToTop()
+        clearChildren(self._rowsHost)
+        self._refreshTableLabels()
+        page_items = self._pagination.currentItems()
         if not page_items:
-            self._showEmptyState(column_state.rowsHost, column_state.emptyTitle, column_state.emptyMessage)
+            self._showEmptyState()
+            self._showEmptyDetail()
             return
 
-        self._appendRowsChunk(column_state, page_items, 0, token)
+        if self._selectedItemKey is None:
+            self._selectedItemKey = page_items[0].youtube_playlist_item_id
+        self._appendRowsChunk(page_items, 0, token)
+        self._refreshDetailFromSelection(page_items)
 
-    def _refreshColumnLabels(self, column_state: ComparisonColumnState) -> None:
-        item_count = column_state.pagination.totalItems
-        suffix = column_state.singularLabel if item_count == 1 else column_state.pluralLabel
-        column_state.countLabel.configure(text=f"{item_count} {suffix}")
+    def _handlePageSizeChanged(self, selected_value: str) -> None:
+        self._pagination.setPageSize(int(selected_value))
+        self._refreshResultsTable()
+
+    def _handlePreviousPageRequested(self) -> None:
+        self._pagination.previousPage()
+        self._refreshResultsTable()
+
+    def _handleNextPageRequested(self) -> None:
+        self._pagination.nextPage()
+        self._refreshResultsTable()
+
+    def _refreshTableLabels(self) -> None:
+        item_count = self._pagination.totalItems
+        suffix = "resultado" if item_count == 1 else "resultados"
+        self._countLabel.configure(text=f"{item_count} {suffix}")
 
         if item_count == 0:
-            column_state.pageLabel.configure(text="Sin resultados")
+            self._pageLabel.configure(text="Sin resultados")
         else:
-            range_start, range_end = column_state.pagination.visibleRange
-            column_state.pageLabel.configure(
+            range_start, range_end = self._pagination.visibleRange
+            self._pageLabel.configure(
                 text=(
-                    f"Pág. {column_state.pagination.currentPage}/{column_state.pagination.totalPages}"
+                    f"Pág. {self._pagination.currentPage}/{self._pagination.totalPages}"
                     f"  {range_start}-{range_end}"
                 )
             )
 
-        column_state.previousButton.setEnabled(column_state.pagination.hasPreviousPage)
-        column_state.nextButton.setEnabled(column_state.pagination.hasNextPage)
+        self._previousButton.configure(
+            state="normal" if self._pagination.hasPreviousPage else "disabled"
+        )
+        self._nextButton.configure(
+            state="normal" if self._pagination.hasNextPage else "disabled"
+        )
 
     def _appendRowsChunk(
         self,
-        column_state: ComparisonColumnState,
         items,
         start_index: int,
         render_token: int,
     ) -> None:
-        if render_token != column_state.renderToken:
+        if render_token != self._renderToken:
             return
 
         end_index = min(start_index + RENDER_BATCH_SIZE, len(items))
         for item in items[start_index:end_index]:
-            row_key = column_state.rowKeyAccessor(item)
-            row = column_state.buildRow(
-                column_state.rowsHost,
+            row_key = item.youtube_playlist_item_id
+            row = self._buildComparisonResultRow(
+                self._rowsHost,
                 item,
-                column_state.selectedItemKey == row_key,
+                self._selectedItemKey == row_key,
             )
             row._comparison_row_key = row_key
             row._comparison_status = getattr(item, "comparison_status", None)
-            self._bindRowInteractivity(column_state, row, row_key)
+            row._comparison_item = item
+            self._bindRowInteractivity(row, row_key)
             row.pack(fill="x")
 
         if end_index < len(items):
-            column_state.rowsHost.after(
+            self._rowsHost.after(
                 0,
-                lambda: self._appendRowsChunk(column_state, items, end_index, render_token),
+                lambda: self._appendRowsChunk(items, end_index, render_token),
             )
-
-    def _buildLocalSongRow(self, parent, local_song: LocalSongDto, is_selected: bool):
-        row = createFrame(
-            parent,
-            theme=self._theme,
-            fg_color=self._rowColor(is_selected),
-            corner_radius=int(self._theme["radius_sm"]),
-        )
-        row.grid_columnconfigure(0, weight=1)
-        row.grid_columnconfigure(1, weight=0)
-        row.grid_propagate(False)
-        row.configure(height=ROW_HEIGHT)
-
-        title = local_song.title or local_song.file_name
-        artist = local_song.artist or "Artista desconocido"
-        createLabel(
-            row,
-            title,
-            theme=self._theme,
-            font=("Segoe UI", 12),
-            text_color=self._theme["text"],
-            wraplength=0,
-        ).grid(row=0, column=0, sticky="ew", padx=(6, 8), pady=(4, 3))
-        createLabel(
-            row,
-            artist,
-            theme=self._theme,
-            font=("Segoe UI", 12),
-            text_color=self._theme["text_secondary"],
-            anchor="e",
-            justify="right",
-            wraplength=0,
-        ).grid(row=0, column=1, sticky="e", padx=(8, 6), pady=(4, 3))
-        self._buildRowSeparator(row).grid(row=1, column=0, sticky="ew")
-        self._buildRowSeparator(row).grid(row=1, column=1, sticky="ew")
-        return row
 
     def _buildComparisonResultRow(
         self,
@@ -394,6 +393,7 @@ class ComparisonSplitSection(ctk.CTkFrame):
         comparison_item: PlaylistComparisonItemResultDto,
         is_selected: bool,
     ):
+        row_data = buildComparisonTableRowViewData(comparison_item)
         row = createFrame(
             parent,
             theme=self._theme,
@@ -402,90 +402,36 @@ class ComparisonSplitSection(ctk.CTkFrame):
             border_width=self._rowBorderWidth(comparison_item.comparison_status),
             border_color=self._rowBorderColor(comparison_item.comparison_status),
         )
-        row.grid_columnconfigure(0, weight=1)
-        row.grid_columnconfigure(1, weight=0)
-        row.grid_rowconfigure(0, weight=1)
-        row.grid_rowconfigure(1, weight=1)
-        title_row = createFrame(row, theme=self._theme, fg_color="transparent")
-        title_row.grid(row=0, column=0, sticky="ew", padx=6, pady=(2, 0))
-        title_row.grid_columnconfigure(0, weight=1)
-        createLabel(
-            title_row,
-            f"{comparison_item.youtube_title} - {comparison_item.youtube_artist}",
-            theme=self._theme,
-            font=("Segoe UI", 11),
-            wraplength=0,
-        ).grid(row=0, column=0, sticky="w")
-        createLabel(
-            row,
-            self._buildAvailabilityMessage(comparison_item),
-            theme=self._theme,
-            text_color=self._availabilityColor(comparison_item.comparison_status),
-            font=("Segoe UI", 11, "bold"),
-            wraplength=0,
-        ).grid(row=1, column=0, sticky="ew", padx=6, pady=(0, 0))
-        self._buildStatusBadge(row, comparison_item.comparison_status).grid(
-            row=0,
-            column=1,
-            rowspan=3,
-            padx=(6, 6),
-        )
-        createLabel(
-            row,
-            self._buildCandidateMessage(comparison_item),
-            theme=self._theme,
-            text_color=self._theme["text_secondary"],
-            font=("Segoe UI", 11),
-            wraplength=0,
-        ).grid(row=2, column=0, sticky="ew", padx=6, pady=(0, 3))
-        self._buildRowSeparator(row).grid(row=3, column=0, columnspan=2, sticky="ew")
-        return row
+        self._configureTableColumns(row)
+        row.grid_propagate(False)
 
-    def _buildStatusBadge(self, parent, status: ComparisonStatus):
-        status_text = {
-            ComparisonStatus.FOUND: "Encontrada",
-            ComparisonStatus.MISSING: "Falta",
-            ComparisonStatus.POSSIBLE_MATCH: "Posible coincidencia",
-        }[status]
-        status_color = {
-            ComparisonStatus.FOUND: self._theme["success"],
-            ComparisonStatus.MISSING: self._theme["danger"],
-            ComparisonStatus.POSSIBLE_MATCH: self._theme["accent"],
-        }[status]
-        badge = createFrame(
-            parent,
-            theme=self._theme,
-            fg_color="transparent",
-            corner_radius=int(self._theme["radius_sm"]),
-            border_width=0,
+        row_values = (
+            (row_data.status_label, self._availabilityColor(comparison_item.comparison_status), "bold"),
+            (row_data.playlist_title, self._theme["text"], "normal"),
+            (row_data.playlist_artist, self._theme["text_secondary"], "normal"),
+            (row_data.local_match, self._theme["text"], "normal"),
+            (row_data.score_label, self._theme["text_secondary"], "normal"),
+            (row_data.review_note, self._theme["text_secondary"], "normal"),
         )
-        createLabel(
-            badge,
-            status_text,
-            theme=self._theme,
-            text_color=status_color,
-            font=("Segoe UI", 12, "bold"),
-        ).pack(anchor="center", padx=0, pady=0)
-        return badge
-
-    def _buildCandidateMessage(self, comparison_item: PlaylistComparisonItemResultDto) -> str:
-        reason_summary = buildComparisonReasonSummary(comparison_item)
-        if comparison_item.local_title and comparison_item.local_artist:
-            return (
-                f"Local: {comparison_item.local_title} · {comparison_item.local_artist}"
-                f" | {reason_summary}"
+        for column_index, (value, color, weight) in enumerate(row_values):
+            anchor = TABLE_COLUMNS[column_index][2]
+            createLabel(
+                row,
+                value,
+                theme=self._theme,
+                text_color=color,
+                font=("Segoe UI", 11, weight),
+                anchor=anchor,
+                justify="center" if anchor == "center" else "left",
+            ).grid(
+                row=0,
+                column=column_index,
+                sticky="ew",
+                padx=(10 if column_index == 0 else 6, 10 if column_index == len(row_values) - 1 else 6),
+                pady=(7, 7),
             )
-        if comparison_item.local_title:
-            return f"Local: {comparison_item.local_title} | {reason_summary}"
-        if comparison_item.comparison_status is ComparisonStatus.MISSING:
-            return f"Local: sin coincidencia encontrada | {reason_summary}"
-        return f"Local: candidata sin metadata completa | {reason_summary}"
-
-    def _buildAvailabilityMessage(
-        self,
-        comparison_item: PlaylistComparisonItemResultDto,
-    ) -> str:
-        return buildComparisonAvailabilitySummary(comparison_item)
+        self._buildRowSeparator(row).grid(row=1, column=0, columnspan=len(TABLE_COLUMNS), sticky="ew")
+        return row
 
     def _availabilityColor(self, status: ComparisonStatus) -> str:
         return {
@@ -506,45 +452,41 @@ class ComparisonSplitSection(ctk.CTkFrame):
         canvas.bind("<Button-4>", lambda event: self._handleMouseWheel(rows_host, event))
         canvas.bind("<Button-5>", lambda event: self._handleMouseWheel(rows_host, event))
 
-    def _bindRowInteractivity(
-        self,
-        column_state: ComparisonColumnState,
-        row,
-        row_key: object,
-    ) -> None:
-        rows_host = column_state.rowsHost
+    def _bindRowInteractivity(self, row, row_key: int) -> None:
         def apply_color(color: str) -> None:
             row.configure(fg_color=color)
 
         def handle_enter(_event) -> None:
-            is_selected = column_state.selectedItemKey == row_key
+            is_selected = self._selectedItemKey == row_key
             apply_color(self._rowHoverColor(is_selected, getattr(row, "_comparison_status", None)))
 
         def handle_leave(_event) -> None:
-            is_selected = column_state.selectedItemKey == row_key
+            is_selected = self._selectedItemKey == row_key
             apply_color(self._rowColor(is_selected, getattr(row, "_comparison_status", None)))
 
         def handle_select(_event) -> None:
-            column_state.selectedItemKey = row_key
-            self._syncSelectionStyles(column_state)
+            self._selectedItemKey = row_key
+            self._syncSelectionStyles()
+            self._refreshDetailFromSelection(self._pagination.currentItems())
 
         bindRecursive(row, "<Enter>", handle_enter)
         bindRecursive(row, "<Leave>", handle_leave)
         bindRecursive(row, "<Button-1>", handle_select)
+        bindRecursive(row, "<Double-Button-1>", lambda _event: self._openResultDetailByKey(row_key))
         bindRecursive(
             row,
             "<MouseWheel>",
-            lambda event: self._handleMouseWheel(rows_host, event),
+            lambda event: self._handleMouseWheel(self._rowsHost, event),
         )
         bindRecursive(
             row,
             "<Button-4>",
-            lambda event: self._handleMouseWheel(rows_host, event),
+            lambda event: self._handleMouseWheel(self._rowsHost, event),
         )
         bindRecursive(
             row,
             "<Button-5>",
-            lambda event: self._handleMouseWheel(rows_host, event),
+            lambda event: self._handleMouseWheel(self._rowsHost, event),
         )
 
     def _handleMouseWheel(self, rows_host: ctk.CTkScrollableFrame, event) -> str:
@@ -566,15 +508,15 @@ class ComparisonSplitSection(ctk.CTkFrame):
         canvas.yview_scroll(direction * FAST_MOUSE_WHEEL_UNITS, "units")
         return "break"
 
-    def _scrollColumnToTop(self, rows_host: ctk.CTkScrollableFrame) -> None:
-        canvas = getattr(rows_host, "_parent_canvas", None)
+    def _scrollRowsToTop(self) -> None:
+        canvas = getattr(self._rowsHost, "_parent_canvas", None)
         if canvas is None:
             return
         canvas.yview_moveto(0)
 
-    def _showEmptyState(self, parent, title: str, message: str) -> None:
+    def _showEmptyState(self) -> None:
         card = createFrame(
-            parent,
+            self._rowsHost,
             theme=self._theme,
             fg_color="transparent",
             border_width=1,
@@ -583,18 +525,28 @@ class ComparisonSplitSection(ctk.CTkFrame):
         )
         createLabel(
             card,
-            title,
+            "Todavia no hay resultados de comparacion",
             theme=self._theme,
             font=("Segoe UI", 14, "bold"),
-            wraplength=320,
+            wraplength=720,
         ).pack(anchor="w", padx=10, pady=(10, 4))
+        local_song_hint = ""
+        if self._allLocalSongs:
+            local_song_hint = (
+                f" La biblioteca activa ya tiene {len(self._allLocalSongs)} canciones cargadas,"
+                " pero aun no se ha calculado la comparacion."
+            )
         createLabel(
             card,
-            message,
+            (
+                "Activa una playlist de YouTube y una biblioteca local para comparar,"
+                ' o pulsa "Refrescar" para recalcular la tabla.'
+                f"{local_song_hint}"
+            ),
             theme=self._theme,
             text_color=self._theme["text_secondary"],
             font=("Segoe UI", 11),
-            wraplength=320,
+            wraplength=720,
         ).pack(anchor="w", padx=10, pady=(0, 10))
         card.pack(fill="x")
 
@@ -615,9 +567,9 @@ class ComparisonSplitSection(ctk.CTkFrame):
         if is_selected:
             return self._theme["accent_soft"]
         if comparison_status is ComparisonStatus.MISSING:
-            return self._theme["surface"]
+            return "#2B1D1D" if not is_selected else self._theme["accent_soft"]
         if comparison_status is ComparisonStatus.POSSIBLE_MATCH:
-            return self._theme["accent_soft"]
+            return "#1F2836" if not is_selected else self._theme["accent_soft"]
         return "transparent"
 
     def _rowHoverColor(
@@ -628,9 +580,9 @@ class ComparisonSplitSection(ctk.CTkFrame):
         if is_selected:
             return self._theme["accent_soft"]
         if comparison_status is ComparisonStatus.MISSING:
-            return self._theme["hover"]
+            return "#382323"
         if comparison_status is ComparisonStatus.POSSIBLE_MATCH:
-            return self._theme["hover"]
+            return "#273347"
         return self._theme["hover"]
 
     def _rowBorderWidth(self, comparison_status: ComparisonStatus | None) -> int:
@@ -648,13 +600,113 @@ class ComparisonSplitSection(ctk.CTkFrame):
             return self._theme["accent"]
         return self._theme["border"]
 
-    def _syncSelectionStyles(self, column_state: ComparisonColumnState) -> None:
-        for child in column_state.rowsHost.winfo_children():
+    def _syncSelectionStyles(self) -> None:
+        for child in self._rowsHost.winfo_children():
             row_key = getattr(child, "_comparison_row_key", None)
-            is_selected = row_key == column_state.selectedItemKey
+            is_selected = row_key == self._selectedItemKey
             child.configure(
                 fg_color=self._rowColor(
                     is_selected,
                     getattr(child, "_comparison_status", None),
                 )
             )
+
+    def _refreshDetailFromSelection(
+        self,
+        page_items: list[PlaylistComparisonItemResultDto],
+    ) -> None:
+        selected_item = next(
+            (
+                item
+                for item in page_items
+                if item.youtube_playlist_item_id == self._selectedItemKey
+            ),
+            None,
+        )
+        if selected_item is None:
+            self._showEmptyDetail()
+            return
+
+        row_data = buildComparisonTableRowViewData(selected_item)
+        linked_local_song = self._resolveLinkedLocalSong(selected_item)
+        linked_local_song_summary = buildComparisonLinkedLocalSongSummary(
+            selected_item,
+            linked_local_song,
+        )
+        self._detailSummaryLabel.configure(
+            text=(
+                f"Playlist: {row_data.playlist_title} · {row_data.playlist_artist}\n"
+                f"Local: {row_data.local_match}\n"
+                f"Disponibilidad: {row_data.availability_summary}\n"
+                f"Revision: {row_data.review_note} | Score: {row_data.score_label}"
+            ),
+            text_color=self._theme["text_secondary"],
+        )
+        self._detailLinkedSongLabel.configure(
+            text=(
+                f"{linked_local_song_summary.title}\n"
+                f"{linked_local_song_summary.detail}"
+            ),
+            text_color=self._theme["text_secondary"],
+        )
+        self._detailReasonLabel.configure(
+            text=f"Motivo detectado: {row_data.reason_summary}",
+            text_color=self._theme["text_muted"],
+        )
+        self._openDetailButton.configure(state="normal")
+
+    def _showEmptyDetail(self) -> None:
+        self._detailSummaryLabel.configure(
+            text="Selecciona una fila para revisar la coincidencia local y el motivo detectado.",
+            text_color=self._theme["text_secondary"],
+        )
+        self._detailLinkedSongLabel.configure(
+            text="",
+            text_color=self._theme["text_secondary"],
+        )
+        self._detailReasonLabel.configure(text="", text_color=self._theme["text_muted"])
+        self._openDetailButton.configure(state="disabled")
+
+    def _configureTableColumns(self, widget) -> None:
+        for column_index, (_title, weight, _anchor) in enumerate(TABLE_COLUMNS):
+            widget.grid_columnconfigure(column_index, weight=weight)
+
+    def _resolveLinkedLocalSong(
+        self,
+        comparison_item: PlaylistComparisonItemResultDto,
+    ) -> LocalSongDto | None:
+        if comparison_item.local_song_id is None:
+            return None
+        return self._localSongsById.get(comparison_item.local_song_id)
+
+    def _openSelectedResultDetail(self) -> None:
+        if self._selectedItemKey is None:
+            return
+        self._openResultDetailByKey(self._selectedItemKey)
+
+    def _openResultDetailByKey(self, row_key: int) -> None:
+        comparison_item = self._findComparisonItemByKey(row_key)
+        if comparison_item is None:
+            return
+        self._selectedItemKey = row_key
+        self._syncSelectionStyles()
+        self._refreshDetailFromSelection(self._pagination.currentItems())
+        linked_local_song = self._resolveLinkedLocalSong(comparison_item)
+        detail_view_data = buildComparisonResultDetailViewData(
+            comparison_item,
+            linked_local_song,
+        )
+        if self._detailDialog is not None and self._detailDialog.winfo_exists():
+            self._detailDialog.destroy()
+        self._detailDialog = ComparisonResultDetailDialog(
+            self,
+            self._theme,
+            detail_view_data,
+        )
+        self._detailDialog.focus()
+
+    def _findComparisonItemByKey(self, row_key: int) -> PlaylistComparisonItemResultDto | None:
+        for comparison_item in self._allComparisonItems:
+            if comparison_item.youtube_playlist_item_id == row_key:
+                return comparison_item
+        return None

@@ -42,15 +42,21 @@ def filterComparisonItemsByQuery(
         for comparison_item in comparison_items
         if _matchesQuery(
             normalized_query,
-            (
-                comparison_item.youtube_title,
-                comparison_item.youtube_artist,
-                comparison_item.local_title,
-                comparison_item.local_artist,
-                comparison_item.reason,
-            ),
+            _comparisonItemSearchableFields(comparison_item),
         )
     ]
+
+
+def _comparisonItemSearchableFields(
+    comparison_item: PlaylistComparisonItemResultDto,
+) -> tuple[str | None, ...]:
+    return (
+        comparison_item.youtube_title,
+        comparison_item.youtube_artist,
+        comparison_item.local_title,
+        comparison_item.local_artist,
+        comparison_item.reason,
+    )
 
 
 def _normalizeQuery(query: str) -> list[str]:
