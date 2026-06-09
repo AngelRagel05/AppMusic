@@ -100,7 +100,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                     local_song_id=item.local_song_id,
                     match_status=item.comparison_status.value,
                     score=item.score,
-                    matched_by=None,
+                    matched_by=item.reason,
                 )
                 for item in comparison_items
             ],

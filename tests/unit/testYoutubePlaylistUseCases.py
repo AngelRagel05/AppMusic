@@ -709,10 +709,10 @@ def test_import_youtube_playlist_items_use_case_imports_and_replaces_snapshot() 
     assert len(persisted_items) == 2
     assert persisted_items[0].external_video_id == "abc123"
     assert persisted_items[0].normalized_artist == "kendrick lamar"
-    assert persisted_items[0].normalized_title == "humble."
+    assert persisted_items[0].normalized_title == "humble"
     assert persisted_items[1].external_video_id == "def456"
     assert persisted_items[1].normalized_artist == "kendrick lamar"
-    assert persisted_items[1].normalized_title == "dna."
+    assert persisted_items[1].normalized_title == "dna"
 
 
 def test_import_youtube_playlist_items_use_case_replaces_previous_snapshot() -> None:
@@ -1042,16 +1042,16 @@ def test_compare_youtube_playlist_with_local_library_use_case_returns_summary_an
     assert isinstance(result, PlaylistComparisonResultDto)
     assert local_song_repository.list_by_folder_calls == [7]
     assert result.summary.found_count == 1
-    assert result.summary.possible_match_count == 1
-    assert result.summary.missing_count == 1
+    assert result.summary.possible_match_count == 0
+    assert result.summary.missing_count == 2
     assert result.summary.total_compared == 3
     assert [item.comparison_status for item in result.items] == [
         ComparisonStatus.FOUND,
-        ComparisonStatus.POSSIBLE_MATCH,
+        ComparisonStatus.MISSING,
         ComparisonStatus.MISSING,
     ]
     assert result.items[0].local_song_id == 11
-    assert result.items[1].local_song_id == 12
+    assert result.items[1].local_song_id is None
     assert result.items[2].local_song_id is None
     assert len(comparison_repository.created_comparisons) == 1
     persisted_results = comparison_result_repository.saved_results_by_comparison_id[1]
@@ -1062,9 +1062,79 @@ def test_compare_youtube_playlist_with_local_library_use_case_returns_summary_an
     ]
     assert [item.match_status for item in persisted_results] == [
         ComparisonStatus.FOUND.value,
-        ComparisonStatus.POSSIBLE_MATCH.value,
+        ComparisonStatus.MISSING.value,
         ComparisonStatus.MISSING.value,
     ]
+    assert [item.matched_by for item in persisted_results] == [
+        result.items[0].reason,
+        result.items[1].reason,
+        result.items[2].reason,
+    ]
+
+
+def test_compare_youtube_playlist_with_local_library_use_case_keeps_folele_present_when_exists_in_local() -> None:
+    playlist_repository = InMemoryYoutubePlaylistRepository()
+    active_playlist = playlist_repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        title="Favoritas",
+    )
+    active_folder = LocalFolder(
+        id=7,
+        path=r"C:\Music\Active",
+        display_name="Active",
+        is_active=True,
+    )
+    item_repository = InMemoryYoutubePlaylistItemRepository()
+    item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="folele-item",
+                position=1,
+                raw_title="Cruz Cafuné - Folelé ft. BOJ (Visualizer)",
+                raw_channel_name="Cruz Cafuné",
+                normalized_title="cruz cafune folele ft boj visualizer",
+                normalized_artist="cruz cafune folele ft boj visualizer",
+                duration_seconds=227.8,
+            )
+        ],
+    )
+    local_song_repository = LocalSongRepositorySpy(
+        songs_by_folder_id={
+            active_folder.id or 0: [
+                LocalSong(
+                    id=21,
+                    local_folder_id=active_folder.id,
+                    file_name="folele.mp3",
+                    is_available=True,
+                    title="Folelé",
+                    artist="Cruz Cafuné",
+                    duration_seconds=227.8,
+                )
+            ]
+        }
+    )
+    comparison_repository = InMemoryPlaylistComparisonRepository()
+    comparison_result_repository = InMemoryPlaylistComparisonResultRepository()
+    use_case = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        playlist_repository,
+        item_repository,
+        InMemoryLocalFolderRepository(active_folder),
+        local_song_repository,
+        comparison_repository,
+        comparison_result_repository,
+    )
+
+    result = use_case.execute()
+
+    assert result.summary.found_count == 1
+    assert result.summary.missing_count == 0
+    assert result.items[0].comparison_status is ComparisonStatus.FOUND
+    assert result.items[0].local_song_id == 21
+    assert result.items[0].reason == "Titulo exacto con artista fuerte y duracion razonable."
 
 
 def test_compare_youtube_playlist_with_local_library_use_case_propagates_repository_errors() -> None:
@@ -1201,7 +1271,7 @@ def test_load_persisted_playlist_comparison_use_case_rehydrates_last_snapshot_fo
                 local_song_id=11,
                 match_status=ComparisonStatus.FOUND.value,
                 score=100.0,
-                matched_by=None,
+                matched_by="Titulo exacto con artista fuerte y duracion razonable.",
             ),
             PlaylistComparisonResult(
                 playlist_comparison_id=comparison.id or 0,
@@ -1209,7 +1279,7 @@ def test_load_persisted_playlist_comparison_use_case_rehydrates_last_snapshot_fo
                 local_song_id=None,
                 match_status=ComparisonStatus.MISSING.value,
                 score=0.0,
-                matched_by=None,
+                matched_by="Duracion fuera de tolerancia fuerte.",
             ),
         ],
     )
@@ -1235,8 +1305,13 @@ def test_load_persisted_playlist_comparison_use_case_rehydrates_last_snapshot_fo
     assert comparison_result.items[0].youtube_title == "Song One"
     assert comparison_result.items[0].local_title == "Song One"
     assert comparison_result.items[0].score == 100.0
+    assert (
+        comparison_result.items[0].reason
+        == "Titulo exacto con artista fuerte y duracion razonable."
+    )
     assert comparison_result.items[1].comparison_status is ComparisonStatus.MISSING
     assert comparison_result.items[1].local_song_id is None
+    assert comparison_result.items[1].reason == "Duracion fuera de tolerancia fuerte."
 
 
 def test_list_persisted_playlist_comparison_history_use_case_returns_recent_runs_for_active_scope() -> None:

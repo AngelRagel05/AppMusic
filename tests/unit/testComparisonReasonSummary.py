@@ -19,10 +19,13 @@ def test_build_comparison_reason_summary_returns_readable_found_explanation() ->
         local_title="Song One",
         local_artist="Artist One",
         score=96.0,
-        reason="Coincidencia ponderada fuerte en titulo y artista normalizados.",
+        reason="Titulo exacto con artista fuerte y duracion razonable.",
     )
 
-    assert buildComparisonReasonSummary(item) == "Valida en titulo y artista normalizados."
+    assert (
+        buildComparisonReasonSummary(item)
+        == "Titulo exacto con artista fuerte y duracion razonable."
+    )
 
 
 def test_build_comparison_reason_summary_returns_readable_possible_match_explanation() -> None:
@@ -35,12 +38,10 @@ def test_build_comparison_reason_summary_returns_readable_possible_match_explana
         local_title="Song One",
         local_artist="Artist One feat Guest",
         score=76.0,
-        reason="Coincidencia parcial detectada y duracion cercana (3.0s). Score 76.0 (titulo 60.0, artista 10.0).",
+        reason="Ambiguedad entre dos candidatas plausibles.",
     )
 
-    assert buildComparisonReasonSummary(item) == (
-        "Parcial y duracion cercana (3.0s). Score 76.0 (titulo 60.0, artista 10.0)."
-    )
+    assert buildComparisonReasonSummary(item) == "Ambiguedad entre dos candidatas plausibles."
 
 
 def test_build_comparison_reason_summary_returns_readable_missing_explanation() -> None:
@@ -53,7 +54,7 @@ def test_build_comparison_reason_summary_returns_readable_missing_explanation() 
         local_title=None,
         local_artist=None,
         score=0.0,
-        reason="No existe una candidata local con score minimo suficiente.",
+        reason="Duracion fuera de tolerancia fuerte.",
     )
 
-    assert buildComparisonReasonSummary(item) == "Sin coincidencia suficiente."
+    assert buildComparisonReasonSummary(item) == "Duracion fuera de tolerancia fuerte."

@@ -21,7 +21,7 @@ def test_buildComparisonResultDetailViewData_returns_full_detail_for_linked_song
             local_title="Numb",
             local_artist="Linkin Park",
             score=98.2,
-            reason="Coincidencia fuerte en titulo y artista normalizados.",
+            reason="Titulo exacto con artista fuerte y duracion razonable.",
         ),
         LocalSongDto(
             id=8,
@@ -45,7 +45,7 @@ def test_buildComparisonResultDetailViewData_returns_full_detail_for_linked_song
     assert view_data.score_label == "98.2%"
     assert view_data.review_note == "Coincidencia confirmada"
     assert "Cancion local enlazada: Numb · Linkin Park" == view_data.linked_song_title
-    assert "Coincidencia fuerte" in view_data.reason_summary
+    assert "Titulo exacto con artista fuerte" in view_data.reason_summary
 
 
 def test_buildComparisonResultDetailViewData_reports_missing_linked_song_when_absent() -> None:
@@ -59,7 +59,7 @@ def test_buildComparisonResultDetailViewData_reports_missing_linked_song_when_ab
             local_title=None,
             local_artist=None,
             score=0.0,
-            reason="No existe una candidata local con score minimo suficiente.",
+            reason="Duracion fuera de tolerancia fuerte.",
         ),
         None,
     )

@@ -98,7 +98,7 @@ class LoadPersistedPlaylistComparisonUseCase:
                 local_title=_resolveLocalTitle(local_song_by_id.get(row.local_song_id)),
                 local_artist=_resolveLocalArtist(local_song_by_id.get(row.local_song_id)),
                 score=float(row.score or 0.0),
-                reason=_buildPersistedReason(row.match_status, row.score),
+                reason=_buildPersistedReason(row.match_status, row.score, row.matched_by),
             )
             for row in comparison_rows
         ]
@@ -147,14 +147,22 @@ def _resolveLocalArtist(local_song: LocalSongDto | None) -> str | None:
     return local_song.artist
 
 
-def _buildPersistedReason(match_status: str, score: float | None) -> str:
+def _buildPersistedReason(
+    match_status: str,
+    score: float | None,
+    persisted_reason: str | None,
+) -> str:
+    normalized_reason = (persisted_reason or "").strip()
+    if normalized_reason:
+        return normalized_reason
+
     status = ComparisonStatus(match_status)
     normalized_score = float(score or 0.0)
     if status is ComparisonStatus.FOUND:
-        return f"Snapshot persistido con coincidencia encontrada. Score {normalized_score:.1f}."
+        return f"Coincidencia encontrada en snapshot persistido. Score {normalized_score:.1f}."
     if status is ComparisonStatus.POSSIBLE_MATCH:
         return (
-            "Snapshot persistido con posible coincidencia. "
+            "Posible coincidencia rehidratada desde snapshot persistido. "
             f"Score {normalized_score:.1f}."
         )
-    return "Snapshot persistido sin coincidencia suficiente."
+    return "Sin coincidencia concreta rehidratada desde snapshot persistido."
