@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from dotenv import load_dotenv
 
@@ -29,11 +30,22 @@ def resolveDatabaseUrl(database_url: str) -> str:
         return normalized_database_url
 
     sqlite_path = normalized_database_url.removeprefix("sqlite:///")
-    if not sqlite_path or Path(sqlite_path).is_absolute():
+    if not sqlite_path or _isAbsoluteSqlitePath(sqlite_path):
         return normalized_database_url
 
     resolved_database_path = (PROJECT_ROOT / sqlite_path).resolve()
     return f"sqlite:///{resolved_database_path.as_posix()}"
+
+
+def _isAbsoluteSqlitePath(sqlite_path: str) -> bool:
+    normalized_path = sqlite_path.strip()
+    if not normalized_path:
+        return False
+    if Path(normalized_path).is_absolute():
+        return True
+    if PureWindowsPath(normalized_path).is_absolute():
+        return True
+    return re.match(r"^[A-Za-z]:[\\/]", normalized_path) is not None
 
 
 @lru_cache(maxsize=1)

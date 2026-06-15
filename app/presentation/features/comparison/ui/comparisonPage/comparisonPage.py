@@ -16,6 +16,7 @@ from app.application.dto.playlistComparisonItemResultDto import (
 )
 from app.presentation.features.comparison.comparisonLastRunSummary import (
     buildComparisonLastRunSummary,
+    formatComparisonHistoryTimestamp,
 )
 from app.presentation.features.comparison.comparisonResultFilter import (
     ALL_COMPARISON_FILTER,
@@ -494,8 +495,7 @@ class ComparisonPage(ctk.CTkFrame):
         return f"Comparada el {self._formatHistoryTimestamp(entry.compared_at)}"
 
     def _formatHistoryTimestamp(self, value: datetime) -> str:
-        timestamp = value.astimezone() if value.tzinfo is not None else value
-        return timestamp.strftime("%d/%m/%Y %H:%M")
+        return formatComparisonHistoryTimestamp(value)
 
     def _updateLastComparisonLabel(self, compared_at: datetime | None) -> None:
         if compared_at is None:
