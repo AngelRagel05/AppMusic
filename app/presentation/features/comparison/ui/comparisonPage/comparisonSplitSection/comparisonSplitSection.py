@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import tkinter as tk
 from tkinter import ttk
 
@@ -61,6 +62,10 @@ class ComparisonSplitSection(ctk.CTkFrame):
         self._searchQuery = ""
         self._selectedItemKey: int | None = None
         self._detailDialog: ComparisonResultDetailDialog | None = None
+        self._manualDecisionRequestedHandler: Callable[
+            [PlaylistComparisonItemResultDto, str, int | None],
+            bool,
+        ] | None = None
         self._suspendNextSelectionOpen = False
         self._pagination = ComparisonPaginationState(DEFAULT_PAGE_SIZE)
         self._treeStyleName = f"comparisonResults{hex(id(self))}.Treeview"
@@ -98,6 +103,12 @@ class ComparisonSplitSection(ctk.CTkFrame):
     def setSearchQuery(self, query: str) -> None:
         self._searchQuery = query
         self._refreshResultsTable()
+
+    def setManualDecisionRequestedHandler(
+        self,
+        callback: Callable[[PlaylistComparisonItemResultDto, str, int | None], bool],
+    ) -> None:
+        self._manualDecisionRequestedHandler = callback
 
     def _buildLayout(self) -> None:
         card = createFrame(
@@ -375,6 +386,9 @@ class ComparisonSplitSection(ctk.CTkFrame):
         self._selectedItemKey = int(focused_item_id)
 
     def _handleTreeRowClicked(self, event) -> None:
+        if self._suspendNextSelectionOpen:
+            self._suspendNextSelectionOpen = False
+            return
         row_id = self._tree.identify_row(event.y)
         if not row_id:
             return
@@ -384,6 +398,9 @@ class ComparisonSplitSection(ctk.CTkFrame):
         self._openResultDetailByKey(self._selectedItemKey)
 
     def _handleTreeRowDoubleClicked(self, event) -> None:
+        if self._suspendNextSelectionOpen:
+            self._suspendNextSelectionOpen = False
+            return
         row_id = self._tree.identify_row(event.y)
         if not row_id:
             return
@@ -497,6 +514,17 @@ class ComparisonSplitSection(ctk.CTkFrame):
             self,
             self._theme,
             detail_view_data,
+            comparison_item,
+            self._allLocalSongs,
+            linked_local_song_id=comparison_item.local_song_id,
+            on_save_decision=(
+                lambda match_status, local_song_id: self._handleManualDecisionRequested(
+                    comparison_item,
+                    match_status,
+                    local_song_id,
+                )
+            ),
+            on_close=self._handleDetailDialogClosed,
         )
         self._detailDialog.focus()
 
@@ -504,9 +532,26 @@ class ComparisonSplitSection(ctk.CTkFrame):
         if self._detailDialog is None:
             return
         if self._detailDialog.winfo_exists():
-            self._suspendNextSelectionOpen = True
             self._detailDialog.destroy()
         self._detailDialog = None
+
+    def _handleDetailDialogClosed(self) -> None:
+        self._suspendNextSelectionOpen = True
+        self._detailDialog = None
+
+    def _handleManualDecisionRequested(
+        self,
+        comparison_item: PlaylistComparisonItemResultDto,
+        match_status: str,
+        local_song_id: int | None,
+    ) -> bool:
+        if self._manualDecisionRequestedHandler is None:
+            return False
+        return self._manualDecisionRequestedHandler(
+            comparison_item,
+            match_status,
+            local_song_id,
+        )
 
     def _findComparisonItemByKey(self, row_key: int) -> PlaylistComparisonItemResultDto | None:
         for comparison_item in self._filteredComparisonItems:

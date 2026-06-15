@@ -14,6 +14,9 @@ from app.application.dto.playlistComparisonItemResultDto import (
 )
 from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
+from app.application.dto.updatePlaylistComparisonResultInputDto import (
+    UpdatePlaylistComparisonResultInputDto,
+)
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
 from app.presentation.viewmodels.comparison.libraryComparisonViewModel import (
     LibraryComparisonFeedback,
@@ -344,3 +347,209 @@ def test_library_comparison_view_model_restores_persisted_snapshot_into_memory_c
     assert view_model.load_comparison_result() == comparison_result
     assert view_model.load_comparison_history() == comparison_history
     assert len(persisted_loader.calls) == 1
+
+
+def test_library_comparison_view_model_updates_manual_decision_and_refreshes_cached_snapshot() -> None:
+    local_songs = [
+        LocalSongDto(
+            id=7,
+            local_folder_id=2,
+            file_path=r"C:\Music\Active\song-seven.mp3",
+            file_name="song-seven.mp3",
+            is_available=True,
+            title="Song Seven",
+            artist="Artist Seven",
+            album="Album Seven",
+            release_year=2024,
+            track_number_album=7,
+            duration_seconds=187.0,
+        )
+    ]
+    cached_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=0,
+            missing_count=1,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[
+            PlaylistComparisonItemResultDto(
+                youtube_playlist_item_id=11,
+                local_song_id=None,
+                comparison_status=ComparisonStatus.MISSING,
+                youtube_title="Song Seven",
+                youtube_artist="Artist Seven",
+                local_title=None,
+                local_artist=None,
+                score=0.0,
+                reason="No hay candidata suficientemente competitiva.",
+            )
+        ],
+        playlist_comparison_id=9,
+    )
+    refreshed_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[
+            PlaylistComparisonItemResultDto(
+                youtube_playlist_item_id=11,
+                local_song_id=7,
+                comparison_status=ComparisonStatus.FOUND,
+                youtube_title="Song Seven",
+                youtube_artist="Artist Seven",
+                local_title="Song Seven",
+                local_artist="Artist Seven",
+                score=0.0,
+                reason="Enlace manual con cancion local decidido por el usuario.",
+            )
+        ],
+        playlist_comparison_id=9,
+    )
+    comparison_history = [
+        PlaylistComparisonHistoryEntryDto(
+            comparison_id=9,
+            compared_at=datetime(2026, 6, 15, 18, 20, tzinfo=UTC),
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        )
+    ]
+    manual_update_use_case = StubUseCase((local_songs, refreshed_result, comparison_history))
+    view_model = LibraryComparisonViewModel(
+        load_library_comparison=lambda: (local_songs, cached_result, []),
+        load_persisted_comparison=lambda: None,
+        update_playlist_comparison_result=manual_update_use_case.execute,
+    )
+    view_model._local_songs_cache = list(local_songs)
+    view_model._comparison_result_cache = cached_result
+
+    feedback = view_model.updateComparisonItemDecision(
+        youtube_playlist_item_id=11,
+        match_status=ComparisonStatus.FOUND.value,
+        local_song_id=7,
+    )
+
+    assert manual_update_use_case.calls == [
+        UpdatePlaylistComparisonResultInputDto(
+            playlist_comparison_id=9,
+            youtube_playlist_item_id=11,
+            match_status="found",
+            local_song_id=7,
+        )
+    ]
+    assert view_model.load_local_songs() == local_songs
+    assert view_model.load_comparison_result() == refreshed_result
+    assert view_model.load_comparison_history() == comparison_history
+    assert feedback.status_tone == "success"
+    assert feedback.comparison_result == refreshed_result
+    assert (
+        feedback.status_message
+        == "Resultado marcado manualmente como encontrada con cancion local enlazada."
+    )
+
+
+def test_library_comparison_view_model_marks_missing_and_refreshes_cached_snapshot() -> None:
+    local_songs = [
+        LocalSongDto(
+            id=7,
+            local_folder_id=2,
+            file_path=r"C:\Music\Active\song-seven.mp3",
+            file_name="song-seven.mp3",
+            is_available=True,
+            title="Song Seven",
+            artist="Artist Seven",
+            album="Album Seven",
+            release_year=2024,
+            track_number_album=7,
+            duration_seconds=187.0,
+        )
+    ]
+    cached_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[
+            PlaylistComparisonItemResultDto(
+                youtube_playlist_item_id=11,
+                local_song_id=7,
+                comparison_status=ComparisonStatus.FOUND,
+                youtube_title="Song Seven",
+                youtube_artist="Artist Seven",
+                local_title="Song Seven",
+                local_artist="Artist Seven",
+                score=97.0,
+                reason="Coincidencia automatica previa.",
+            )
+        ],
+        playlist_comparison_id=9,
+    )
+    refreshed_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=0,
+            missing_count=1,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[
+            PlaylistComparisonItemResultDto(
+                youtube_playlist_item_id=11,
+                local_song_id=None,
+                comparison_status=ComparisonStatus.MISSING,
+                youtube_title="Song Seven",
+                youtube_artist="Artist Seven",
+                local_title=None,
+                local_artist=None,
+                score=97.0,
+                reason="Marcado manualmente como faltante por el usuario.",
+                matched_by="manual:user_marked_missing",
+            )
+        ],
+        playlist_comparison_id=9,
+    )
+    comparison_history = [
+        PlaylistComparisonHistoryEntryDto(
+            comparison_id=9,
+            compared_at=datetime(2026, 6, 15, 18, 25, tzinfo=UTC),
+            found_count=0,
+            missing_count=1,
+            possible_match_count=0,
+            total_compared=1,
+        )
+    ]
+    manual_update_use_case = StubUseCase((local_songs, refreshed_result, comparison_history))
+    view_model = LibraryComparisonViewModel(
+        load_library_comparison=lambda: (local_songs, cached_result, []),
+        load_persisted_comparison=lambda: None,
+        update_playlist_comparison_result=manual_update_use_case.execute,
+    )
+    view_model._local_songs_cache = list(local_songs)
+    view_model._comparison_result_cache = cached_result
+
+    feedback = view_model.updateComparisonItemDecision(
+        youtube_playlist_item_id=11,
+        match_status=ComparisonStatus.MISSING.value,
+        local_song_id=7,
+    )
+
+    assert manual_update_use_case.calls == [
+        UpdatePlaylistComparisonResultInputDto(
+            playlist_comparison_id=9,
+            youtube_playlist_item_id=11,
+            match_status="missing",
+            local_song_id=7,
+        )
+    ]
+    assert view_model.load_comparison_result() == refreshed_result
+    assert view_model.load_comparison_result().items[0].local_song_id is None
+    assert view_model.load_comparison_history() == comparison_history
+    assert feedback.status_tone == "success"
+    assert feedback.comparison_result == refreshed_result
+    assert feedback.status_message == "Resultado marcado manualmente como faltante."

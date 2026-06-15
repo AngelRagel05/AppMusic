@@ -389,6 +389,7 @@ class ComparisonPageSpy:
         self.confirmation_requests = 0
         self.confirmation_payloads: list[tuple[str, str]] = []
         self.primary_action_labels: list[str] = []
+        self.manual_decision_callback = None
 
     def showLocalSongs(self, local_songs) -> None:
         self.local_songs = local_songs
@@ -399,6 +400,9 @@ class ComparisonPageSpy:
 
     def onPrimaryActionRequested(self, callback) -> None:
         self.primary_action_callback = callback
+
+    def onManualDecisionRequested(self, callback) -> None:
+        self.manual_decision_callback = callback
 
     def confirmManualComparisonStart(self, *, playlist_title: str, folder_name: str) -> bool:
         self.confirmation_requests += 1
@@ -452,6 +456,11 @@ class LibraryComparisonViewModelSpy:
         self.is_stale = is_stale
         self.invalidate_calls = 0
         self.restore_calls = 0
+        self.manual_decision_calls: list[tuple[int, str, int | None]] = []
+        self.manual_decision_feedback = LibraryComparisonFeedback(
+            status_message="Resultado marcado manualmente como encontrada con cancion local enlazada.",
+            status_tone="success",
+        )
 
     def requestComparison(
         self,
@@ -490,6 +499,16 @@ class LibraryComparisonViewModelSpy:
     def invalidateComparison(self) -> None:
         self.invalidate_calls += 1
         self.is_stale = True
+
+    def updateComparisonItemDecision(
+        self,
+        *,
+        youtube_playlist_item_id: int,
+        match_status: str,
+        local_song_id: int | None,
+    ):
+        self.manual_decision_calls.append((youtube_playlist_item_id, match_status, local_song_id))
+        return self.manual_decision_feedback
 
 
 class ActiveComparisonContextSpy:
@@ -1447,4 +1466,127 @@ def test_comparison_controller_invalidate_prompts_user_to_rerun_comparison_after
             'La biblioteca o la playlist activas han cambiado. Pulsa "Volver a comparar" para recalcular los resultados con el estado mas reciente.',
             "info",
         )
+    ]
+
+
+def test_comparison_controller_handles_manual_decision_from_page_callback() -> None:
+    page = ComparisonPageSpy()
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=0,
+            missing_count=1,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[
+            PlaylistComparisonItemResultDto(
+                youtube_playlist_item_id=21,
+                local_song_id=None,
+                comparison_status=ComparisonStatus.MISSING,
+                youtube_title="Song Twenty One",
+                youtube_artist="Artist Twenty One",
+                local_title=None,
+                local_artist=None,
+                score=0.0,
+                reason="No hay candidata suficientemente competitiva.",
+            )
+        ],
+        playlist_comparison_id=4,
+    )
+    local_songs = [
+        LocalSongDto(
+            id=9,
+            local_folder_id=7,
+            file_path=r"C:\Music\Active\song-twenty-one.mp3",
+            file_name="song-twenty-one.mp3",
+            is_available=True,
+            title="Song Twenty One",
+            artist="Artist Twenty One",
+            album="Album Twenty One",
+            release_year=2024,
+            track_number_album=21,
+            duration_seconds=181.0,
+        )
+    ]
+    updated_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[
+            PlaylistComparisonItemResultDto(
+                youtube_playlist_item_id=21,
+                local_song_id=9,
+                comparison_status=ComparisonStatus.FOUND,
+                youtube_title="Song Twenty One",
+                youtube_artist="Artist Twenty One",
+                local_title="Song Twenty One",
+                local_artist="Artist Twenty One",
+                score=0.0,
+                reason="Enlace manual con cancion local decidido por el usuario.",
+            )
+        ],
+        playlist_comparison_id=4,
+    )
+    comparison_history = [
+        PlaylistComparisonHistoryEntryDto(
+            comparison_id=4,
+            compared_at=datetime(2026, 6, 15, 18, 30, tzinfo=UTC),
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        )
+    ]
+    view_model = LibraryComparisonViewModelSpy(
+        cached_local_songs=local_songs,
+        cached_comparison_result=comparison_result,
+        cached_comparison_history=[],
+        is_stale=False,
+    )
+    view_model.manual_decision_feedback = LibraryComparisonFeedback(
+        status_message="Resultado marcado manualmente como encontrada con cancion local enlazada.",
+        status_tone="success",
+        local_songs=local_songs,
+        comparison_result=updated_result,
+        comparison_history=comparison_history,
+        last_action_message="Resultado marcado manualmente como encontrada con cancion local enlazada.",
+    )
+    context = ActiveComparisonContextSpy(
+        folder=LocalFolderDto(
+            id=7,
+            path=r"C:\Music\Active",
+            display_name="Active",
+            is_active=True,
+        ),
+        playlist=YoutubePlaylistDto(
+            id=9,
+            title="Favoritas",
+            playlist_url="https://www.youtube.com/playlist?list=PL123",
+            external_playlist_id="PL123",
+            is_active=True,
+        ),
+    )
+    controller = ComparisonController(
+        page=page,
+        view_model=view_model,
+        load_active_folder=context.load_active_folder,
+        load_active_playlist=context.load_active_playlist,
+    )
+
+    succeeded = page.manual_decision_callback(
+        comparison_result.items[0],
+        ComparisonStatus.FOUND.value,
+        9,
+    )
+
+    assert succeeded is True
+    assert view_model.manual_decision_calls == [(21, ComparisonStatus.FOUND.value, 9)]
+    assert page.local_songs == local_songs
+    assert page.comparison_result == updated_result
+    assert page.comparison_history == comparison_history
+    assert page.status_messages == [
+        ("Resultado marcado manualmente como encontrada con cancion local enlazada.", "success")
     ]

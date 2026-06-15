@@ -76,6 +76,13 @@ class ComparisonPage(ctk.CTkFrame):
         self._ensureBuilt()
         self.header.primaryActionRequested.connect(callback)
 
+    def onManualDecisionRequested(
+        self,
+        callback: Callable[[PlaylistComparisonItemResultDto, str, int | None], bool],
+    ) -> None:
+        self._ensureBuilt()
+        self.section.setManualDecisionRequestedHandler(callback)
+
     def confirmManualComparisonStart(
         self,
         *,
@@ -106,6 +113,7 @@ class ComparisonPage(ctk.CTkFrame):
         self._possibleMatchCountValue.configure(
             text=str(comparison_result.summary.possible_match_count)
         )
+        self._updateLastComparisonLabel(comparison_result.last_compared_at)
         self.section.showComparisonData(local_songs, comparison_result.items)
 
     def showComparisonResults(
@@ -118,6 +126,7 @@ class ComparisonPage(ctk.CTkFrame):
         self._possibleMatchCountValue.configure(
             text=str(comparison_result.summary.possible_match_count)
         )
+        self._updateLastComparisonLabel(comparison_result.last_compared_at)
         self.section.showComparisonResults(comparison_result.items)
 
     def showComparisonHistory(
@@ -331,7 +340,7 @@ class ComparisonPage(ctk.CTkFrame):
         ).grid(row=0, column=0, sticky="w")
         createLabel(
             header,
-            "Ultimas comparaciones guardadas del ambito activo",
+            "Comparaciones guardadas disponibles del ambito activo",
             theme=self._theme,
             text_color=self._theme["text_secondary"],
             font=("Segoe UI", 10),
@@ -487,6 +496,23 @@ class ComparisonPage(ctk.CTkFrame):
     def _formatHistoryTimestamp(self, value: datetime) -> str:
         timestamp = value.astimezone() if value.tzinfo is not None else value
         return timestamp.strftime("%d/%m/%Y %H:%M")
+
+    def _updateLastComparisonLabel(self, compared_at: datetime | None) -> None:
+        if compared_at is None:
+            return
+        synthetic_history = [
+            PlaylistComparisonHistoryEntryDto(
+                comparison_id=0,
+                compared_at=compared_at,
+                found_count=0,
+                missing_count=0,
+                possible_match_count=0,
+                total_compared=0,
+            )
+        ]
+        self._lastComparisonLabel.configure(
+            text=buildComparisonLastRunSummary(synthetic_history)
+        )
 
     def _configureHistoryGridColumns(self, widget) -> None:
         for column_index, (_title, minsize, weight, _anchor, _truncate) in enumerate(self.HISTORY_COLUMNS):

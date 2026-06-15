@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from app.application.dto.playlistComparisonItemResultDto import (
+    PlaylistComparisonItemResultDto,
+)
 from app.presentation.features.comparison.ui.comparisonPage.comparisonPage import (
     ComparisonPage,
 )
@@ -23,6 +26,7 @@ class ComparisonController:
         self._view_model = view_model
         self._load_active_folder = load_active_folder
         self._load_active_playlist = load_active_playlist
+        self._page.onManualDecisionRequested(self._handleManualDecisionRequested)
 
     def load(self) -> None:
         active_folder = self._load_active_folder()
@@ -153,3 +157,30 @@ class ComparisonController:
             ),
             tone="info",
         )
+
+    def _handleManualLocalSongLinkRequested(
+        self,
+        comparison_item: PlaylistComparisonItemResultDto,
+        local_song_id: int,
+    ) -> bool:
+        feedback = self._view_model.updateComparisonItemDecision(
+            youtube_playlist_item_id=comparison_item.youtube_playlist_item_id,
+            match_status="found",
+            local_song_id=local_song_id,
+        )
+        self._renderComparisonFeedback(feedback)
+        return feedback.status_tone != "error"
+
+    def _handleManualDecisionRequested(
+        self,
+        comparison_item: PlaylistComparisonItemResultDto,
+        match_status: str,
+        local_song_id: int | None,
+    ) -> bool:
+        feedback = self._view_model.updateComparisonItemDecision(
+            youtube_playlist_item_id=comparison_item.youtube_playlist_item_id,
+            match_status=match_status,
+            local_song_id=local_song_id,
+        )
+        self._renderComparisonFeedback(feedback)
+        return feedback.status_tone != "error"

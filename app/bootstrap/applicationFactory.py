@@ -20,6 +20,7 @@ from app.application.use_cases import (
     LoadPersistedPlaylistComparisonUseCase,
     ListYoutubePlaylistsUseCase,
     ScanLocalFolderUseCase,
+    UpdatePlaylistComparisonResultUseCase,
     UpdateIgnoredTermUseCase,
     UpdateLocalFolderUseCase,
     UpdateYoutubePlaylistUseCase,
@@ -120,6 +121,7 @@ class ApplicationFactory:
         libraryComparisonViewModel = LibraryComparisonViewModel(
             self._loadLibraryComparisonInBackground,
             self._loadPersistedLibraryComparison,
+            self._updatePersistedComparisonResult,
         )
 
         return ServiceRegistry(
@@ -178,6 +180,7 @@ class ApplicationFactory:
                 persistence_registry.localSongRepository,
                 persistence_registry.playlistComparisonRepository,
                 persistence_registry.playlistComparisonResultRepository,
+                persistence_registry.ignoredTermRepository,
             ).execute()
             comparison_history = ListPersistedPlaylistComparisonHistoryUseCase(
                 persistence_registry.youtubePlaylistRepository,
@@ -192,6 +195,35 @@ class ApplicationFactory:
     def _loadPersistedLibraryComparison(self):
         persistence_registry = self._persistence_factory.createRegistry()
         try:
+            persisted_snapshot = LoadPersistedPlaylistComparisonUseCase(
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.youtubePlaylistItemRepository,
+                persistence_registry.localFolderRepository,
+                persistence_registry.localSongRepository,
+                persistence_registry.playlistComparisonRepository,
+                persistence_registry.playlistComparisonResultRepository,
+            ).execute()
+            if persisted_snapshot is None:
+                return None
+            local_songs, comparison_result = persisted_snapshot
+            comparison_history = ListPersistedPlaylistComparisonHistoryUseCase(
+                persistence_registry.youtubePlaylistRepository,
+                persistence_registry.localFolderRepository,
+                persistence_registry.playlistComparisonRepository,
+                persistence_registry.playlistComparisonResultRepository,
+            ).execute()
+            return local_songs, comparison_result, comparison_history
+        finally:
+            persistence_registry.session.close()
+
+    def _updatePersistedComparisonResult(self, input_dto):
+        persistence_registry = self._persistence_factory.createRegistry()
+        try:
+            UpdatePlaylistComparisonResultUseCase(
+                persistence_registry.playlistComparisonRepository,
+                persistence_registry.playlistComparisonResultRepository,
+                persistence_registry.localSongRepository,
+            ).execute(input_dto)
             persisted_snapshot = LoadPersistedPlaylistComparisonUseCase(
                 persistence_registry.youtubePlaylistRepository,
                 persistence_registry.youtubePlaylistItemRepository,
