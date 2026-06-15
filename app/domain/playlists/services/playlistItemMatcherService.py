@@ -4,7 +4,11 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from app.domain.library.entities.localSong import LocalSong
-from app.domain.metadata.services import normalizeMusicComparisonMetadata
+from app.domain.metadata.services import (
+    IgnoredTermsByScope,
+    normalizeMusicComparisonMetadata,
+)
+from app.domain.playlists.services.matchDecisionSource import buildAutomaticMatchedBy
 from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistItem
 from app.domain.playlists.services.playlistItemMatchingRules import (
     AmbiguityPenaltyThresholds,
@@ -38,6 +42,7 @@ class PlaylistItemMatchResult:
     comparison_status: ComparisonStatus
     score: float
     reason: str
+    matched_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,9 +59,11 @@ def matchYoutubePlaylistItemToLocalSongs(
     youtube_playlist_item: YoutubePlaylistItem,
     local_songs: Sequence[LocalSong],
     ruleset: PlaylistItemMatchingRuleset = DEFAULT_PLAYLIST_ITEM_MATCHING_RULESET,
+    ignored_terms_by_scope: IgnoredTermsByScope | None = None,
 ) -> PlaylistItemMatchResult:
     comparable_youtube_playlist_item = _buildComparableYoutubePlaylistItem(
-        youtube_playlist_item
+        youtube_playlist_item,
+        ignored_terms_by_scope,
     )
     candidate_evaluations: list[CandidateEvaluation] = []
 
@@ -65,6 +72,7 @@ def matchYoutubePlaylistItemToLocalSongs(
             comparable_youtube_playlist_item,
             local_song,
             ruleset,
+            ignored_terms_by_scope,
         )
         candidate_evaluations.append(candidate_evaluation)
 
@@ -74,6 +82,7 @@ def matchYoutubePlaylistItemToLocalSongs(
             comparison_status=ComparisonStatus.MISSING,
             score=0.0,
             reason="No hay canciones locales candidatas para comparar.",
+            matched_by=None,
         )
 
     candidate_evaluations.sort(
@@ -87,6 +96,10 @@ def matchYoutubePlaylistItemToLocalSongs(
         evidence=best_evaluation.evidence,
         score_breakdown=best_evaluation.score_breakdown,
     )
+    final_matched_by = buildAutomaticMatchedBy(
+        status=final_status,
+        evidence=best_evaluation.evidence,
+    )
 
     if final_status is ComparisonStatus.MISSING:
         return PlaylistItemMatchResult(
@@ -94,6 +107,7 @@ def matchYoutubePlaylistItemToLocalSongs(
             comparison_status=ComparisonStatus.MISSING,
             score=0.0,
             reason=final_reason,
+            matched_by=final_matched_by,
         )
 
     return PlaylistItemMatchResult(
@@ -101,11 +115,13 @@ def matchYoutubePlaylistItemToLocalSongs(
         comparison_status=final_status,
         score=best_evaluation.score,
         reason=final_reason,
+        matched_by=final_matched_by,
     )
 
 
 def _buildComparableYoutubePlaylistItem(
     youtube_playlist_item: YoutubePlaylistItem,
+    ignored_terms_by_scope: IgnoredTermsByScope | None,
 ) -> YoutubePlaylistItem:
     raw_title = youtube_playlist_item.raw_title or youtube_playlist_item.normalized_title
     raw_channel_name = (
@@ -114,6 +130,7 @@ def _buildComparableYoutubePlaylistItem(
     normalized_metadata = normalizeYoutubePlaylistItemMetadata(
         raw_title,
         raw_channel_name,
+        ignored_terms_by_scope,
     )
     return YoutubePlaylistItem(
         id=youtube_playlist_item.id,
@@ -135,11 +152,13 @@ def _scoreCandidate(
     youtube_playlist_item: YoutubePlaylistItem,
     local_song: LocalSong,
     ruleset: PlaylistItemMatchingRuleset,
+    ignored_terms_by_scope: IgnoredTermsByScope | None,
 ) -> CandidateEvaluation:
     normalized_local_song = normalizeMusicComparisonMetadata(
         title=local_song.title or local_song.file_name,
         artist=local_song.artist,
         album=local_song.album,
+        ignored_terms_by_scope=ignored_terms_by_scope,
     )
 
     title_evidence = buildTextMatchEvidence(

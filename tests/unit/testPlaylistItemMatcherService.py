@@ -305,6 +305,60 @@ def test_match_youtube_playlist_item_to_local_songs_returns_found_for_numbered_t
     assert result.score >= 75.0
 
 
+def test_match_youtube_playlist_item_to_local_songs_finds_rookies_when_youtube_title_starts_with_track_number() -> None:
+    youtube_item = YoutubePlaylistItem(
+        id=13,
+        youtube_playlist_id=9,
+        external_video_id="rookies-track",
+        position=3,
+        raw_title="3. ROOKIES - Rulo y Cookin Mama (PROD. DJ TIESO) [BULLDOGS]",
+        raw_channel_name="LosNiñosDelCaminito",
+        normalized_title="3 rookies rulo y cookin mama prod dj tieso bulldogs",
+        normalized_artist="losninosdelcaminito",
+        duration_seconds=241.0,
+    )
+    local_song = LocalSong(
+        id=16,
+        file_name="rulo-ft-cookin-mama-rookies.mp3",
+        title="Rookies",
+        artist="Rulo ft Cookin Mama",
+        duration_seconds=240.48,
+    )
+
+    result = matchYoutubePlaylistItemToLocalSongs(youtube_item, [local_song])
+
+    assert result.local_song == local_song
+    assert result.comparison_status is ComparisonStatus.FOUND
+    assert result.score >= 75.0
+
+
+def test_match_youtube_playlist_item_to_local_songs_ignores_collection_noise_inside_brackets() -> None:
+    youtube_item = YoutubePlaylistItem(
+        id=14,
+        youtube_playlist_id=9,
+        external_video_id="otra-vez-track",
+        position=22,
+        raw_title="Natos y Waor, Recycled J - OTRA VEZ (Letra) [Hijos de la Ruina Vol. 4]",
+        raw_channel_name="Natos y Waor and RECYCLEDJ",
+        normalized_title="natos y waor recycled j otra vez letra hijos de la ruina vol 4",
+        normalized_artist="natos y waor and recycledj",
+        duration_seconds=230.7,
+    )
+    local_song = LocalSong(
+        id=17,
+        file_name="natos-waor-recycledj-otra-vez.mp3",
+        title="Otra vez",
+        artist="Natos y Waor ft Recycled J",
+        duration_seconds=230.61,
+    )
+
+    result = matchYoutubePlaylistItemToLocalSongs(youtube_item, [local_song])
+
+    assert result.local_song == local_song
+    assert result.comparison_status is ComparisonStatus.FOUND
+    assert result.score >= 75.0
+
+
 def test_match_youtube_playlist_item_to_local_songs_recomputes_youtube_normalization_from_raw_fields() -> None:
     youtube_item = YoutubePlaylistItem(
         id=22,

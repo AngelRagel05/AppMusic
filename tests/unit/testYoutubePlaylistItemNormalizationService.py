@@ -104,6 +104,42 @@ def test_normalize_youtube_playlist_item_metadata_removes_ignored_youtube_noise_
     )
 
 
+def test_normalize_youtube_playlist_item_metadata_flips_title_first_tracks_when_channel_does_not_help() -> None:
+    normalized = normalizeYoutubePlaylistItemMetadata(
+        raw_title="3. ROOKIES - Rulo y Cookin Mama (PROD. DJ TIESO) [BULLDOGS]",
+        raw_channel_name="LosNiñosDelCaminito",
+    )
+
+    assert normalized == NormalizedYoutubePlaylistItemMetadata(
+        normalized_title="rookies",
+        normalized_artist="rulo y cookin mama",
+    )
+
+
+def test_normalize_youtube_playlist_item_metadata_removes_collection_noise_inside_brackets() -> None:
+    normalized = normalizeYoutubePlaylistItemMetadata(
+        raw_title="Natos y Waor, Recycled J - OTRA VEZ (Letra) [Hijos de la Ruina Vol. 4]",
+        raw_channel_name="Natos y Waor and RECYCLEDJ",
+    )
+
+    assert normalized == NormalizedYoutubePlaylistItemMetadata(
+        normalized_title="otra vez",
+        normalized_artist="natos y waor recycled j",
+    )
+
+
+def test_normalize_youtube_playlist_item_metadata_ignores_vol_for_playlist_titles_too() -> None:
+    normalized = normalizeYoutubePlaylistItemMetadata(
+        raw_title="Natos y Waor - Otra vez [Vol. 4]",
+        raw_channel_name="Natos y Waor",
+    )
+
+    assert normalized == NormalizedYoutubePlaylistItemMetadata(
+        normalized_title="otra vez",
+        normalized_artist="natos y waor",
+    )
+
+
 def test_normalize_youtube_playlist_item_metadata_does_not_treat_channel_contains_as_enough_to_flip_artist() -> None:
     normalized = normalizeYoutubePlaylistItemMetadata(
         raw_title="NATOS | SELECTA Motorseries #01",

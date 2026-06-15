@@ -61,3 +61,10 @@ erDiagram
 * Se genera una nueva comparacion cuando el usuario ejecuta manualmente la accion de comparar.
 * Cada fila actua como cabecera de un snapshot persistido de resultados.
 * Las filas se conservan para permitir un historico de comparaciones por combinacion de `youtube_playlist` y `local_folder`.
+* La retencion del historico se calcula por scope exacto:
+  * `youtube_playlist_id`
+  * `local_folder_id`
+* Solo se conservan las `3` comparaciones mas recientes por scope.
+* La ordenacion de retencion usa `compared_at desc, id desc`.
+* Cuando un scope supera el limite, la aplicacion elimina primero las filas hijas en `playlist_comparison_result` y despues la cabecera de `playlist_comparison`.
+* El objetivo de esta politica es controlar el crecimiento del snapshot historico en base de datos sin perder el ultimo estado util ni el historico corto reciente.

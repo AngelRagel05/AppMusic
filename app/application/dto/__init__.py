@@ -18,6 +18,9 @@ from app.application.dto.playlistComparisonHistoryEntryDto import (
 from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
 from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
+from app.application.dto.updatePlaylistComparisonResultInputDto import (
+    UpdatePlaylistComparisonResultInputDto,
+)
 from app.application.dto.updateIgnoredTermInputDto import UpdateIgnoredTermInputDto
 from app.application.dto.youtubePlaylistItemDto import YoutubePlaylistItemDto
 
@@ -34,6 +37,7 @@ __all__ = [
     "PlaylistComparisonResultDto",
     "PlaylistComparisonSummaryDto",
     "ScanLocalFolderProgressDto",
+    "UpdatePlaylistComparisonResultInputDto",
     "UpdateIgnoredTermInputDto",
     "YoutubePlaylistItemDto",
 ]

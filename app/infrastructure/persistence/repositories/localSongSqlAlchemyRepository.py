@@ -14,6 +14,12 @@ class LocalSongSqlAlchemyRepository(LocalSongRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
 
+    def get_by_id(self, local_song_id: int) -> LocalSong | None:
+        model = self._session.get(LocalSongModel, local_song_id)
+        if model is None:
+            return None
+        return self._to_entity(model)
+
     def list_by_folder(self, local_folder_id: int) -> Sequence[LocalSong]:
         statement: Select[tuple[LocalSongModel]] = (
             select(LocalSongModel)

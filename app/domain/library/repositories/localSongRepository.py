@@ -7,6 +7,10 @@ from app.domain.library.entities.localSong import LocalSong
 
 class LocalSongRepository(ABC):
     @abstractmethod
+    def get_by_id(self, local_song_id: int) -> LocalSong | None:
+        raise NotImplementedError
+
+    @abstractmethod
     def list_by_folder(self, local_folder_id: int) -> list[LocalSong]:
         raise NotImplementedError
 

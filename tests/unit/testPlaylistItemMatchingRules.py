@@ -4,13 +4,18 @@ import pytest
 
 from app.domain.playlists.services import (
     AmbiguityPenaltyThresholds,
+    AUTO_AMBIGUOUS,
+    AUTO_NO_COMPETITIVE_CANDIDATE,
+    AUTO_TITLE_ARTIST_DURATION,
     ArtistMatchEvidence,
     CandidateMatchEvidence,
     CandidateScoreBreakdown,
     ConsistencyScoreWeights,
+    DurationMatchEvidence,
     DurationMatchThresholds,
     TextMatchWeights,
     TitleMatchEvidence,
+    buildAutomaticMatchedBy,
     calculateAmbiguityPenalty,
     buildMatchReason,
     buildArtistMatchEvidence,
@@ -21,6 +26,8 @@ from app.domain.playlists.services import (
     scoreDuration,
     scoreEvidenceConsistency,
     scoreNormalizedText,
+    isAutomaticMatchedBy,
+    isManualMatchedBy,
 )
 from app.shared.constants.comparison import ComparisonStatus
 
@@ -252,6 +259,53 @@ def test_build_match_reason_returns_specific_reason_for_exact_title_inconsistent
     )
 
     assert reason == "Titulo exacto pero artista inconsistente."
+
+
+def test_build_automatic_matched_by_returns_found_source_code() -> None:
+    matched_by = buildAutomaticMatchedBy(
+        status=ComparisonStatus.FOUND,
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.EXACT,
+            artist_match=ArtistMatchEvidence.STRONG,
+            duration_match=DurationMatchEvidence.STRONG,
+        ),
+    )
+
+    assert matched_by == AUTO_TITLE_ARTIST_DURATION
+
+
+def test_build_automatic_matched_by_returns_ambiguity_source_code() -> None:
+    matched_by = buildAutomaticMatchedBy(
+        status=ComparisonStatus.POSSIBLE_MATCH,
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.EXACT,
+            artist_match=ArtistMatchEvidence.STRONG,
+            duration_match=DurationMatchEvidence.STRONG,
+            ambiguity_count=2,
+        ),
+    )
+
+    assert matched_by == AUTO_AMBIGUOUS
+
+
+def test_build_automatic_matched_by_returns_non_competitive_source_code_for_missing() -> None:
+    matched_by = buildAutomaticMatchedBy(
+        status=ComparisonStatus.MISSING,
+        evidence=CandidateMatchEvidence(
+            title_match=TitleMatchEvidence.NONE,
+            artist_match=ArtistMatchEvidence.NONE,
+            duration_match=DurationMatchEvidence.WEAK,
+        ),
+    )
+
+    assert matched_by == AUTO_NO_COMPETITIVE_CANDIDATE
+
+
+def test_match_decision_source_helpers_identify_auto_and_manual_codes() -> None:
+    assert isAutomaticMatchedBy(AUTO_TITLE_ARTIST_DURATION) is True
+    assert isManualMatchedBy("manual:user_marked_missing") is True
+    assert isAutomaticMatchedBy("manual:user_marked_missing") is False
+    assert isManualMatchedBy("legacy free text") is False
 
 
 def test_normalized_similarity_ratio_detects_near_equivalent_strings() -> None:

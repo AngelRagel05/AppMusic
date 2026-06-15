@@ -30,6 +30,9 @@ from app.application.use_cases.playlists.listPersistedPlaylistComparisonHistoryU
 from app.application.use_cases.playlists.updateYoutubePlaylistUseCase import (
     UpdateYoutubePlaylistUseCase,
 )
+from app.application.use_cases.playlists.updatePlaylistComparisonResultUseCase import (
+    UpdatePlaylistComparisonResultUseCase,
+)
 from app.application.use_cases.playlists.youtubePlaylistItemsImporterPort import (
     YoutubePlaylistImportError,
     YoutubePlaylistImportExtractorError,
@@ -48,6 +51,7 @@ __all__ = [
     "ListYoutubePlaylistsUseCase",
     "CompareYoutubePlaylistWithLocalLibraryUseCase",
     "ListPersistedPlaylistComparisonHistoryUseCase",
+    "UpdatePlaylistComparisonResultUseCase",
     "UpdateYoutubePlaylistUseCase",
     "YoutubePlaylistImportError",
     "YoutubePlaylistImportExtractorError",

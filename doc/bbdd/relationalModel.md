@@ -238,6 +238,8 @@ Notas:
 
 * se genera una nueva comparacion cuando el usuario ejecuta manualmente la accion de comparar
 * la fila actua como cabecera de un snapshot persistido
+* la persistencia historica se retiene por scope `youtube_playlist_id + local_folder_id`
+* solo se conservan las `3` comparaciones mas recientes de cada scope
 
 ### `playlist_comparison_result`
 
@@ -261,9 +263,19 @@ Estados de `match_status`:
 Restricciones:
 
 * `local_song_id` sera `NULL` cuando la cancion falte
+* `match_status = found` requiere `local_song_id` informado
+* `match_status = possible_match` admite `local_song_id` nulo o informado
 * `score` puede ser `NULL`
 * `matched_by` puede ser `NULL`
 * deberia existir una sola fila por pareja `playlist_comparison_id + youtube_playlist_item_id`
+* si la fila fue corregida manualmente, `matched_by` debe usar prefijo `manual:`
+
+Notas de retencion:
+
+* la limpieza del historico se coordina desde aplicacion y repositorios
+* primero se borran las filas hijas de `playlist_comparison_result`
+* despues se eliminan las cabeceras antiguas de `playlist_comparison`
+* esta politica evita crecimiento ilimitado del snapshot historico
 
 ### `download`
 
@@ -380,6 +392,7 @@ Estas reglas dependen del flujo del sistema o son mas portables si se resuelven 
 * calculo de `score`
 * calculo de `matched_by`
 * asignacion de `match_status`
+* validacion cruzada entre `match_status`, `local_song_id` y `matched_by`
 * catalogo de errores posibles de `download`
 * control de transiciones de `download.status`
 * control del flujo completo de descarga y posterior insercion en `local_song`

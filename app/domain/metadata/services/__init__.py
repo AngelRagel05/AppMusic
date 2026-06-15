@@ -2,6 +2,7 @@
 
 from app.domain.metadata.services.musicComparisonNormalizationService import (
     COMPARISON_IGNORED_TERMS,
+    IgnoredTermsByScope,
     NormalizedComparisonTextParts,
     NormalizedMusicComparisonMetadata,
     normalizeMusicComparisonAlbum,
@@ -14,6 +15,7 @@ from app.domain.metadata.services.musicComparisonNormalizationService import (
 
 __all__ = [
     "COMPARISON_IGNORED_TERMS",
+    "IgnoredTermsByScope",
     "NormalizedComparisonTextParts",
     "NormalizedMusicComparisonMetadata",
     "normalizeMusicComparisonAlbum",

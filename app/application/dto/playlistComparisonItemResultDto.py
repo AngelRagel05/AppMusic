@@ -16,3 +16,4 @@ class PlaylistComparisonItemResultDto:
     local_artist: str | None
     score: float
     reason: str
+    matched_by: str | None = None

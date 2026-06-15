@@ -20,6 +20,15 @@ from app.domain.playlists.repositories.youtubePlaylistItemRepository import (
 from app.domain.playlists.repositories.youtubePlaylistRepository import (
     YoutubePlaylistRepository,
 )
+from app.domain.playlists.services import (
+    AUTO_AMBIGUOUS,
+    AUTO_NO_COMPETITIVE_CANDIDATE,
+    AUTO_TITLE_ARTIST_DURATION,
+    MANUAL_USER_LINKED_LOCAL_SONG,
+    MANUAL_USER_MARKED_FOUND,
+    MANUAL_USER_MARKED_MISSING,
+    MANUAL_USER_MARKED_POSSIBLE,
+)
 from app.shared.constants.comparison import ComparisonStatus
 
 
@@ -86,6 +95,11 @@ class LoadPersistedPlaylistComparisonUseCase:
         comparison_rows = self._playlist_comparison_result_repository.list_by_comparison(
             persisted_comparison.id
         )
+        linked_local_song_by_id = _buildLinkedLocalSongLookup(
+            comparison_rows,
+            local_song_by_id,
+            self._local_song_repository,
+        )
         comparison_items = [
             PlaylistComparisonItemResultDto(
                 youtube_playlist_item_id=row.youtube_playlist_item_id,
@@ -95,10 +109,11 @@ class LoadPersistedPlaylistComparisonUseCase:
                 youtube_artist=_resolveYoutubeArtist(
                     youtube_item_by_id.get(row.youtube_playlist_item_id)
                 ),
-                local_title=_resolveLocalTitle(local_song_by_id.get(row.local_song_id)),
-                local_artist=_resolveLocalArtist(local_song_by_id.get(row.local_song_id)),
+                local_title=_resolveLocalTitle(linked_local_song_by_id.get(row.local_song_id)),
+                local_artist=_resolveLocalArtist(linked_local_song_by_id.get(row.local_song_id)),
                 score=float(row.score or 0.0),
                 reason=_buildPersistedReason(row.match_status, row.score, row.matched_by),
+                matched_by=row.matched_by,
             )
             for row in comparison_rows
         ]
@@ -120,7 +135,12 @@ class LoadPersistedPlaylistComparisonUseCase:
             ),
             total_compared=len(comparison_items),
         )
-        return local_songs, PlaylistComparisonResultDto(summary=summary, items=comparison_items)
+        return local_songs, PlaylistComparisonResultDto(
+            summary=summary,
+            items=comparison_items,
+            playlist_comparison_id=persisted_comparison.id,
+            last_compared_at=persisted_comparison.compared_at,
+        )
 
 
 def _resolveYoutubeTitle(youtube_item) -> str:
@@ -147,6 +167,37 @@ def _resolveLocalArtist(local_song: LocalSongDto | None) -> str | None:
     return local_song.artist
 
 
+def _buildLinkedLocalSongLookup(
+    comparison_rows,
+    available_local_song_by_id: dict[int, LocalSongDto],
+    local_song_repository: LocalSongRepository,
+) -> dict[int, LocalSongDto]:
+    linked_local_song_by_id = dict(available_local_song_by_id)
+    missing_local_song_ids = {
+        row.local_song_id
+        for row in comparison_rows
+        if row.local_song_id is not None and row.local_song_id not in linked_local_song_by_id
+    }
+    for local_song_id in missing_local_song_ids:
+        persisted_local_song = local_song_repository.get_by_id(local_song_id)
+        if persisted_local_song is None:
+            continue
+        linked_local_song_by_id[local_song_id] = LocalSongDto(
+            id=persisted_local_song.id or 0,
+            local_folder_id=persisted_local_song.local_folder_id or 0,
+            file_path=persisted_local_song.file_path,
+            file_name=persisted_local_song.file_name,
+            is_available=persisted_local_song.is_available,
+            title=persisted_local_song.title,
+            artist=persisted_local_song.artist,
+            album=persisted_local_song.album,
+            release_year=persisted_local_song.release_year,
+            track_number_album=persisted_local_song.track_number_album,
+            duration_seconds=persisted_local_song.duration_seconds,
+        )
+    return linked_local_song_by_id
+
+
 def _buildPersistedReason(
     match_status: str,
     score: float | None,
@@ -154,6 +205,9 @@ def _buildPersistedReason(
 ) -> str:
     normalized_reason = (persisted_reason or "").strip()
     if normalized_reason:
+        mapped_reason = _mapMatchedByToReason(normalized_reason, match_status)
+        if mapped_reason is not None:
+            return mapped_reason
         return normalized_reason
 
     status = ComparisonStatus(match_status)
@@ -166,3 +220,27 @@ def _buildPersistedReason(
             f"Score {normalized_score:.1f}."
         )
     return "Sin coincidencia concreta rehidratada desde snapshot persistido."
+
+
+def _mapMatchedByToReason(
+    matched_by: str,
+    match_status: str,
+) -> str | None:
+    if matched_by == AUTO_TITLE_ARTIST_DURATION:
+        return "Titulo exacto con artista fuerte y duracion razonable."
+    if matched_by == AUTO_AMBIGUOUS:
+        return "Ambiguedad entre dos candidatas plausibles."
+    if matched_by == AUTO_NO_COMPETITIVE_CANDIDATE:
+        status = ComparisonStatus(match_status)
+        if status is ComparisonStatus.POSSIBLE_MATCH:
+            return "Titulo exacto pero artista inconsistente."
+        return "No hay candidata suficientemente competitiva."
+    if matched_by == MANUAL_USER_LINKED_LOCAL_SONG:
+        return "Enlace manual con cancion local decidido por el usuario."
+    if matched_by == MANUAL_USER_MARKED_FOUND:
+        return "Marcado manualmente como encontrada por el usuario."
+    if matched_by == MANUAL_USER_MARKED_MISSING:
+        return "Marcado manualmente como faltante por el usuario."
+    if matched_by == MANUAL_USER_MARKED_POSSIBLE:
+        return "Marcado manualmente como posible coincidencia por el usuario."
+    return None

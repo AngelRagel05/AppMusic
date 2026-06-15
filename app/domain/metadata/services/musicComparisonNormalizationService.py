@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 import re
 import unicodedata
@@ -25,6 +26,7 @@ COMPARISON_IGNORED_TERMS = (
     "produced",
     "producido",
     "topic",
+    "vol",
     "hd",
     "4k",
     "remastered",
@@ -66,19 +68,30 @@ class NormalizedMusicComparisonMetadata:
     ignored_album_decorators: tuple[str, ...] = ()
 
 
-def normalizeMusicComparisonText(value: str) -> str:
+IgnoredTermsByScope = Mapping[str, tuple[str, ...]]
+
+
+def normalizeMusicComparisonText(
+    value: str,
+    ignored_terms: tuple[str, ...] = (),
+) -> str:
     return _normalizeComparableSegment(
         _removeIgnoredDecorators(
             _FEATURE_PATTERN.sub(
                 " feat ",
-                _removeIgnoredBracketedContent(value.strip().lower()),
+                _removeIgnoredBracketedContent(value.strip().lower(), ignored_terms),
             )
+            ,
+            ignored_terms,
         ),
     )
 
 
-def splitMusicComparisonSegments(value: str) -> tuple[str, ...]:
-    cleaned_value = _removeIgnoredBracketedContent(value)
+def splitMusicComparisonSegments(
+    value: str,
+    ignored_terms: tuple[str, ...] = (),
+) -> tuple[str, ...]:
+    cleaned_value = _removeIgnoredBracketedContent(value, ignored_terms)
     return tuple(
         part.strip()
         for part in _SEPARATOR_SPLIT_PATTERN.split(cleaned_value)
@@ -90,10 +103,20 @@ def normalizeMusicComparisonMetadata(
     title: str,
     artist: str,
     album: str = "",
+    ignored_terms_by_scope: IgnoredTermsByScope | None = None,
 ) -> NormalizedMusicComparisonMetadata:
-    normalized_title_parts = normalizeMusicComparisonTitleParts(title)
-    normalized_artist_parts = normalizeMusicComparisonArtistParts(artist)
-    normalized_album_parts = normalizeMusicComparisonAlbumParts(album)
+    normalized_title_parts = normalizeMusicComparisonTitleParts(
+        title,
+        _resolveIgnoredTermsForScope(ignored_terms_by_scope, "title"),
+    )
+    normalized_artist_parts = normalizeMusicComparisonArtistParts(
+        artist,
+        _resolveIgnoredTermsForScope(ignored_terms_by_scope, "artist"),
+    )
+    normalized_album_parts = normalizeMusicComparisonAlbumParts(
+        album,
+        _resolveIgnoredTermsForScope(ignored_terms_by_scope, "album"),
+    )
     comparable_artist = " ".join(
         token
         for token in (
@@ -115,12 +138,18 @@ def normalizeMusicComparisonMetadata(
     )
 
 
-def normalizeMusicComparisonTitle(value: str) -> str:
-    return normalizeMusicComparisonTitleParts(value).primary_value
+def normalizeMusicComparisonTitle(
+    value: str,
+    ignored_terms: tuple[str, ...] = (),
+) -> str:
+    return normalizeMusicComparisonTitleParts(value, ignored_terms).primary_value
 
 
-def normalizeMusicComparisonArtist(value: str) -> str:
-    artist_parts = normalizeMusicComparisonArtistParts(value)
+def normalizeMusicComparisonArtist(
+    value: str,
+    ignored_terms: tuple[str, ...] = (),
+) -> str:
+    artist_parts = normalizeMusicComparisonArtistParts(value, ignored_terms)
     return " ".join(
         token
         for token in (artist_parts.primary_value, *artist_parts.collaborators)
@@ -128,46 +157,73 @@ def normalizeMusicComparisonArtist(value: str) -> str:
     ).strip()
 
 
-def normalizeMusicComparisonAlbum(value: str) -> str:
-    return normalizeMusicComparisonAlbumParts(value).primary_value
+def normalizeMusicComparisonAlbum(
+    value: str,
+    ignored_terms: tuple[str, ...] = (),
+) -> str:
+    return normalizeMusicComparisonAlbumParts(value, ignored_terms).primary_value
 
 
-def normalizeMusicComparisonTitleParts(value: str) -> NormalizedComparisonTextParts:
-    normalized_value = _prepareRawComparisonValue(value)
+def normalizeMusicComparisonTitleParts(
+    value: str,
+    ignored_terms: tuple[str, ...] = (),
+) -> NormalizedComparisonTextParts:
+    normalized_value = _prepareRawComparisonValue(value, ignored_terms)
     normalized_value = _LEADING_TRACK_NUMBER_PATTERN.sub("", normalized_value)
     main_value, collaborator_segments = _splitFeatureSegments(normalized_value)
-    ignored_decorators = _extractIgnoredDecorators(main_value)
+    ignored_decorators = _extractIgnoredDecorators(main_value, ignored_terms)
     return NormalizedComparisonTextParts(
-        primary_value=_normalizeComparableSegment(_removeIgnoredDecorators(main_value)),
-        collaborators=_normalizeCollaboratorSegments(collaborator_segments),
+        primary_value=_normalizeComparableSegment(
+            _removeIgnoredDecorators(main_value, ignored_terms)
+        ),
+        collaborators=_normalizeCollaboratorSegments(
+            collaborator_segments,
+            ignored_terms,
+        ),
         ignored_decorators=ignored_decorators,
     )
 
 
-def normalizeMusicComparisonArtistParts(value: str) -> NormalizedComparisonTextParts:
-    normalized_value = _prepareRawComparisonValue(value)
+def normalizeMusicComparisonArtistParts(
+    value: str,
+    ignored_terms: tuple[str, ...] = (),
+) -> NormalizedComparisonTextParts:
+    normalized_value = _prepareRawComparisonValue(value, ignored_terms)
     normalized_value = _LEADING_TRACK_NUMBER_PATTERN.sub("", normalized_value)
     main_value, collaborator_segments = _splitFeatureSegments(normalized_value)
-    ignored_decorators = _extractIgnoredDecorators(main_value)
+    ignored_decorators = _extractIgnoredDecorators(main_value, ignored_terms)
     return NormalizedComparisonTextParts(
-        primary_value=_normalizeComparableSegment(_removeIgnoredDecorators(main_value)),
-        collaborators=_normalizeCollaboratorSegments(collaborator_segments),
+        primary_value=_normalizeComparableSegment(
+            _removeIgnoredDecorators(main_value, ignored_terms)
+        ),
+        collaborators=_normalizeCollaboratorSegments(
+            collaborator_segments,
+            ignored_terms,
+        ),
         ignored_decorators=ignored_decorators,
     )
 
 
-def normalizeMusicComparisonAlbumParts(value: str) -> NormalizedComparisonTextParts:
-    normalized_value = _prepareRawComparisonValue(value)
-    ignored_decorators = _extractIgnoredDecorators(normalized_value)
+def normalizeMusicComparisonAlbumParts(
+    value: str,
+    ignored_terms: tuple[str, ...] = (),
+) -> NormalizedComparisonTextParts:
+    normalized_value = _prepareRawComparisonValue(value, ignored_terms)
+    ignored_decorators = _extractIgnoredDecorators(normalized_value, ignored_terms)
     return NormalizedComparisonTextParts(
-        primary_value=_normalizeComparableSegment(_removeIgnoredDecorators(normalized_value)),
+        primary_value=_normalizeComparableSegment(
+            _removeIgnoredDecorators(normalized_value, ignored_terms)
+        ),
         ignored_decorators=ignored_decorators,
     )
 
 
-def _prepareRawComparisonValue(value: str) -> str:
+def _prepareRawComparisonValue(
+    value: str,
+    ignored_terms: tuple[str, ...],
+) -> str:
     normalized_value = _stripAccents(value.strip().lower())
-    normalized_value = _removeIgnoredBracketedContent(normalized_value)
+    normalized_value = _removeIgnoredBracketedContent(normalized_value, ignored_terms)
     return _FEATURE_PATTERN.sub(" feat ", normalized_value)
 
 
@@ -179,10 +235,15 @@ def _normalizeComparableSegment(value: str) -> str:
     return normalized_value.strip()
 
 
-def _normalizeCollaboratorSegments(values: tuple[str, ...]) -> tuple[str, ...]:
+def _normalizeCollaboratorSegments(
+    values: tuple[str, ...],
+    ignored_terms: tuple[str, ...],
+) -> tuple[str, ...]:
     normalized_values: list[str] = []
     for value in values:
-        normalized_value = _normalizeComparableSegment(_removeIgnoredDecorators(value))
+        normalized_value = _normalizeComparableSegment(
+            _removeIgnoredDecorators(value, ignored_terms)
+        )
         if normalized_value and normalized_value not in normalized_values:
             normalized_values.append(normalized_value)
     return tuple(normalized_values)
@@ -206,17 +267,23 @@ def _splitFeatureSegments(value: str) -> tuple[str, tuple[str, ...]]:
     return primary_value, collaborator_segments
 
 
-def _extractIgnoredDecorators(value: str) -> tuple[str, ...]:
+def _extractIgnoredDecorators(
+    value: str,
+    ignored_terms: tuple[str, ...],
+) -> tuple[str, ...]:
     decorators: list[str] = []
-    for match in _COMPARISON_IGNORED_PATTERN.finditer(value):
+    for match in _buildIgnoredPattern(ignored_terms).finditer(value):
         normalized_match = _normalizeComparableSegment(match.group(1))
         if normalized_match and normalized_match not in decorators:
             decorators.append(normalized_match)
     return tuple(decorators)
 
 
-def _removeIgnoredDecorators(value: str) -> str:
-    return _COMPARISON_IGNORED_PATTERN.sub(" ", value)
+def _removeIgnoredDecorators(
+    value: str,
+    ignored_terms: tuple[str, ...],
+) -> str:
+    return _buildIgnoredPattern(ignored_terms).sub(" ", value)
 
 
 def _stripAccents(value: str) -> str:
@@ -224,7 +291,10 @@ def _stripAccents(value: str) -> str:
     return "".join(character for character in normalized if not unicodedata.combining(character))
 
 
-def _removeIgnoredBracketedContent(value: str) -> str:
+def _removeIgnoredBracketedContent(
+    value: str,
+    ignored_terms: tuple[str, ...],
+) -> str:
     result = value
     for match in _BRACKETED_CONTENT_PATTERN.findall(value):
         normalized_content = _normalizeComparableSegment(_stripAccents(match[1:-1].lower()))
@@ -232,15 +302,58 @@ def _removeIgnoredBracketedContent(value: str) -> str:
             result = result.replace(match, " ")
             continue
         content_tokens = tuple(token for token in normalized_content.split(" ") if token)
-        if content_tokens and all(_isIgnoredComparisonToken(token) for token in content_tokens):
+        if content_tokens and all(
+            _isIgnoredComparisonToken(token, ignored_terms)
+            for token in content_tokens
+        ):
             result = result.replace(match, " ")
     return result
 
 
-def _isIgnoredComparisonToken(token: str) -> bool:
+def _isIgnoredComparisonToken(
+    token: str,
+    ignored_terms: tuple[str, ...],
+) -> bool:
     if token in _FEATURE_TERMS:
         return True
     return any(
         token == ignored_term or token in ignored_term.split(" ")
-        for ignored_term in COMPARISON_IGNORED_TERMS
+        for ignored_term in _resolveIgnoredTerms(ignored_terms)
+    )
+
+
+def _resolveIgnoredTermsForScope(
+    ignored_terms_by_scope: IgnoredTermsByScope | None,
+    scope: str,
+) -> tuple[str, ...]:
+    if not ignored_terms_by_scope:
+        return ()
+    scoped_terms = tuple(ignored_terms_by_scope.get(scope, ()))
+    global_terms = tuple(ignored_terms_by_scope.get("global", ()))
+    return tuple(
+        term
+        for term in (*global_terms, *scoped_terms)
+        if (term or "").strip()
+    )
+
+
+def _resolveIgnoredTerms(ignored_terms: tuple[str, ...]) -> tuple[str, ...]:
+    normalized_terms: list[str] = []
+    for term in (*COMPARISON_IGNORED_TERMS, *ignored_terms):
+        normalized_term = _normalizeComparableSegment(_stripAccents(str(term).lower()))
+        if normalized_term and normalized_term not in normalized_terms:
+            normalized_terms.append(normalized_term)
+    return tuple(normalized_terms)
+
+
+def _buildIgnoredPattern(ignored_terms: tuple[str, ...]) -> re.Pattern[str]:
+    resolved_terms = _resolveIgnoredTerms(ignored_terms)
+    return re.compile(
+        r"(?<!\w)("
+        + "|".join(
+            re.escape(term)
+            for term in sorted(resolved_terms, key=len, reverse=True)
+        )
+        + r")(?!\w)",
+        re.IGNORECASE,
     )

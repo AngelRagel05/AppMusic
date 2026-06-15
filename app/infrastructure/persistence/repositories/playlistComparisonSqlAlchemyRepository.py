@@ -15,6 +15,15 @@ class PlaylistComparisonSqlAlchemyRepository(PlaylistComparisonRepository):
     def __init__(self, session) -> None:
         self._session = session
 
+    def find_by_id(
+        self,
+        playlist_comparison_id: int,
+    ) -> PlaylistComparison | None:
+        model = self._session.get(PlaylistComparisonModel, playlist_comparison_id)
+        if model is None:
+            return None
+        return self._to_entity(model)
+
     def create(
         self,
         youtube_playlist_id: int,
@@ -54,6 +63,40 @@ class PlaylistComparisonSqlAlchemyRepository(PlaylistComparisonRepository):
             local_folder_id,
         ).limit(limit)
         return [self._to_entity(model) for model in self._session.scalars(statement).all()]
+
+    def list_excess_for_scope(
+        self,
+        youtube_playlist_id: int,
+        local_folder_id: int,
+        *,
+        keep_latest: int,
+    ) -> list[PlaylistComparison]:
+        if keep_latest < 0:
+            msg = "keep_latest no puede ser negativo."
+            raise ValueError(msg)
+
+        statement = self._build_scope_statement(
+            youtube_playlist_id,
+            local_folder_id,
+        ).offset(keep_latest)
+        return [self._to_entity(model) for model in self._session.scalars(statement).all()]
+
+    def delete_by_ids(
+        self,
+        playlist_comparison_ids: list[int],
+    ) -> None:
+        if not playlist_comparison_ids:
+            return
+
+        (
+            self._session.query(PlaylistComparisonModel)
+            .filter(PlaylistComparisonModel.id.in_(playlist_comparison_ids))
+            .delete(synchronize_session=False)
+        )
+        self._session.flush()
+
+    def commit(self) -> None:
+        self._session.commit()
 
     def _build_scope_statement(
         self,

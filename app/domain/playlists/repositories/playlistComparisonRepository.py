@@ -7,6 +7,13 @@ from app.domain.playlists.entities.playlistComparison import PlaylistComparison
 
 class PlaylistComparisonRepository(ABC):
     @abstractmethod
+    def find_by_id(
+        self,
+        playlist_comparison_id: int,
+    ) -> PlaylistComparison | None:
+        raise NotImplementedError
+
+    @abstractmethod
     def create(
         self,
         youtube_playlist_id: int,
@@ -30,4 +37,25 @@ class PlaylistComparisonRepository(ABC):
         *,
         limit: int,
     ) -> list[PlaylistComparison]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def list_excess_for_scope(
+        self,
+        youtube_playlist_id: int,
+        local_folder_id: int,
+        *,
+        keep_latest: int,
+    ) -> list[PlaylistComparison]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_by_ids(
+        self,
+        playlist_comparison_ids: list[int],
+    ) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def commit(self) -> None:
         raise NotImplementedError

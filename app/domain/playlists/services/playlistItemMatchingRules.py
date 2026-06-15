@@ -146,10 +146,15 @@ def buildArtistMatchEvidence(
     right_value: str,
 ) -> ArtistMatchEvidence:
     title_like_evidence = buildTextMatchEvidence(left_value, right_value)
+    overlap_ratio = tokenOverlapRatio(left_value, right_value)
     return {
         TitleMatchEvidence.EXACT: ArtistMatchEvidence.STRONG,
         TitleMatchEvidence.CONTAINS: ArtistMatchEvidence.STRONG,
-        TitleMatchEvidence.NEAR_EXACT: ArtistMatchEvidence.MEDIUM,
+        TitleMatchEvidence.NEAR_EXACT: (
+            ArtistMatchEvidence.STRONG
+            if overlap_ratio >= 0.75
+            else ArtistMatchEvidence.MEDIUM
+        ),
         TitleMatchEvidence.WEAK: ArtistMatchEvidence.WEAK,
         TitleMatchEvidence.NONE: ArtistMatchEvidence.NONE,
     }[title_like_evidence]

@@ -92,7 +92,7 @@ def test_split_music_comparison_segments_uses_single_separator_policy() -> None:
 
 
 def test_comparison_ignored_terms_include_base_business_terms() -> None:
-    assert {"ft", "feat", "featuring", "prod", "official", "audio", "visualizer", "topic", "lyrics", "letra"} <= set(
+    assert {"ft", "feat", "featuring", "prod", "official", "audio", "visualizer", "topic", "lyrics", "letra", "vol"} <= set(
         COMPARISON_IGNORED_TERMS
     )
 
@@ -131,3 +131,9 @@ def test_normalize_music_comparison_metadata_keeps_inconsistent_artist_as_separa
         normalized_title="platos rotos",
         normalized_artist="otro artista",
     )
+
+
+def test_normalize_music_comparison_title_ignores_vol_symmetrically_for_local_metadata() -> None:
+    normalized = normalizeMusicComparisonTitle("Otra vez Vol. 4")
+
+    assert normalized == "otra vez 4"

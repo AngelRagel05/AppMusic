@@ -10,6 +10,8 @@ Representa el resultado de comparar un `youtube_playlist_item` concreto dentro d
 
 Es la tabla clave para detectar canciones encontradas o faltantes.
 
+Tambien actua como fuente final del ajuste manual hecho por el usuario sobre un snapshot ya persistido.
+
 ## Columnas
 
 | Columna | Tipo conceptual | Requerido | Restricciones | Descripcion |
@@ -20,7 +22,7 @@ Es la tabla clave para detectar canciones encontradas o faltantes.
 | `local_song_id` | entero | no | FK | Cancion local asociada si existe |
 | `match_status` | texto | si | - | Estado final del matching |
 | `score` | decimal | no | - | Puntuacion calculada por el algoritmo |
-| `matched_by` | texto | no | - | Metodo o criterio usado para resolver el matching |
+| `matched_by` | texto | no | - | Origen controlado de la decision final, automatico o manual |
 | `created_at` | fecha-hora | si | - | Fecha de creacion |
 | `updated_at` | fecha-hora | si | - | Fecha de ultima actualizacion |
 
@@ -69,9 +71,48 @@ erDiagram
   * `found`
   * `missing`
   * `possible_match`
+* Esta tabla admite ajuste manual directo sobre una fila ya persistida.
+* El flujo manual siempre nace desde `youtube_playlist_item`:
+  * el usuario abre un resultado de comparacion
+  * decide el `match_status`
+  * y opcionalmente enlaza una `local_song`
+* La aplicacion puede editar manualmente:
+  * `match_status`
+  * `local_song_id`
+  * `matched_by`
 * Si una cancion falta en local:
   * existe `youtube_playlist_item`
   * existe `playlist_comparison_result`
   * `local_song_id` queda en `NULL`
   * `match_status` vale `missing`
 * Debe existir una sola fila por pareja `playlist_comparison_id + youtube_playlist_item_id`.
+* `matched_by` no debe usarse como texto libre arbitrario.
+* Validaciones operativas en aplicacion:
+  * `match_status = missing` obliga `local_song_id = NULL`
+  * `match_status = found` obliga `local_song_id` informado
+  * `match_status = possible_match` permite `local_song_id = NULL`, aunque puede conservar una candidata elegida manualmente
+* Convencion actual:
+  * automatico:
+    * `auto:title_artist_duration`
+    * `auto:ambiguous`
+    * `auto:no_competitive_candidate`
+  * manual:
+    * `manual:user_linked_local_song`
+    * `manual:user_marked_found`
+    * `manual:user_marked_missing`
+    * `manual:user_marked_possible`
+* El `score` se conserva aunque el usuario corrija manualmente la fila.
+* Cuando `matched_by` empiece por `manual:`, el `score` deja de actuar como verdad del estado final y queda solo como referencia del matching automatico previo.
+* `matched_by` distingue explicitamente el origen de la fila:
+  * `auto:*` para decisiones del matcher
+  * `manual:*` para correcciones del usuario
+* Esta tabla forma parte del snapshot historico de comparacion y hereda la politica de retencion por scope desde `playlist_comparison`.
+* La edicion manual vive solo en el snapshot actual que el usuario esta editando.
+* Si se ejecuta una comparacion nueva:
+  * se crea un snapshot nuevo
+  * el nuevo calculo no reaplica automaticamente overrides manuales del snapshot anterior
+* No se conservan filas huérfanas:
+  * al purgar comparaciones antiguas, la aplicacion borra primero los resultados hijos
+  * despues elimina la cabecera asociada en `playlist_comparison`
+* El maximo retenido es indirectamente `3` snapshots por scope, no `3` filas de resultado.
+* El motivo de esta limpieza coordinada es limitar el crecimiento rapido de `playlist_comparison_result`, que escala con el numero de items comparados por cada ejecucion.
