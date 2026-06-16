@@ -186,6 +186,16 @@ class PlaylistComparison(Base):
         default=utc_now,
         nullable=False,
     )
+    youtube_playlist_imported_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    local_library_scanned_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    ignored_terms_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    matching_rules_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,

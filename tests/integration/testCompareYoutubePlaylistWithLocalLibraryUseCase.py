@@ -496,7 +496,7 @@ def test_load_persisted_playlist_comparison_use_case_restores_manual_override_fr
     )
 
 
-def test_compare_youtube_playlist_with_local_library_use_case_recalculates_new_snapshot_from_zero_after_manual_override() -> None:
+def test_compare_youtube_playlist_with_local_library_use_case_keeps_valid_manual_found_frozen_in_new_snapshot() -> None:
     session = create_session()
     local_folder_repository = LocalFolderSqlAlchemyRepository(session)
     local_song_repository = LocalSongSqlAlchemyRepository(session)
@@ -590,12 +590,12 @@ def test_compare_youtube_playlist_with_local_library_use_case_recalculates_new_s
     assert manual_row.match_status == ComparisonStatus.FOUND.value
     assert manual_row.local_song_id == manual_local_song.id
     assert manual_row.matched_by == MANUAL_USER_LINKED_LOCAL_SONG
-    assert rerun_result.items[0].comparison_status is ComparisonStatus.MISSING
-    assert rerun_result.items[0].local_song_id is None
+    assert rerun_result.items[0].comparison_status is ComparisonStatus.FOUND
+    assert rerun_result.items[0].local_song_id == manual_local_song.id
     assert recalculated_row is not None
-    assert recalculated_row.match_status == ComparisonStatus.MISSING.value
-    assert recalculated_row.local_song_id is None
-    assert recalculated_row.matched_by == AUTO_NO_COMPETITIVE_CANDIDATE
+    assert recalculated_row.match_status == ComparisonStatus.FOUND.value
+    assert recalculated_row.local_song_id == manual_local_song.id
+    assert recalculated_row.matched_by == MANUAL_USER_LINKED_LOCAL_SONG
 
 
 def test_load_persisted_playlist_comparison_use_case_supports_manual_and_automatic_filters_after_reload() -> None:

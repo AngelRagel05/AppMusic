@@ -180,6 +180,7 @@ class ApplicationFactory:
                 persistence_registry.localSongRepository,
                 persistence_registry.playlistComparisonRepository,
                 persistence_registry.playlistComparisonResultRepository,
+                persistence_registry.ignoredTermRepository,
             ).execute()
             comparison_history = ListPersistedPlaylistComparisonHistoryUseCase(
                 persistence_registry.youtubePlaylistRepository,

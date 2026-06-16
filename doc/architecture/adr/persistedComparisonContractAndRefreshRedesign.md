@@ -78,7 +78,7 @@ Debe invalidarse si cambia cualquiera de estas dependencias:
 
 El refresh ordinario debe preferir snapshot persistido.
 
-La recomparacion incremental prevista trabajara sobre:
+La recomparacion incremental trabaja sobre:
 
 * filas nuevas
 * filas `missing`
@@ -86,6 +86,13 @@ La recomparacion incremental prevista trabajara sobre:
 * filas `found` invalidadas
 
 Las filas `found` validas y sus `local_song` enlazadas quedan fuera del trabajo ordinario de recomparacion.
+
+Para soportarlo, el snapshot persistido guarda:
+
+* `youtube_playlist_imported_at`
+* `local_library_scanned_at`
+* `ignored_terms_version`
+* `matching_rules_version`
 
 ## Consecuencias
 

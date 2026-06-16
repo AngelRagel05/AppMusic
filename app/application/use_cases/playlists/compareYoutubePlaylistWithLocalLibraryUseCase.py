@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 
 from app.application.dto.playlistComparisonItemResultDto import (
@@ -9,20 +10,20 @@ from app.application.dto.playlistComparisonResultDto import PlaylistComparisonRe
 from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
 from app.domain.library.repositories.localSongRepository import LocalSongRepository
+from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
 from app.domain.playlists.entities.playlistComparisonResult import (
     PlaylistComparisonResult,
 )
 from app.domain.playlists.services import (
     ComparableLocalSong,
     ComparableYoutubePlaylistItem,
+    MANUAL_USER_LINKED_LOCAL_SONG,
+    MANUAL_USER_MARKED_FOUND,
     matchPersistedPlaylistItemToLocalSongs,
+    shouldInvalidatePersistedFoundMatch,
 )
-from app.domain.playlists.repositories.playlistComparisonRepository import (
-    PlaylistComparisonRepository,
-)
-from app.domain.playlists.repositories.playlistComparisonResultRepository import (
-    PlaylistComparisonResultRepository,
-)
+from app.domain.playlists.repositories.playlistComparisonRepository import PlaylistComparisonRepository
+from app.domain.playlists.repositories.playlistComparisonResultRepository import PlaylistComparisonResultRepository
 from app.domain.playlists.repositories.youtubePlaylistItemRepository import (
     YoutubePlaylistItemRepository,
 )
@@ -34,6 +35,7 @@ from app.shared.constants.comparison import ComparisonStatus
 
 class CompareYoutubePlaylistWithLocalLibraryUseCase:
     SNAPSHOT_RETENTION_LIMIT = 3
+    MATCHING_RULES_VERSION = "persisted_match_v3_incremental_found_freeze"
 
     def __init__(
         self,
@@ -43,6 +45,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         local_song_repository: LocalSongRepository,
         playlist_comparison_repository: PlaylistComparisonRepository,
         playlist_comparison_result_repository: PlaylistComparisonResultRepository,
+        ignored_term_repository: IgnoredTermRepository | None = None,
     ) -> None:
         self._youtube_playlist_repository = youtube_playlist_repository
         self._youtube_playlist_item_repository = youtube_playlist_item_repository
@@ -50,6 +53,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         self._local_song_repository = local_song_repository
         self._playlist_comparison_repository = playlist_comparison_repository
         self._playlist_comparison_result_repository = playlist_comparison_result_repository
+        self._ignored_term_repository = ignored_term_repository
 
     def execute(self) -> PlaylistComparisonResultDto:
         active_youtube_playlist = self._youtube_playlist_repository.get_active()
@@ -63,29 +67,93 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         youtube_playlist_items = self._youtube_playlist_item_repository.list_by_playlist(
             active_youtube_playlist.id
         )
-        available_local_songs = [
-            local_song
-            for local_song in self._local_song_repository.list_by_folder(active_local_folder.id)
-            if local_song.is_available
-        ]
+        persisted_local_songs = self._local_song_repository.list_by_folder(active_local_folder.id)
+        available_local_songs = [local_song for local_song in persisted_local_songs if local_song.is_available]
         comparable_local_songs = [
             self._buildComparableLocalSong(local_song)
             for local_song in available_local_songs
             if local_song.id is not None
         ]
         local_song_by_id = {
-            local_song.id: local_song for local_song in available_local_songs if local_song.id is not None
+            local_song.id: local_song for local_song in persisted_local_songs if local_song.id is not None
         }
+        youtube_playlist_item_by_id = {
+            youtube_playlist_item.id: youtube_playlist_item
+            for youtube_playlist_item in youtube_playlist_items
+            if youtube_playlist_item.id is not None
+        }
+        latest_persisted_comparison = self._playlist_comparison_repository.find_latest_for_scope(
+            active_youtube_playlist.id,
+            active_local_folder.id,
+        )
+        latest_results = (
+            self._playlist_comparison_result_repository.list_by_comparison(
+                latest_persisted_comparison.id
+            )
+            if latest_persisted_comparison is not None and latest_persisted_comparison.id is not None
+            else []
+        )
+        current_ignored_terms_version = self._buildIgnoredTermsVersion()
+        current_youtube_playlist_imported_at = self._buildSnapshotTimestamp(youtube_playlist_items)
+        current_local_library_scanned_at = self._buildSnapshotTimestamp(persisted_local_songs)
 
         comparison_items: list[PlaylistComparisonItemResultDto] = []
         match_result_by_item: dict[int, str | None] = {}
+        reserved_local_song_ids: set[int] = set()
+        frozen_found_rows_by_item_id = self._buildFrozenFoundRowsByItemId(
+            latest_results=latest_results,
+            latest_persisted_comparison=latest_persisted_comparison,
+            youtube_playlist_item_by_id=youtube_playlist_item_by_id,
+            local_song_by_id=local_song_by_id,
+            current_ignored_terms_version=current_ignored_terms_version,
+        )
+        reserved_local_song_ids.update(
+            row.local_song_id
+            for row in frozen_found_rows_by_item_id.values()
+            if row.local_song_id is not None
+        )
+
         for youtube_playlist_item in youtube_playlist_items:
+            frozen_row = frozen_found_rows_by_item_id.get(youtube_playlist_item.id or 0)
+            if frozen_row is not None:
+                linked_local_song = (
+                    local_song_by_id.get(frozen_row.local_song_id)
+                    if frozen_row.local_song_id is not None
+                    else None
+                )
+                comparison_items.append(
+                    PlaylistComparisonItemResultDto(
+                        youtube_playlist_item_id=frozen_row.youtube_playlist_item_id,
+                        local_song_id=frozen_row.local_song_id,
+                        comparison_status=ComparisonStatus(frozen_row.match_status),
+                        youtube_title=(
+                            youtube_playlist_item.raw_title or youtube_playlist_item.normalized_title
+                        ),
+                        youtube_artist=(
+                            youtube_playlist_item.raw_channel_name
+                            or youtube_playlist_item.normalized_artist
+                        ),
+                        local_title=linked_local_song.title if linked_local_song is not None else None,
+                        local_artist=linked_local_song.artist if linked_local_song is not None else None,
+                        score=float(frozen_row.score or 0.0),
+                        reason=self._buildFrozenFoundReason(frozen_row.matched_by),
+                        matched_by=frozen_row.matched_by,
+                    )
+                )
+                match_result_by_item[frozen_row.youtube_playlist_item_id] = frozen_row.matched_by
+                continue
+
+            candidate_local_songs = [
+                comparable_local_song
+                for comparable_local_song in comparable_local_songs
+                if comparable_local_song.id not in reserved_local_song_ids
+            ]
             comparable_youtube_playlist_item = self._buildComparableYoutubePlaylistItem(
                 youtube_playlist_item
             )
             match_result = matchPersistedPlaylistItemToLocalSongs(
                 comparable_youtube_playlist_item,
-                comparable_local_songs,
+                candidate_local_songs,
             )
             match_result_by_item[youtube_playlist_item.id or 0] = match_result.matched_by
             matched_local_song = (
@@ -93,6 +161,12 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                 if match_result.local_song is not None
                 else None
             )
+            if (
+                match_result.comparison_status is ComparisonStatus.FOUND
+                and matched_local_song is not None
+                and matched_local_song.id is not None
+            ):
+                reserved_local_song_ids.add(matched_local_song.id)
             comparison_items.append(
                 PlaylistComparisonItemResultDto(
                     youtube_playlist_item_id=youtube_playlist_item.id or 0,
@@ -116,6 +190,10 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         persisted_comparison = self._playlist_comparison_repository.create(
             active_youtube_playlist.id,
             active_local_folder.id,
+            youtube_playlist_imported_at=current_youtube_playlist_imported_at,
+            local_library_scanned_at=current_local_library_scanned_at,
+            ignored_terms_version=current_ignored_terms_version,
+            matching_rules_version=self.MATCHING_RULES_VERSION,
         )
         self._playlist_comparison_result_repository.save_for_comparison(
             persisted_comparison.id or 0,
@@ -172,6 +250,134 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                 persisted_comparison.compared_at or datetime.now(UTC)
             ),
         )
+
+    def _buildFrozenFoundRowsByItemId(
+        self,
+        *,
+        latest_results,
+        latest_persisted_comparison,
+        youtube_playlist_item_by_id: dict[int, object],
+        local_song_by_id: dict[int, object],
+        current_ignored_terms_version: str,
+    ) -> dict[int, PlaylistComparisonResult]:
+        if latest_persisted_comparison is None:
+            return {}
+
+        frozen_rows: dict[int, PlaylistComparisonResult] = {}
+        for latest_result in latest_results:
+            if latest_result.match_status != ComparisonStatus.FOUND.value:
+                continue
+            if latest_result.local_song_id is None:
+                continue
+            youtube_playlist_item = youtube_playlist_item_by_id.get(latest_result.youtube_playlist_item_id)
+            local_song = local_song_by_id.get(latest_result.local_song_id)
+            if youtube_playlist_item is None or local_song is None:
+                continue
+            if self._shouldInvalidateFrozenFoundRow(
+                latest_result=latest_result,
+                latest_persisted_comparison=latest_persisted_comparison,
+                youtube_playlist_item=youtube_playlist_item,
+                local_song=local_song,
+                current_ignored_terms_version=current_ignored_terms_version,
+            ):
+                continue
+            frozen_rows[latest_result.youtube_playlist_item_id] = latest_result
+        return frozen_rows
+
+    def _shouldInvalidateFrozenFoundRow(
+        self,
+        *,
+        latest_result: PlaylistComparisonResult,
+        latest_persisted_comparison,
+        youtube_playlist_item,
+        local_song,
+        current_ignored_terms_version: str,
+    ) -> bool:
+        youtube_snapshot_timestamp = latest_persisted_comparison.youtube_playlist_imported_at
+        local_snapshot_timestamp = latest_persisted_comparison.local_library_scanned_at
+        persisted_ignored_terms_version = latest_persisted_comparison.ignored_terms_version
+        persisted_matching_rules_version = latest_persisted_comparison.matching_rules_version
+        if (
+            youtube_snapshot_timestamp is None
+            or local_snapshot_timestamp is None
+            or not persisted_ignored_terms_version
+            or not persisted_matching_rules_version
+        ):
+            return True
+        if shouldInvalidatePersistedFoundMatch(
+            persisted_dependencies=self._buildSnapshotDependenciesFingerprint(
+                ignored_terms_version=persisted_ignored_terms_version,
+                matching_rules_version=persisted_matching_rules_version,
+            ),
+            current_dependencies=self._buildSnapshotDependenciesFingerprint(
+                ignored_terms_version=current_ignored_terms_version,
+                matching_rules_version=self.MATCHING_RULES_VERSION,
+            ),
+            local_song_is_available=local_song.is_available,
+        ):
+            return True
+        local_song_updated_at = local_song.updated_at or local_song.created_at
+        if local_song_updated_at is not None and local_song_updated_at > local_snapshot_timestamp:
+            return True
+        youtube_item_updated_at = youtube_playlist_item.updated_at or youtube_playlist_item.created_at
+        if youtube_item_updated_at is not None and youtube_item_updated_at > youtube_snapshot_timestamp:
+            return True
+        return False
+
+    def _buildSnapshotDependenciesFingerprint(
+        self,
+        *,
+        ignored_terms_version: str,
+        matching_rules_version: str,
+    ):
+        from app.domain.playlists.services import ComparisonDependenciesFingerprint
+
+        return ComparisonDependenciesFingerprint(
+            youtube_playlist_version="snapshot_scoped",
+            local_library_version="snapshot_scoped",
+            ignored_terms_version=ignored_terms_version,
+            matching_rules_version=matching_rules_version,
+        )
+
+    def _buildSnapshotTimestamp(self, items: list[object]) -> datetime:
+        timestamps = [
+            timestamp
+            for item in items
+            for timestamp in [getattr(item, "updated_at", None) or getattr(item, "created_at", None)]
+            if timestamp is not None
+        ]
+        if timestamps:
+            return max(timestamps)
+        return datetime.now(UTC)
+
+    def _buildIgnoredTermsVersion(self) -> str:
+        if self._ignored_term_repository is None:
+            return "ignored_terms:untracked"
+        serialized_terms = []
+        for ignored_term in self._ignored_term_repository.list_all():
+            serialized_terms.append(
+                "|".join(
+                    [
+                        str(ignored_term.id or 0),
+                        ignored_term.term,
+                        ignored_term.scope,
+                        ignored_term.language,
+                        "1" if ignored_term.is_active else "0",
+                        (
+                            (ignored_term.updated_at or ignored_term.created_at).isoformat()
+                            if (ignored_term.updated_at or ignored_term.created_at) is not None
+                            else "na"
+                        ),
+                    ]
+                )
+            )
+        digest = hashlib.sha1("\n".join(serialized_terms).encode("utf-8")).hexdigest()
+        return f"ignored_terms:{digest}"
+
+    def _buildFrozenFoundReason(self, matched_by: str | None) -> str:
+        if matched_by in {MANUAL_USER_LINKED_LOCAL_SONG, MANUAL_USER_MARKED_FOUND}:
+            return "Coincidencia FOUND conservada desde snapshot manual valido."
+        return "Coincidencia FOUND conservada desde snapshot automatico valido."
 
     def _buildComparableLocalSong(self, local_song) -> ComparableLocalSong:
         if local_song.id is None:

@@ -28,10 +28,19 @@ class PlaylistComparisonSqlAlchemyRepository(PlaylistComparisonRepository):
         self,
         youtube_playlist_id: int,
         local_folder_id: int,
+        *,
+        youtube_playlist_imported_at=None,
+        local_library_scanned_at=None,
+        ignored_terms_version: str | None = None,
+        matching_rules_version: str | None = None,
     ) -> PlaylistComparison:
         model = PlaylistComparisonModel(
             youtube_playlist_id=youtube_playlist_id,
             local_folder_id=local_folder_id,
+            youtube_playlist_imported_at=youtube_playlist_imported_at,
+            local_library_scanned_at=local_library_scanned_at,
+            ignored_terms_version=ignored_terms_version,
+            matching_rules_version=matching_rules_version,
         )
         self._session.add(model)
         self._session.flush()
@@ -119,5 +128,9 @@ class PlaylistComparisonSqlAlchemyRepository(PlaylistComparisonRepository):
             youtube_playlist_id=model.youtube_playlist_id,
             local_folder_id=model.local_folder_id,
             compared_at=model.compared_at,
+            youtube_playlist_imported_at=model.youtube_playlist_imported_at,
+            local_library_scanned_at=model.local_library_scanned_at,
+            ignored_terms_version=model.ignored_terms_version,
+            matching_rules_version=model.matching_rules_version,
             created_at=model.created_at,
         )

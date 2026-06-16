@@ -30,6 +30,19 @@ def test_playlist_comparison_result_has_unique_constraint_for_comparison_item() 
     assert ("playlist_comparison_id", "youtube_playlist_item_id") in unique_constraints
 
 
+def test_playlist_comparison_contains_snapshot_dependency_columns() -> None:
+    table = Base.metadata.tables["playlist_comparison"]
+
+    expected_columns = {
+        "youtube_playlist_imported_at",
+        "local_library_scanned_at",
+        "ignored_terms_version",
+        "matching_rules_version",
+    }
+
+    assert expected_columns.issubset(table.columns.keys())
+
+
 def test_ignored_term_has_composite_unique_constraint() -> None:
     table = Base.metadata.tables["ignored_term"]
     unique_constraints = {

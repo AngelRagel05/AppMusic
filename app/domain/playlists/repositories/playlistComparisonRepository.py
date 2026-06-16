@@ -18,6 +18,11 @@ class PlaylistComparisonRepository(ABC):
         self,
         youtube_playlist_id: int,
         local_folder_id: int,
+        *,
+        youtube_playlist_imported_at=None,
+        local_library_scanned_at=None,
+        ignored_terms_version: str | None = None,
+        matching_rules_version: str | None = None,
     ) -> PlaylistComparison:
         raise NotImplementedError
 

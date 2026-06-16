@@ -10,4 +10,8 @@ class PlaylistComparison:
     youtube_playlist_id: int = 0
     local_folder_id: int = 0
     compared_at: datetime | None = None
+    youtube_playlist_imported_at: datetime | None = None
+    local_library_scanned_at: datetime | None = None
+    ignored_terms_version: str | None = None
+    matching_rules_version: str | None = None
     created_at: datetime | None = None

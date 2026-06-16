@@ -71,6 +71,10 @@ erDiagram
         int youtube_playlist_id FK
         int local_folder_id FK
         datetime compared_at
+        datetime youtube_playlist_imported_at
+        datetime local_library_scanned_at
+        string ignored_terms_version
+        string matching_rules_version
         datetime created_at
     }
 
@@ -233,11 +237,16 @@ Columnas clave:
 * `youtube_playlist_id`
 * `local_folder_id`
 * `compared_at`
+* `youtube_playlist_imported_at`
+* `local_library_scanned_at`
+* `ignored_terms_version`
+* `matching_rules_version`
 
 Notas:
 
 * se genera una nueva comparacion cuando el usuario ejecuta manualmente la accion de comparar
 * la fila actua como cabecera de un snapshot persistido
+* la cabecera guarda el fingerprint de dependencias usado para decidir si un `FOUND` previo sigue siendo valido
 * la persistencia historica se retiene por scope `youtube_playlist_id + local_folder_id`
 * solo se conservan las `3` comparaciones mas recientes de cada scope
 

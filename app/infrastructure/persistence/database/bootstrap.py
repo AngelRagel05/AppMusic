@@ -48,20 +48,53 @@ class DatabaseBootstrapper:
 
     def _apply_schema_compatibility(self) -> None:
         inspector = inspect(self._engine)
-        if "local_song" not in inspector.get_table_names():
+        table_names = set(inspector.get_table_names())
+        if "local_song" not in table_names:
             return
 
         localSongColumns = {column["name"] for column in inspector.get_columns("local_song")}
-        if "is_available" in localSongColumns:
-            return
+        playlistComparisonColumns = (
+            {column["name"] for column in inspector.get_columns("playlist_comparison")}
+            if "playlist_comparison" in table_names
+            else set()
+        )
 
         with self._engine.begin() as connection:
-            connection.execute(
-                text(
-                    "ALTER TABLE local_song "
-                    "ADD COLUMN is_available BOOLEAN NOT NULL DEFAULT TRUE"
+            if "is_available" not in localSongColumns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE local_song "
+                        "ADD COLUMN is_available BOOLEAN NOT NULL DEFAULT TRUE"
+                    )
                 )
-            )
+            if "youtube_playlist_imported_at" not in playlistComparisonColumns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE playlist_comparison "
+                        "ADD COLUMN youtube_playlist_imported_at DATETIME NULL"
+                    )
+                )
+            if "local_library_scanned_at" not in playlistComparisonColumns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE playlist_comparison "
+                        "ADD COLUMN local_library_scanned_at DATETIME NULL"
+                    )
+                )
+            if "ignored_terms_version" not in playlistComparisonColumns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE playlist_comparison "
+                        "ADD COLUMN ignored_terms_version VARCHAR(128) NULL"
+                    )
+                )
+            if "matching_rules_version" not in playlistComparisonColumns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE playlist_comparison "
+                        "ADD COLUMN matching_rules_version VARCHAR(64) NULL"
+                    )
+                )
 
     def _seed_ignored_terms(
         self,
