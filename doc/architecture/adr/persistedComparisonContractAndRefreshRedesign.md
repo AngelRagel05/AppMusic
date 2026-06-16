@@ -87,6 +87,11 @@ La recomparacion incremental trabaja sobre:
 
 Las filas `found` validas y sus `local_song` enlazadas quedan fuera del trabajo ordinario de recomparacion.
 
+La ruptura de una asignacion previa debe ser explicita:
+
+* un `FOUND` valido no se reabre solo porque aparezca una candidata mejor
+* esa ruptura solo ocurre por invalidacion de dependencias o por recomputacion completa forzada
+
 Para soportarlo, el snapshot persistido guarda:
 
 * `youtube_playlist_imported_at`

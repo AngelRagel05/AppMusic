@@ -236,6 +236,56 @@ def test_compare_youtube_playlist_with_local_library_use_case_uses_persisted_com
     assert result.items[0].local_song_id is not None
 
 
+def test_youtube_playlist_item_repository_preserves_unchanged_item_identity_in_sqlalchemy() -> None:
+    session = create_session()
+    youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
+    youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
+
+    active_playlist = youtube_playlist_repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PL123",
+        "PL123",
+        "Favoritas",
+    )
+
+    first_snapshot = youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="video-1",
+                position=1,
+                raw_title="Song One",
+                raw_channel_name="Artist One",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            )
+        ],
+    )
+
+    second_snapshot = youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="video-1",
+                position=1,
+                raw_title="Song One",
+                raw_channel_name="Artist One",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            )
+        ],
+    )
+
+    assert second_snapshot[0].id == first_snapshot[0].id
+    assert second_snapshot[0].created_at == first_snapshot[0].created_at
+    assert second_snapshot[0].updated_at == first_snapshot[0].updated_at
+
+
 def test_update_playlist_comparison_result_use_case_updates_real_repository_row() -> None:
     session = create_session()
     local_folder_repository = LocalFolderSqlAlchemyRepository(session)

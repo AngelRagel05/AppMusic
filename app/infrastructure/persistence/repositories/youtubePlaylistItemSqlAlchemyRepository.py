@@ -40,26 +40,49 @@ class YoutubePlaylistItemSqlAlchemyRepository(YoutubePlaylistItemRepository):
         youtube_playlist_id: int,
         items: list[YoutubePlaylistItem],
     ) -> list[YoutubePlaylistItem]:
-        self._session.execute(
-            delete(YoutubePlaylistItemModel).where(
+        existing_models = self._session.scalars(
+            select(YoutubePlaylistItemModel).where(
                 YoutubePlaylistItemModel.youtube_playlist_id == youtube_playlist_id
             )
-        )
+        ).all()
+        existing_models_by_external_video_id = {
+            model.external_video_id: model for model in existing_models
+        }
+        incoming_external_video_ids = {item.external_video_id for item in items}
+
+        for existing_model in existing_models:
+            if existing_model.external_video_id in incoming_external_video_ids:
+                continue
+            self._session.delete(existing_model)
 
         for item in items:
-            self._session.add(
-                YoutubePlaylistItemModel(
-                    youtube_playlist_id=youtube_playlist_id,
-                    external_video_id=item.external_video_id,
-                    position=item.position,
-                    raw_title=item.raw_title,
-                    raw_channel_name=item.raw_channel_name,
-                    normalized_title=item.normalized_title,
-                    normalized_artist=item.normalized_artist,
-                    duration_seconds=item.duration_seconds,
-                    published_at=item.published_at,
+            existing_model = existing_models_by_external_video_id.get(item.external_video_id)
+            if existing_model is None:
+                self._session.add(
+                    YoutubePlaylistItemModel(
+                        youtube_playlist_id=youtube_playlist_id,
+                        external_video_id=item.external_video_id,
+                        position=item.position,
+                        raw_title=item.raw_title,
+                        raw_channel_name=item.raw_channel_name,
+                        normalized_title=item.normalized_title,
+                        normalized_artist=item.normalized_artist,
+                        duration_seconds=item.duration_seconds,
+                        published_at=item.published_at,
+                    )
                 )
-            )
+                continue
+
+            if not self._hasItemChanged(existing_model, item):
+                continue
+
+            existing_model.position = item.position
+            existing_model.raw_title = item.raw_title
+            existing_model.raw_channel_name = item.raw_channel_name
+            existing_model.normalized_title = item.normalized_title
+            existing_model.normalized_artist = item.normalized_artist
+            existing_model.duration_seconds = item.duration_seconds
+            existing_model.published_at = item.published_at
 
         self._session.commit()
         return self.list_by_playlist(youtube_playlist_id)
@@ -94,3 +117,19 @@ class YoutubePlaylistItemSqlAlchemyRepository(YoutubePlaylistItemRepository):
         if published_at.tzinfo is None:
             return published_at.replace(tzinfo=UTC)
         return published_at.astimezone(UTC)
+
+    def _hasItemChanged(
+        self,
+        existing_model: YoutubePlaylistItemModel,
+        incoming_item: YoutubePlaylistItem,
+    ) -> bool:
+        return (
+            existing_model.position != incoming_item.position
+            or existing_model.raw_title != incoming_item.raw_title
+            or existing_model.raw_channel_name != incoming_item.raw_channel_name
+            or existing_model.normalized_title != incoming_item.normalized_title
+            or existing_model.normalized_artist != incoming_item.normalized_artist
+            or existing_model.duration_seconds != incoming_item.duration_seconds
+            or self._normalizePublishedAt(existing_model.published_at)
+            != self._normalizePublishedAt(incoming_item.published_at)
+        )

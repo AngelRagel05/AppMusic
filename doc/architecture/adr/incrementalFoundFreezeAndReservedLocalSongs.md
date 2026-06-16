@@ -18,6 +18,8 @@ Reglas:
   * items sin resolver previo
   * items `FOUND` invalidados
   * items que no tengan una `local_song` reservada valida
+* la aparicion de una cancion local potencialmente mejor no reabre por si sola un `FOUND` valido
+* para romper una asignacion valida hace falta invalidacion explicita o recomputacion completa forzada
 
 ## Metadatos persistidos de snapshot
 
