@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import app.domain.playlists.services.persistedPlaylistItemMatcherService as matcher_service
 from app.domain.playlists.services import (
     ComparableLocalSong,
     ComparableYoutubePlaylistItem,
@@ -180,3 +181,172 @@ def test_match_persisted_playlist_item_to_local_songs_returns_possible_for_exact
     assert result.local_song is not None
     assert result.comparison_status is ComparisonStatus.POSSIBLE_MATCH
     assert result.reason == "Titulo exacto pero artista inconsistente."
+
+
+def test_match_persisted_playlist_item_to_local_songs_cuts_early_for_clear_match(monkeypatch) -> None:
+    score_calls: list[int] = []
+    original_score_candidate = matcher_service._scoreCandidate
+
+    def spy_score_candidate(*args, **kwargs):
+        local_song = args[1]
+        score_calls.append(local_song.id)
+        return original_score_candidate(*args, **kwargs)
+
+    monkeypatch.setattr(matcher_service, "_scoreCandidate", spy_score_candidate)
+
+    result = matchPersistedPlaylistItemToLocalSongs(
+        ComparableYoutubePlaylistItem(
+            id=1,
+            normalized_title="song one",
+            normalized_artist="artist one",
+            duration_seconds=180.0,
+        ),
+        [
+            ComparableLocalSong(
+                id=4,
+                title="song one",
+                artist="artist one",
+                duration_seconds=180.0,
+            ),
+            ComparableLocalSong(
+                id=9,
+                title="totally different",
+                artist="another artist",
+                duration_seconds=220.0,
+            ),
+            ComparableLocalSong(
+                id=15,
+                title="other song",
+                artist="other artist",
+                duration_seconds=200.0,
+            ),
+        ],
+    )
+
+    assert result.local_song is not None
+    assert result.local_song.id == 4
+    assert result.comparison_status is ComparisonStatus.FOUND
+    assert score_calls == [4]
+
+
+def test_match_persisted_playlist_item_to_local_songs_does_not_cut_early_for_medium_artist(monkeypatch) -> None:
+    score_calls: list[int] = []
+    original_score_candidate = matcher_service._scoreCandidate
+
+    def spy_score_candidate(*args, **kwargs):
+        local_song = args[1]
+        score_calls.append(local_song.id)
+        return original_score_candidate(*args, **kwargs)
+
+    monkeypatch.setattr(matcher_service, "_scoreCandidate", spy_score_candidate)
+
+    result = matchPersistedPlaylistItemToLocalSongs(
+        ComparableYoutubePlaylistItem(
+            id=1,
+            normalized_title="song one",
+            normalized_artist="artist one",
+            duration_seconds=180.0,
+        ),
+        [
+            ComparableLocalSong(
+                id=4,
+                title="song one",
+                artist="artist 1",
+                duration_seconds=180.0,
+            ),
+            ComparableLocalSong(
+                id=9,
+                title="other song",
+                artist="other artist",
+                duration_seconds=220.0,
+            ),
+        ],
+    )
+
+    assert result.comparison_status in (
+        ComparisonStatus.FOUND,
+        ComparisonStatus.MISSING,
+        ComparisonStatus.POSSIBLE_MATCH,
+    )
+    assert score_calls == [4, 9]
+
+
+def test_match_persisted_playlist_item_to_local_songs_does_not_cut_early_for_only_acceptable_title(monkeypatch) -> None:
+    score_calls: list[int] = []
+    original_score_candidate = matcher_service._scoreCandidate
+
+    def spy_score_candidate(*args, **kwargs):
+        local_song = args[1]
+        score_calls.append(local_song.id)
+        return original_score_candidate(*args, **kwargs)
+
+    monkeypatch.setattr(matcher_service, "_scoreCandidate", spy_score_candidate)
+
+    result = matchPersistedPlaylistItemToLocalSongs(
+        ComparableYoutubePlaylistItem(
+            id=1,
+            normalized_title="song one",
+            normalized_artist="artist one",
+            duration_seconds=180.0,
+        ),
+        [
+            ComparableLocalSong(
+                id=4,
+                title="song one live",
+                artist="artist one",
+                duration_seconds=180.0,
+            ),
+            ComparableLocalSong(
+                id=9,
+                title="other song",
+                artist="other artist",
+                duration_seconds=220.0,
+            ),
+        ],
+    )
+
+    assert result.comparison_status in (
+        ComparisonStatus.FOUND,
+        ComparisonStatus.MISSING,
+        ComparisonStatus.POSSIBLE_MATCH,
+    )
+    assert score_calls == [4, 9]
+
+
+def test_match_persisted_playlist_item_to_local_songs_does_not_cut_early_when_real_tie_is_possible(monkeypatch) -> None:
+    score_calls: list[int] = []
+    original_score_candidate = matcher_service._scoreCandidate
+
+    def spy_score_candidate(*args, **kwargs):
+        local_song = args[1]
+        score_calls.append(local_song.id)
+        return original_score_candidate(*args, **kwargs)
+
+    monkeypatch.setattr(matcher_service, "_scoreCandidate", spy_score_candidate)
+
+    result = matchPersistedPlaylistItemToLocalSongs(
+        ComparableYoutubePlaylistItem(
+            id=1,
+            normalized_title="song one",
+            normalized_artist="artist one",
+            duration_seconds=180.0,
+        ),
+        [
+            ComparableLocalSong(
+                id=4,
+                title="song one",
+                artist="artist one",
+                duration_seconds=180.0,
+            ),
+            ComparableLocalSong(
+                id=9,
+                title="song one",
+                artist="artist one",
+                duration_seconds=180.2,
+            ),
+        ],
+    )
+
+    assert result.local_song is not None
+    assert result.comparison_status is ComparisonStatus.POSSIBLE_MATCH
+    assert score_calls == [4, 9]

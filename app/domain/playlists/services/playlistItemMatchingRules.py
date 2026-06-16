@@ -66,6 +66,16 @@ class MatchClassificationThresholds:
 
 
 @dataclass(frozen=True, slots=True)
+class EarlyCutoffThresholds:
+    minimum_title_similarity_ratio: float = 0.93
+    require_title_evidence: tuple[TitleMatchEvidence, ...] = (
+        TitleMatchEvidence.EXACT,
+        TitleMatchEvidence.NEAR_EXACT,
+    )
+    require_artist_evidence: ArtistMatchEvidence = ArtistMatchEvidence.STRONG
+
+
+@dataclass(frozen=True, slots=True)
 class PlaylistItemMatchingRuleset:
     title_weights: TextMatchWeights = TextMatchWeights(
         exact_score=60.0,
@@ -82,6 +92,7 @@ class PlaylistItemMatchingRuleset:
     duration_thresholds: DurationMatchThresholds = DurationMatchThresholds()
     consistency_weights: ConsistencyScoreWeights = ConsistencyScoreWeights()
     ambiguity_thresholds: AmbiguityPenaltyThresholds = AmbiguityPenaltyThresholds()
+    early_cutoff_thresholds: EarlyCutoffThresholds = EarlyCutoffThresholds()
     classification_thresholds: MatchClassificationThresholds = (
         MatchClassificationThresholds()
     )
@@ -420,6 +431,21 @@ def tokenOverlapRatio(left: str, right: str) -> float:
 
 def normalizedSimilarityRatio(left: str, right: str) -> float:
     return SequenceMatcher(a=left, b=right).ratio()
+
+
+def isEarlyCutoffClearTitleMatch(
+    *,
+    left_value: str,
+    right_value: str,
+    title_evidence: TitleMatchEvidence,
+    thresholds: EarlyCutoffThresholds,
+) -> bool:
+    if title_evidence not in thresholds.require_title_evidence:
+        return False
+    return (
+        normalizedSimilarityRatio(left_value.strip(), right_value.strip())
+        >= thresholds.minimum_title_similarity_ratio
+    )
 
 
 def _normalizeCompactAlphanumericSpacing(value: str) -> str:
