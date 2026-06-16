@@ -164,6 +164,18 @@ def test_normalize_youtube_playlist_item_metadata_keeps_live_and_remix_when_they
     )
 
 
+def test_normalize_youtube_playlist_item_metadata_extracts_title_from_channel_prefixed_hashtag() -> None:
+    normalized = normalizeYoutubePlaylistItemMetadata(
+        raw_title="NADAL 015  #MEMORIES I",
+        raw_channel_name="NADAL 015",
+    )
+
+    assert normalized == NormalizedYoutubePlaylistItemMetadata(
+        normalized_title="memories i",
+        normalized_artist="nadal 015",
+    )
+
+
 @pytest.mark.parametrize(
     ("raw_title", "raw_channel_name", "expected_title", "expected_artist"),
     [

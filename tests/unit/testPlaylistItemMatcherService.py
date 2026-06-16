@@ -305,6 +305,33 @@ def test_match_youtube_playlist_item_to_local_songs_returns_found_for_numbered_t
     assert result.score >= 75.0
 
 
+def test_match_youtube_playlist_item_to_local_songs_finds_nadal015_when_youtube_uses_channel_prefixed_hashtag_title() -> None:
+    youtube_item = YoutubePlaylistItem(
+        id=18,
+        youtube_playlist_id=9,
+        external_video_id="nadal015-memories",
+        position=1,
+        raw_title="NADAL 015  #MEMORIES I",
+        raw_channel_name="NADAL 015",
+        normalized_title="nadal 015 #memories i",
+        normalized_artist="nadal 015",
+        duration_seconds=176.0,
+    )
+    local_song = LocalSong(
+        id=19,
+        file_name="Nadal015 - Memories I.mp3",
+        title="Memories I",
+        artist="Nadal015",
+        duration_seconds=175.848,
+    )
+
+    result = matchYoutubePlaylistItemToLocalSongs(youtube_item, [local_song])
+
+    assert result.local_song == local_song
+    assert result.comparison_status is ComparisonStatus.FOUND
+    assert result.reason == "Titulo exacto con artista fuerte y duracion razonable."
+
+
 def test_match_youtube_playlist_item_to_local_songs_finds_rookies_when_youtube_title_starts_with_track_number() -> None:
     youtube_item = YoutubePlaylistItem(
         id=13,

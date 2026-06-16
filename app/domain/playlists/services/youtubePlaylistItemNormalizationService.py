@@ -76,6 +76,14 @@ def _splitArtistAndTitle(
     ignored_terms_by_scope: IgnoredTermsByScope | None,
 ) -> tuple[str | None, str | None]:
     cleaned_value = _removeNonTitleBracketedContent(value)
+    channel_prefixed_hashtag_split = _extractChannelPrefixedHashtagTitle(
+        cleaned_value,
+        raw_channel_name,
+        ignored_terms_by_scope,
+    )
+    if channel_prefixed_hashtag_split != (None, None):
+        return channel_prefixed_hashtag_split
+
     raw_parts = list(
         splitMusicComparisonSegments(
             cleaned_value,
@@ -131,6 +139,38 @@ def _splitArtistAndTitle(
     )
     if default_artist and default_title:
         return default_artist, default_title
+    return None, None
+
+
+def _extractChannelPrefixedHashtagTitle(
+    value: str,
+    raw_channel_name: str,
+    ignored_terms_by_scope: IgnoredTermsByScope | None,
+) -> tuple[str | None, str | None]:
+    raw_channel_tokens = [token for token in raw_channel_name.split() if token]
+    if not raw_channel_tokens:
+        return None, None
+
+    channel_prefix_pattern = re.compile(
+        r"^\s*"
+        + r"\s+".join(re.escape(token) for token in raw_channel_tokens)
+        + r"\s*#\s*(.+)$",
+        re.IGNORECASE,
+    )
+    channel_prefixed_match = channel_prefix_pattern.match(value)
+    if channel_prefixed_match is None:
+        return None, None
+
+    normalized_artist = normalizeMusicComparisonArtist(
+        raw_channel_name,
+        _resolveIgnoredTermsForScope(ignored_terms_by_scope, "artist"),
+    )
+    normalized_title = normalizeMusicComparisonTitle(
+        channel_prefixed_match.group(1),
+        _resolveIgnoredTermsForScope(ignored_terms_by_scope, "title"),
+    )
+    if normalized_artist and normalized_title:
+        return normalized_artist, normalized_title
     return None, None
 
 

@@ -100,6 +100,7 @@ Soporta explicitamente varios formatos reales:
 * `02 - TITULO - ARTISTA`
 * `ARTISTA | TITULO`
 * variantes con separadores `-`, `|`, `///`, `/`, `:`, `·`, `~`
+* variantes donde el canal precede al titulo con formato `CANAL  #TITULO`
 * titulos con ruido editorial, brackets y sufijos decorativos
 
 La separacion `artista/titulo` se hace antes de perder los separadores durante la limpieza.
@@ -246,11 +247,12 @@ Despues de aplicar estos cambios, la validacion recomendada es:
 * refrescar comparacion sobre datos reales
 * medir conteos de `found`, `possible_match` y `missing`
 * revisar especificamente los casos reales convertidos a no regresion:
-  * `Folele`
-  * `Practice`
-  * `G Wagon`
-  * `Eshate Pa Ca`
-  * `Donde Duele Mas`
-  * `Platos Rotos`
-  * `NATOS | SELECTA Motorseries #01`
-  * `02 - SINCERAMENTE - CHEB RUBEN`
+* `Folele`
+* `Practice`
+* `G Wagon`
+* `Eshate Pa Ca`
+* `Donde Duele Mas`
+* `NADAL 015  #MEMORIES I`
+* `Platos Rotos`
+* `NATOS | SELECTA Motorseries #01`
+* `02 - SINCERAMENTE - CHEB RUBEN`

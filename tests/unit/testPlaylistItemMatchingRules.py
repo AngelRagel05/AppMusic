@@ -65,6 +65,10 @@ def test_build_artist_match_evidence_returns_strong_for_artist_with_collaborator
     )
 
 
+def test_build_artist_match_evidence_returns_strong_for_alphanumeric_spacing_variant() -> None:
+    assert buildArtistMatchEvidence("nadal 015", "nadal015") is ArtistMatchEvidence.STRONG
+
+
 def test_build_duration_match_evidence_uses_new_lte_1s_and_lte_3s_buckets() -> None:
     strong_evidence, strong_distance = buildDurationMatchEvidence(180.0, 180.8)
     medium_evidence, medium_distance = buildDurationMatchEvidence(180.0, 182.5)

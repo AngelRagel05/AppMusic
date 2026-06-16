@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from enum import Enum
+import re
 
 from app.shared.constants.comparison import ComparisonStatus
 
@@ -145,6 +146,11 @@ def buildArtistMatchEvidence(
     left_value: str,
     right_value: str,
 ) -> ArtistMatchEvidence:
+    if _normalizeCompactAlphanumericSpacing(left_value) == _normalizeCompactAlphanumericSpacing(
+        right_value
+    ):
+        return ArtistMatchEvidence.STRONG
+
     title_like_evidence = buildTextMatchEvidence(left_value, right_value)
     overlap_ratio = tokenOverlapRatio(left_value, right_value)
     return {
@@ -414,3 +420,8 @@ def tokenOverlapRatio(left: str, right: str) -> float:
 
 def normalizedSimilarityRatio(left: str, right: str) -> float:
     return SequenceMatcher(a=left, b=right).ratio()
+
+
+def _normalizeCompactAlphanumericSpacing(value: str) -> str:
+    normalized_value = re.sub(r"\s+", " ", value.strip().lower())
+    return re.sub(r"(?<=[a-z])\s+(?=\d)|(?<=\d)\s+(?=[a-z])", "", normalized_value)
