@@ -41,8 +41,6 @@ from app.application.dto.updatePlaylistComparisonResultInputDto import (
 from app.application.use_cases.playlists.youtubePlaylistItemsImporterPort import (
     YoutubePlaylistImportExtractorError,
 )
-from app.domain.filters.entities.ignoredTerm import IgnoredTerm
-from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
 from app.domain.library.entities.localFolder import LocalFolder
 from app.domain.library.entities.localSong import LocalSong
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
@@ -71,6 +69,8 @@ from app.domain.playlists.services import (
     MANUAL_USER_MARKED_POSSIBLE,
 )
 from app.shared.constants.comparison import ComparisonStatus
+import app.domain.metadata.services.musicComparisonNormalizationService as musicComparisonNormalizationService
+import app.domain.playlists.services.youtubePlaylistItemNormalizationService as youtubePlaylistItemNormalizationService
 
 
 class InMemoryYoutubePlaylistRepository(YoutubePlaylistRepository):
@@ -525,45 +525,6 @@ class InMemoryLocalFolderRepository(LocalFolderRepository):
         if self._active_folder is None or self._active_folder.id != local_folder_id:
             raise ValueError("La biblioteca seleccionada no existe.")
         self._active_folder = None
-
-
-class InMemoryIgnoredTermRepository(IgnoredTermRepository):
-    def __init__(self, terms: list[IgnoredTerm] | None = None) -> None:
-        self._terms = list(terms or [])
-
-    def list_all(self):
-        return list(self._terms)
-
-    def create(self, term: str, scope: str, language: str) -> IgnoredTerm:
-        ignored_term = IgnoredTerm(
-            id=len(self._terms) + 1,
-            term=term,
-            scope=scope,
-            language=language,
-            is_active=True,
-        )
-        self._terms.append(ignored_term)
-        return ignored_term
-
-    def update(self, term_id: int, term: str, scope: str, language: str) -> IgnoredTerm:
-        for index, ignored_term in enumerate(self._terms):
-            if ignored_term.id != term_id:
-                continue
-            updated_term = IgnoredTerm(
-                id=ignored_term.id,
-                term=term,
-                scope=scope,
-                language=language,
-                is_active=ignored_term.is_active,
-                created_at=ignored_term.created_at,
-                updated_at=ignored_term.updated_at,
-            )
-            self._terms[index] = updated_term
-            return updated_term
-        raise ValueError("El termino ignorado seleccionado no existe.")
-
-    def delete(self, term_id: int) -> None:
-        self._terms = [ignored_term for ignored_term in self._terms if ignored_term.id != term_id]
 
 
 def test_define_main_youtube_playlist_use_case_persists_playlist_as_active() -> None:
@@ -1151,8 +1112,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_returns_summary_an
                     local_folder_id=active_folder.id,
                     file_name="song-one.mp3",
                     is_available=True,
-                    title="Song One",
-                    artist="Artist One",
+                    title="song one",
+                    artist="artist one",
                     duration_seconds=181.0,
                 ),
                 LocalSong(
@@ -1247,8 +1208,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_keeps_folele_prese
                 position=1,
                 raw_title="Cruz Cafuné - Folelé ft. BOJ (Visualizer)",
                 raw_channel_name="Cruz Cafuné",
-                normalized_title="cruz cafune folele ft boj visualizer",
-                normalized_artist="cruz cafune folele ft boj visualizer",
+                normalized_title="folele",
+                normalized_artist="cruz cafune",
                 duration_seconds=227.8,
             )
         ],
@@ -1261,8 +1222,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_keeps_folele_prese
                     local_folder_id=active_folder.id,
                     file_name="folele.mp3",
                     is_available=True,
-                    title="Folelé",
-                    artist="Cruz Cafuné",
+                    title="folele",
+                    artist="cruz cafune",
                     duration_seconds=227.8,
                 )
             ]
@@ -1289,7 +1250,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_keeps_folele_prese
     assert result.items[0].reason == "Titulo exacto con artista fuerte y duracion razonable."
 
 
-def test_compare_youtube_playlist_with_local_library_use_case_applies_persisted_ignored_terms_to_playlist_and_local() -> None:
+def test_compare_youtube_playlist_with_local_library_use_case_uses_persisted_comparable_fields_without_ignored_terms() -> None:
     playlist_repository = InMemoryYoutubePlaylistRepository()
     active_playlist = playlist_repository.save_as_active(
         playlist_url="https://www.youtube.com/playlist?list=PL123",
@@ -1313,7 +1274,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_applies_persisted_
                 position=1,
                 raw_title="Artist One - Song One Deluxe",
                 raw_channel_name="Artist One",
-                normalized_title="artist one song one deluxe",
+                normalized_title="song one",
                 normalized_artist="artist one",
                 duration_seconds=180.0,
             )
@@ -1327,23 +1288,12 @@ def test_compare_youtube_playlist_with_local_library_use_case_applies_persisted_
                     local_folder_id=active_folder.id,
                     file_name="song-one-deluxe.mp3",
                     is_available=True,
-                    title="Song One Deluxe",
-                    artist="Artist One",
+                    title="song one",
+                    artist="artist one",
                     duration_seconds=180.6,
                 )
             ]
         }
-    )
-    ignored_term_repository = InMemoryIgnoredTermRepository(
-        [
-            IgnoredTerm(
-                id=1,
-                term="deluxe",
-                scope="title",
-                language="global",
-                is_active=True,
-            )
-        ]
     )
     use_case = CompareYoutubePlaylistWithLocalLibraryUseCase(
         playlist_repository,
@@ -1352,7 +1302,6 @@ def test_compare_youtube_playlist_with_local_library_use_case_applies_persisted_
         local_song_repository,
         InMemoryPlaylistComparisonRepository(),
         InMemoryPlaylistComparisonResultRepository(),
-        ignored_term_repository,
     )
 
     result = use_case.execute()
@@ -1361,6 +1310,84 @@ def test_compare_youtube_playlist_with_local_library_use_case_applies_persisted_
     assert result.summary.missing_count == 0
     assert result.items[0].comparison_status is ComparisonStatus.FOUND
     assert result.items[0].local_song_id == 31
+
+
+def test_compare_youtube_playlist_with_local_library_use_case_does_not_renormalize_persisted_values(
+    monkeypatch,
+) -> None:
+    def failYoutubeNormalization(*args, **kwargs):
+        raise AssertionError("La comparacion no debe normalizar YouTube.")
+
+    def failLocalNormalization(*args, **kwargs):
+        raise AssertionError("La comparacion no debe normalizar local.")
+
+    monkeypatch.setattr(
+        youtubePlaylistItemNormalizationService,
+        "normalizeYoutubePlaylistItemMetadata",
+        failYoutubeNormalization,
+    )
+    monkeypatch.setattr(
+        musicComparisonNormalizationService,
+        "normalizeMusicComparisonMetadata",
+        failLocalNormalization,
+    )
+
+    playlist_repository = InMemoryYoutubePlaylistRepository()
+    active_playlist = playlist_repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        title="Favoritas",
+    )
+    active_folder = LocalFolder(
+        id=7,
+        path=r"C:\Music\Active",
+        display_name="Active",
+        is_active=True,
+    )
+    item_repository = InMemoryYoutubePlaylistItemRepository()
+    item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="persisted-item",
+                position=1,
+                raw_title="Artist One - Song One Deluxe",
+                raw_channel_name="Artist One",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            )
+        ],
+    )
+    local_song_repository = LocalSongRepositorySpy(
+        songs_by_folder_id={
+            active_folder.id or 0: [
+                LocalSong(
+                    id=31,
+                    local_folder_id=active_folder.id,
+                    file_name="song-one-deluxe.mp3",
+                    is_available=True,
+                    title="song one",
+                    artist="artist one",
+                    duration_seconds=180.6,
+                )
+            ]
+        }
+    )
+
+    result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        playlist_repository,
+        item_repository,
+        InMemoryLocalFolderRepository(active_folder),
+        local_song_repository,
+        InMemoryPlaylistComparisonRepository(),
+        InMemoryPlaylistComparisonResultRepository(),
+    ).execute()
+
+    assert result.summary.found_count == 1
+    assert result.items[0].comparison_status is ComparisonStatus.FOUND
 
 
 def test_compare_youtube_playlist_with_local_library_use_case_retains_only_three_snapshots_per_scope() -> None:
@@ -1401,8 +1428,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_retains_only_three
                     local_folder_id=active_folder.id,
                     file_name="song-one.mp3",
                     is_available=True,
-                    title="Song One",
-                    artist="Artist One",
+                    title="song one",
+                    artist="artist one",
                     duration_seconds=181.0,
                 )
             ]
@@ -1489,8 +1516,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_keeps_new_snapshot
                     local_folder_id=active_folder.id,
                     file_name="song-one.mp3",
                     is_available=True,
-                    title="Song One",
-                    artist="Artist One",
+                    title="song one",
+                    artist="artist one",
                     duration_seconds=181.0,
                 )
             ]

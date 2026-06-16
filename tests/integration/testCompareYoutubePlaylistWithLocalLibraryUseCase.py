@@ -22,7 +22,6 @@ from app.domain.playlists.services import (
     MANUAL_USER_LINKED_LOCAL_SONG,
 )
 from app.infrastructure.persistence import (
-    IgnoredTermSqlAlchemyRepository,
     LocalFolderSqlAlchemyRepository,
     LocalSongSqlAlchemyRepository,
     PlaylistComparisonResultSqlAlchemyRepository,
@@ -71,8 +70,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_matches_real_repos
             file_path=r"C:\Music\Active\song-one.mp3",
             file_name="song-one.mp3",
             is_available=True,
-            title="Song One",
-            artist="Artist One",
+            title="song one",
+            artist="artist one",
             duration_seconds=181.0,
         )
     )
@@ -179,9 +178,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_matches_real_repos
     ]
 
 
-def test_compare_youtube_playlist_with_local_library_use_case_uses_persisted_ignored_terms() -> None:
+def test_compare_youtube_playlist_with_local_library_use_case_uses_persisted_comparable_values() -> None:
     session = create_session()
-    ignored_term_repository = IgnoredTermSqlAlchemyRepository(session)
     local_folder_repository = LocalFolderSqlAlchemyRepository(session)
     local_song_repository = LocalSongSqlAlchemyRepository(session)
     playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
@@ -189,7 +187,6 @@ def test_compare_youtube_playlist_with_local_library_use_case_uses_persisted_ign
     youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
     youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
 
-    ignored_term_repository.create("deluxe", "title", "global")
     active_folder = local_folder_repository.save_as_active(r"C:\Music\Active", "Active")
     active_playlist = youtube_playlist_repository.save_as_active(
         "https://www.youtube.com/playlist?list=PL123",
@@ -202,8 +199,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_uses_persisted_ign
             file_path=r"C:\Music\Active\song-one-deluxe.mp3",
             file_name="song-one-deluxe.mp3",
             is_available=True,
-            title="Song One Deluxe",
-            artist="Artist One",
+            title="song one",
+            artist="artist one",
             duration_seconds=180.6,
         )
     )
@@ -217,7 +214,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_uses_persisted_ign
                 position=1,
                 raw_title="Artist One - Song One Deluxe",
                 raw_channel_name="Artist One",
-                normalized_title="artist one song one deluxe",
+                normalized_title="song one",
                 normalized_artist="artist one",
                 duration_seconds=180.0,
             )
@@ -231,7 +228,6 @@ def test_compare_youtube_playlist_with_local_library_use_case_uses_persisted_ign
         local_song_repository,
         playlist_comparison_repository,
         playlist_comparison_result_repository,
-        ignored_term_repository,
     ).execute()
 
     assert result.summary.found_count == 1
@@ -358,8 +354,8 @@ def test_load_persisted_playlist_comparison_use_case_restores_last_saved_snapsho
             file_path=r"C:\Music\Active\song-one.mp3",
             file_name="song-one.mp3",
             is_available=True,
-            title="Song One",
-            artist="Artist One",
+            title="song one",
+            artist="artist one",
             duration_seconds=181.0,
         )
     )
@@ -623,8 +619,8 @@ def test_load_persisted_playlist_comparison_use_case_supports_manual_and_automat
             file_path=r"C:\Music\Active\song-one.mp3",
             file_name="song-one.mp3",
             is_available=True,
-            title="Song One",
-            artist="Artist One",
+            title="song one",
+            artist="artist one",
             duration_seconds=181.0,
         )
     )
@@ -747,8 +743,8 @@ def test_list_persisted_playlist_comparison_history_use_case_returns_latest_runs
             file_path=r"C:\Music\Active\song-one.mp3",
             file_name="song-one.mp3",
             is_available=True,
-            title="Song One",
-            artist="Artist One",
+            title="song one",
+            artist="artist one",
             duration_seconds=181.0,
         )
     )
@@ -887,8 +883,8 @@ def test_compare_youtube_playlist_with_local_library_use_case_retains_only_three
             file_path=r"C:\Music\Active\song-one.mp3",
             file_name="song-one.mp3",
             is_available=True,
-            title="Song One",
-            artist="Artist One",
+            title="song one",
+            artist="artist one",
             duration_seconds=181.0,
         )
     )

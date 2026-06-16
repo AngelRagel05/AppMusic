@@ -234,7 +234,7 @@ Los cambios principales viven en:
 * `app/domain/metadata/services/musicComparisonNormalizationService.py`
 * `app/domain/playlists/services/youtubePlaylistItemNormalizationService.py`
 * `app/domain/playlists/services/playlistItemMatchingRules.py`
-* `app/domain/playlists/services/playlistItemMatcherService.py`
+* `app/domain/playlists/services/persistedPlaylistItemMatcherService.py`
 * `app/application/use_cases/playlists/compareYoutubePlaylistWithLocalLibraryUseCase.py`
 * `app/application/use_cases/playlists/loadPersistedPlaylistComparisonUseCase.py`
 * `app/presentation/features/comparison/comparisonReasonSummary.py`

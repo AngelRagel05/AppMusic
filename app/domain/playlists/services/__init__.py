@@ -1,15 +1,15 @@
 """Playlists domain services."""
 
-from app.domain.playlists.services.playlistItemMatcherService import (
-    PlaylistItemMatchResult,
-    matchYoutubePlaylistItemToLocalSongs,
-)
 from app.domain.playlists.services.persistedComparisonContract import (
     ComparisonDependenciesFingerprint,
     ComparisonRefreshAction,
     ComparisonRefreshRequest,
     resolveComparisonRefreshAction,
     shouldInvalidatePersistedFoundMatch,
+)
+from app.domain.playlists.services.persistedComparisonModels import (
+    ComparableLocalSong,
+    ComparableYoutubePlaylistItem,
 )
 from app.domain.playlists.services.persistedPlaylistItemMatcherService import (
     PersistedPlaylistItemMatchResult,
@@ -66,6 +66,8 @@ __all__ = [
     "ArtistMatchEvidence",
     "CandidateMatchEvidence",
     "CandidateScoreBreakdown",
+    "ComparableLocalSong",
+    "ComparableYoutubePlaylistItem",
     "ComparisonDependenciesFingerprint",
     "ComparisonRefreshAction",
     "ComparisonRefreshRequest",
@@ -77,7 +79,6 @@ __all__ = [
     "MANUAL_USER_MARKED_MISSING",
     "MANUAL_USER_MARKED_POSSIBLE",
     "MatchClassificationThresholds",
-    "PlaylistItemMatchResult",
     "PlaylistItemMatchingRuleset",
     "PersistedPlaylistItemMatchResult",
     "NormalizedYoutubePlaylistItemMetadata",
@@ -94,7 +95,6 @@ __all__ = [
     "isAutomaticMatchedBy",
     "isManualMatchedBy",
     "matchPersistedPlaylistItemToLocalSongs",
-    "matchYoutubePlaylistItemToLocalSongs",
     "normalizedSimilarityRatio",
     "normalizeYoutubePlaylistItemMetadata",
     "resolveComparisonRefreshAction",

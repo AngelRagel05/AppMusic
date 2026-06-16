@@ -3,9 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence
 
-from app.domain.library.entities.localSong import LocalSong
-from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistItem
 from app.domain.playlists.services.matchDecisionSource import buildAutomaticMatchedBy
+from app.domain.playlists.services.persistedComparisonModels import (
+    ComparableLocalSong,
+    ComparableYoutubePlaylistItem,
+)
 from app.domain.playlists.services.playlistItemMatchingRules import (
     AmbiguityPenaltyThresholds,
     ArtistMatchEvidence,
@@ -31,7 +33,7 @@ from app.shared.constants.comparison import ComparisonStatus
 
 @dataclass(frozen=True, slots=True)
 class PersistedPlaylistItemMatchResult:
-    local_song: LocalSong | None
+    local_song: ComparableLocalSong | None
     comparison_status: ComparisonStatus
     score: float
     reason: str
@@ -40,7 +42,7 @@ class PersistedPlaylistItemMatchResult:
 
 @dataclass(frozen=True, slots=True)
 class CandidateEvaluation:
-    local_song: LocalSong
+    local_song: ComparableLocalSong
     score: float
     score_breakdown: CandidateScoreBreakdown
     duration_distance: float
@@ -49,8 +51,8 @@ class CandidateEvaluation:
 
 
 def matchPersistedPlaylistItemToLocalSongs(
-    youtube_playlist_item: YoutubePlaylistItem,
-    local_songs: Sequence[LocalSong],
+    youtube_playlist_item: ComparableYoutubePlaylistItem,
+    local_songs: Sequence[ComparableLocalSong],
     ruleset: PlaylistItemMatchingRuleset = DEFAULT_PLAYLIST_ITEM_MATCHING_RULESET,
 ) -> PersistedPlaylistItemMatchResult:
     candidate_evaluations = [
@@ -102,8 +104,8 @@ def matchPersistedPlaylistItemToLocalSongs(
 
 
 def _scoreCandidate(
-    youtube_playlist_item: YoutubePlaylistItem,
-    local_song: LocalSong,
+    youtube_playlist_item: ComparableYoutubePlaylistItem,
+    local_song: ComparableLocalSong,
     ruleset: PlaylistItemMatchingRuleset,
 ) -> CandidateEvaluation:
     title_evidence = buildTextMatchEvidence(

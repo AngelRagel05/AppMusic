@@ -21,7 +21,7 @@ Se extraen las reglas de matching a un `ruleset` explicito con funciones puras r
 * funcion de clasificacion
 * funcion de construccion del motivo
 
-El servicio `matchYoutubePlaylistItemToLocalSongs(...)` mantiene su API publica y pasa a orquestar:
+El servicio `matchPersistedPlaylistItemToLocalSongs(...)` mantiene el punto de entrada del matching persistido y pasa a orquestar:
 
 * iteracion de candidatas
 * seleccion de la mejor
@@ -31,7 +31,7 @@ El servicio `matchYoutubePlaylistItemToLocalSongs(...)` mantiene su API publica 
 
 * probar cada regla sin depender del flujo completo del matcher
 * facilitar futuras extensiones por configuracion o nuevas estrategias
-* mantener estable el punto de entrada usado por aplicacion
+* mantener estable el punto de entrada usado por aplicacion sin remezclar scan o import
 
 ## Consecuencias
 

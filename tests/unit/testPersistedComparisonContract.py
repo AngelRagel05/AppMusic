@@ -11,6 +11,8 @@ from app.domain.library.entities.localSong import LocalSong
 from app.domain.playlists.entities.youtubePlaylist import YoutubePlaylist
 from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistItem
 from app.domain.playlists.services import (
+    ComparableLocalSong,
+    ComparableYoutubePlaylistItem,
     ComparisonDependenciesFingerprint,
     ComparisonRefreshAction,
     ComparisonRefreshRequest,
@@ -259,21 +261,15 @@ def test_match_persisted_playlist_item_to_local_songs_uses_only_persisted_compar
     )
 
     result = matchPersistedPlaylistItemToLocalSongs(
-        YoutubePlaylistItem(
+        ComparableYoutubePlaylistItem(
             id=21,
-            youtube_playlist_id=9,
-            external_video_id="abc123",
-            position=1,
-            raw_title="NADAL 015  #MEMORIES I",
-            raw_channel_name="NADAL 015",
             normalized_title="memories i",
             normalized_artist="nadal015",
             duration_seconds=176.0,
         ),
         [
-            LocalSong(
+            ComparableLocalSong(
                 id=77,
-                file_name="Nadal015 - Memories I.mp3",
                 title="memories i",
                 artist="nadal015",
                 duration_seconds=175.8,

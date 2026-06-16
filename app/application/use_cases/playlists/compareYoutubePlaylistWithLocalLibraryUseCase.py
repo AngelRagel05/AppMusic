@@ -7,13 +7,16 @@ from app.application.dto.playlistComparisonItemResultDto import (
 )
 from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
-from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
 from app.domain.library.repositories.localSongRepository import LocalSongRepository
 from app.domain.playlists.entities.playlistComparisonResult import (
     PlaylistComparisonResult,
 )
-from app.domain.playlists.services import matchYoutubePlaylistItemToLocalSongs
+from app.domain.playlists.services import (
+    ComparableLocalSong,
+    ComparableYoutubePlaylistItem,
+    matchPersistedPlaylistItemToLocalSongs,
+)
 from app.domain.playlists.repositories.playlistComparisonRepository import (
     PlaylistComparisonRepository,
 )
@@ -40,7 +43,6 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         local_song_repository: LocalSongRepository,
         playlist_comparison_repository: PlaylistComparisonRepository,
         playlist_comparison_result_repository: PlaylistComparisonResultRepository,
-        ignored_term_repository: IgnoredTermRepository | None = None,
     ) -> None:
         self._youtube_playlist_repository = youtube_playlist_repository
         self._youtube_playlist_item_repository = youtube_playlist_item_repository
@@ -48,7 +50,6 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         self._local_song_repository = local_song_repository
         self._playlist_comparison_repository = playlist_comparison_repository
         self._playlist_comparison_result_repository = playlist_comparison_result_repository
-        self._ignored_term_repository = ignored_term_repository
 
     def execute(self) -> PlaylistComparisonResultDto:
         active_youtube_playlist = self._youtube_playlist_repository.get_active()
@@ -67,18 +68,31 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             for local_song in self._local_song_repository.list_by_folder(active_local_folder.id)
             if local_song.is_available
         ]
-        ignored_terms_by_scope = self._loadIgnoredTermsByScope()
+        comparable_local_songs = [
+            self._buildComparableLocalSong(local_song)
+            for local_song in available_local_songs
+            if local_song.id is not None
+        ]
+        local_song_by_id = {
+            local_song.id: local_song for local_song in available_local_songs if local_song.id is not None
+        }
 
         comparison_items: list[PlaylistComparisonItemResultDto] = []
         match_result_by_item: dict[int, str | None] = {}
         for youtube_playlist_item in youtube_playlist_items:
-            match_result = matchYoutubePlaylistItemToLocalSongs(
-                youtube_playlist_item,
-                available_local_songs,
-                ignored_terms_by_scope=ignored_terms_by_scope,
+            comparable_youtube_playlist_item = self._buildComparableYoutubePlaylistItem(
+                youtube_playlist_item
+            )
+            match_result = matchPersistedPlaylistItemToLocalSongs(
+                comparable_youtube_playlist_item,
+                comparable_local_songs,
             )
             match_result_by_item[youtube_playlist_item.id or 0] = match_result.matched_by
-            matched_local_song = match_result.local_song
+            matched_local_song = (
+                local_song_by_id.get(match_result.local_song.id)
+                if match_result.local_song is not None
+                else None
+            )
             comparison_items.append(
                 PlaylistComparisonItemResultDto(
                     youtube_playlist_item_id=youtube_playlist_item.id or 0,
@@ -159,25 +173,23 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             ),
         )
 
-    def _loadIgnoredTermsByScope(self) -> dict[str, tuple[str, ...]]:
-        if self._ignored_term_repository is None:
-            return {}
+    def _buildComparableLocalSong(self, local_song) -> ComparableLocalSong:
+        if local_song.id is None:
+            raise ValueError("La cancion local comparable requiere un id persistido.")
+        return ComparableLocalSong(
+            id=local_song.id,
+            title=local_song.title,
+            artist=local_song.artist,
+            duration_seconds=local_song.duration_seconds,
+            is_available=local_song.is_available,
+        )
 
-        ignored_terms_by_scope: dict[str, list[str]] = {}
-        for ignored_term in self._ignored_term_repository.list_all():
-            if not ignored_term.is_active:
-                continue
-            normalized_scope = (ignored_term.scope or "").strip().lower()
-            normalized_term = (ignored_term.term or "").strip().lower()
-            if normalized_scope not in {"global", "title", "artist", "album"}:
-                continue
-            if not normalized_term:
-                continue
-            scope_terms = ignored_terms_by_scope.setdefault(normalized_scope, [])
-            if normalized_term not in scope_terms:
-                scope_terms.append(normalized_term)
-
-        return {
-            scope: tuple(terms)
-            for scope, terms in ignored_terms_by_scope.items()
-        }
+    def _buildComparableYoutubePlaylistItem(self, youtube_playlist_item) -> ComparableYoutubePlaylistItem:
+        if youtube_playlist_item.id is None:
+            raise ValueError("El item de YouTube comparable requiere un id persistido.")
+        return ComparableYoutubePlaylistItem(
+            id=youtube_playlist_item.id,
+            normalized_title=youtube_playlist_item.normalized_title,
+            normalized_artist=youtube_playlist_item.normalized_artist,
+            duration_seconds=youtube_playlist_item.duration_seconds,
+        )
