@@ -11,6 +11,13 @@ from app.domain.playlists.services.persistedComparisonModels import (
     ComparableLocalSong,
     ComparableYoutubePlaylistItem,
 )
+from app.domain.playlists.services.comparableLocalSongCandidateIndex import (
+    CandidateSelectionBatch,
+    CandidateSelectionStage,
+    ComparableLocalSongCandidateIndex,
+    buildCandidateSelectionBatches,
+    buildComparableLocalSongCandidateIndex,
+)
 from app.domain.playlists.services.persistedPlaylistItemMatcherService import (
     PersistedPlaylistItemMatchResult,
     matchPersistedPlaylistItemToLocalSongs,
@@ -67,8 +74,11 @@ __all__ = [
     "AUTO_TITLE_ARTIST_DURATION",
     "ArtistMatchEvidence",
     "CandidateMatchEvidence",
+    "CandidateSelectionBatch",
+    "CandidateSelectionStage",
     "CandidateScoreBreakdown",
     "ComparableLocalSong",
+    "ComparableLocalSongCandidateIndex",
     "ComparableYoutubePlaylistItem",
     "ComparisonDependenciesFingerprint",
     "ComparisonRefreshAction",
@@ -90,6 +100,8 @@ __all__ = [
     "buildAutomaticMatchedBy",
     "buildMatchReason",
     "buildArtistMatchEvidence",
+    "buildCandidateSelectionBatches",
+    "buildComparableLocalSongCandidateIndex",
     "buildCandidateMatchEvidence",
     "buildDurationMatchEvidence",
     "buildTextMatchEvidence",

@@ -15,10 +15,13 @@ from app.domain.playlists.entities.playlistComparisonResult import (
     PlaylistComparisonResult,
 )
 from app.domain.playlists.services import (
+    CandidateSelectionStage,
     ComparableLocalSong,
     ComparableYoutubePlaylistItem,
     MANUAL_USER_LINKED_LOCAL_SONG,
     MANUAL_USER_MARKED_FOUND,
+    buildCandidateSelectionBatches,
+    buildComparableLocalSongCandidateIndex,
     matchPersistedPlaylistItemToLocalSongs,
     shouldInvalidatePersistedFoundMatch,
 )
@@ -35,7 +38,7 @@ from app.shared.constants.comparison import ComparisonStatus
 
 class CompareYoutubePlaylistWithLocalLibraryUseCase:
     SNAPSHOT_RETENTION_LIMIT = 3
-    MATCHING_RULES_VERSION = "persisted_match_v3_incremental_found_freeze"
+    MATCHING_RULES_VERSION = "persisted_match_v4_candidate_index_staging"
 
     def __init__(
         self,
@@ -74,6 +77,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             for local_song in available_local_songs
             if local_song.id is not None
         ]
+        candidate_index = buildComparableLocalSongCandidateIndex(comparable_local_songs)
         local_song_by_id = {
             local_song.id: local_song for local_song in persisted_local_songs if local_song.id is not None
         }
@@ -143,17 +147,13 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                 match_result_by_item[frozen_row.youtube_playlist_item_id] = frozen_row.matched_by
                 continue
 
-            candidate_local_songs = [
-                comparable_local_song
-                for comparable_local_song in comparable_local_songs
-                if comparable_local_song.id not in reserved_local_song_ids
-            ]
             comparable_youtube_playlist_item = self._buildComparableYoutubePlaylistItem(
                 youtube_playlist_item
             )
-            match_result = matchPersistedPlaylistItemToLocalSongs(
+            match_result = self._matchWithCandidateStages(
                 comparable_youtube_playlist_item,
-                candidate_local_songs,
+                candidate_index,
+                reserved_local_song_ids=reserved_local_song_ids,
             )
             match_result_by_item[youtube_playlist_item.id or 0] = match_result.matched_by
             matched_local_song = (
@@ -250,6 +250,38 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                 persisted_comparison.compared_at or datetime.now(UTC)
             ),
         )
+
+    def _matchWithCandidateStages(
+        self,
+        youtube_playlist_item: ComparableYoutubePlaylistItem,
+        candidate_index,
+        *,
+        reserved_local_song_ids: set[int],
+    ):
+        candidate_batches = buildCandidateSelectionBatches(
+            youtube_playlist_item,
+            candidate_index,
+            reserved_local_song_ids=reserved_local_song_ids,
+        )
+        last_match_result = None
+        for candidate_batch in candidate_batches:
+            last_match_result = matchPersistedPlaylistItemToLocalSongs(
+                youtube_playlist_item,
+                candidate_batch.local_songs,
+            )
+            if (
+                candidate_batch.stage is CandidateSelectionStage.EXACT
+                and last_match_result.comparison_status is ComparisonStatus.FOUND
+            ):
+                return last_match_result
+            if (
+                candidate_batch.stage is CandidateSelectionStage.VERY_SIMILAR
+                and last_match_result.comparison_status is ComparisonStatus.FOUND
+            ):
+                return last_match_result
+        if last_match_result is not None:
+            return last_match_result
+        return matchPersistedPlaylistItemToLocalSongs(youtube_playlist_item, ())
 
     def _buildFrozenFoundRowsByItemId(
         self,
