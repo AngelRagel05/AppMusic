@@ -4,6 +4,17 @@ from app.domain.playlists.services.playlistItemMatcherService import (
     PlaylistItemMatchResult,
     matchYoutubePlaylistItemToLocalSongs,
 )
+from app.domain.playlists.services.persistedComparisonContract import (
+    ComparisonDependenciesFingerprint,
+    ComparisonRefreshAction,
+    ComparisonRefreshRequest,
+    resolveComparisonRefreshAction,
+    shouldInvalidatePersistedFoundMatch,
+)
+from app.domain.playlists.services.persistedPlaylistItemMatcherService import (
+    PersistedPlaylistItemMatchResult,
+    matchPersistedPlaylistItemToLocalSongs,
+)
 from app.domain.playlists.services.matchDecisionSource import (
     AUTO_AMBIGUOUS,
     AUTO_NO_COMPETITIVE_CANDIDATE,
@@ -55,6 +66,9 @@ __all__ = [
     "ArtistMatchEvidence",
     "CandidateMatchEvidence",
     "CandidateScoreBreakdown",
+    "ComparisonDependenciesFingerprint",
+    "ComparisonRefreshAction",
+    "ComparisonRefreshRequest",
     "ConsistencyScoreWeights",
     "DurationMatchThresholds",
     "DurationMatchEvidence",
@@ -65,6 +79,7 @@ __all__ = [
     "MatchClassificationThresholds",
     "PlaylistItemMatchResult",
     "PlaylistItemMatchingRuleset",
+    "PersistedPlaylistItemMatchResult",
     "NormalizedYoutubePlaylistItemMetadata",
     "TextMatchWeights",
     "TitleMatchEvidence",
@@ -78,10 +93,13 @@ __all__ = [
     "classifyMatchStatus",
     "isAutomaticMatchedBy",
     "isManualMatchedBy",
+    "matchPersistedPlaylistItemToLocalSongs",
     "matchYoutubePlaylistItemToLocalSongs",
     "normalizedSimilarityRatio",
     "normalizeYoutubePlaylistItemMetadata",
+    "resolveComparisonRefreshAction",
     "scoreDuration",
     "scoreEvidenceConsistency",
     "scoreNormalizedText",
+    "shouldInvalidatePersistedFoundMatch",
 ]
