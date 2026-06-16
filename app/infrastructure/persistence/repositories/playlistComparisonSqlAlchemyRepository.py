@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from sqlalchemy import Select, desc, select
 
 from app.domain.playlists.entities.playlistComparison import PlaylistComparison
@@ -31,6 +33,8 @@ class PlaylistComparisonSqlAlchemyRepository(PlaylistComparisonRepository):
         *,
         youtube_playlist_imported_at=None,
         local_library_scanned_at=None,
+        youtube_playlist_state_fingerprint: str | None = None,
+        local_library_state_fingerprint: str | None = None,
         ignored_terms_version: str | None = None,
         matching_rules_version: str | None = None,
     ) -> PlaylistComparison:
@@ -39,6 +43,8 @@ class PlaylistComparisonSqlAlchemyRepository(PlaylistComparisonRepository):
             local_folder_id=local_folder_id,
             youtube_playlist_imported_at=youtube_playlist_imported_at,
             local_library_scanned_at=local_library_scanned_at,
+            youtube_playlist_state_fingerprint=youtube_playlist_state_fingerprint,
+            local_library_state_fingerprint=local_library_state_fingerprint,
             ignored_terms_version=ignored_terms_version,
             matching_rules_version=matching_rules_version,
         )
@@ -127,10 +133,23 @@ class PlaylistComparisonSqlAlchemyRepository(PlaylistComparisonRepository):
             id=model.id,
             youtube_playlist_id=model.youtube_playlist_id,
             local_folder_id=model.local_folder_id,
-            compared_at=model.compared_at,
-            youtube_playlist_imported_at=model.youtube_playlist_imported_at,
-            local_library_scanned_at=model.local_library_scanned_at,
+            compared_at=self._normalizeTimestamp(model.compared_at),
+            youtube_playlist_imported_at=self._normalizeTimestamp(
+                model.youtube_playlist_imported_at
+            ),
+            local_library_scanned_at=self._normalizeTimestamp(
+                model.local_library_scanned_at
+            ),
+            youtube_playlist_state_fingerprint=model.youtube_playlist_state_fingerprint,
+            local_library_state_fingerprint=model.local_library_state_fingerprint,
             ignored_terms_version=model.ignored_terms_version,
             matching_rules_version=model.matching_rules_version,
-            created_at=model.created_at,
+            created_at=self._normalizeTimestamp(model.created_at),
         )
+
+    def _normalizeTimestamp(self, timestamp: datetime | None) -> datetime | None:
+        if timestamp is None:
+            return None
+        if timestamp.tzinfo is None:
+            return timestamp.replace(tzinfo=UTC)
+        return timestamp.astimezone(UTC)

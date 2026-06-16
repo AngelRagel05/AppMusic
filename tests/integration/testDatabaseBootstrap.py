@@ -73,3 +73,61 @@ def test_bootstrap_adds_local_song_availability_column_for_legacy_schema() -> No
     local_song_columns = {column["name"] for column in inspector.get_columns("local_song")}
 
     assert "is_available" in local_song_columns
+
+
+def test_bootstrap_adds_playlist_comparison_snapshot_fingerprint_columns_for_legacy_schema() -> None:
+    bootstrapper, session_factory = create_bootstrapper()
+    engine = session_factory.kw["bind"]
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE playlist_comparison (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    youtube_playlist_id INTEGER NOT NULL,
+                    local_folder_id INTEGER NOT NULL,
+                    compared_at DATETIME NOT NULL,
+                    created_at DATETIME NOT NULL
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE local_song (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    local_folder_id INTEGER NOT NULL,
+                    download_id INTEGER,
+                    file_path VARCHAR(1024) NOT NULL UNIQUE,
+                    file_name VARCHAR(255) NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    artist VARCHAR(255) NOT NULL,
+                    album VARCHAR(255) NOT NULL,
+                    release_year INTEGER NOT NULL,
+                    track_number_album INTEGER NOT NULL,
+                    duration_seconds FLOAT NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL
+                )
+                """
+            )
+        )
+
+    bootstrapper.bootstrap()
+
+    inspector = inspect(engine)
+    playlist_comparison_columns = {
+        column["name"] for column in inspector.get_columns("playlist_comparison")
+    }
+    playlist_comparison_indexes = {
+        index["name"] for index in inspector.get_indexes("playlist_comparison")
+    }
+
+    assert "youtube_playlist_imported_at" in playlist_comparison_columns
+    assert "local_library_scanned_at" in playlist_comparison_columns
+    assert "youtube_playlist_state_fingerprint" in playlist_comparison_columns
+    assert "local_library_state_fingerprint" in playlist_comparison_columns
+    assert "ignored_terms_version" in playlist_comparison_columns
+    assert "matching_rules_version" in playlist_comparison_columns
+    assert "ix_playlist_comparison_scope_compared_at" in playlist_comparison_indexes

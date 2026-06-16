@@ -36,11 +36,14 @@ def test_playlist_comparison_contains_snapshot_dependency_columns() -> None:
     expected_columns = {
         "youtube_playlist_imported_at",
         "local_library_scanned_at",
+        "youtube_playlist_state_fingerprint",
+        "local_library_state_fingerprint",
         "ignored_terms_version",
         "matching_rules_version",
     }
 
     assert expected_columns.issubset(table.columns.keys())
+    assert "ix_playlist_comparison_scope_compared_at" in {index.name for index in table.indexes}
 
 
 def test_ignored_term_has_composite_unique_constraint() -> None:

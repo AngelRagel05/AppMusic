@@ -73,6 +73,8 @@ erDiagram
         datetime compared_at
         datetime youtube_playlist_imported_at
         datetime local_library_scanned_at
+        string youtube_playlist_state_fingerprint
+        string local_library_state_fingerprint
         string ignored_terms_version
         string matching_rules_version
         datetime created_at
@@ -239,6 +241,8 @@ Columnas clave:
 * `compared_at`
 * `youtube_playlist_imported_at`
 * `local_library_scanned_at`
+* `youtube_playlist_state_fingerprint`
+* `local_library_state_fingerprint`
 * `ignored_terms_version`
 * `matching_rules_version`
 
@@ -246,7 +250,9 @@ Notas:
 
 * se genera una nueva comparacion cuando el usuario ejecuta manualmente la accion de comparar
 * la fila actua como cabecera de un snapshot persistido
-* la cabecera guarda el fingerprint de dependencias usado para decidir si un `FOUND` previo sigue siendo valido
+* la cabecera guarda las dependencias logicas y la huella del estado local y YouTube realmente comparados
+* `youtube_playlist_state_fingerprint` identifica el snapshot persistido de `youtube_playlist_item` usado en esa ejecucion
+* `local_library_state_fingerprint` identifica el estado persistido de `local_song` usado en esa ejecucion
 * la persistencia historica se retiene por scope `youtube_playlist_id + local_folder_id`
 * solo se conservan las `3` comparaciones mas recientes de cada scope
 
@@ -278,6 +284,7 @@ Restricciones:
 * `matched_by` puede ser `NULL`
 * deberia existir una sola fila por pareja `playlist_comparison_id + youtube_playlist_item_id`
 * si la fila fue corregida manualmente, `matched_by` debe usar prefijo `manual:`
+* flags como `is_locked_found` o `invalidated_reason` no se persisten aqui; son estado derivado del motor de comparacion y de la cabecera `playlist_comparison`
 
 Notas de retencion:
 
@@ -387,6 +394,7 @@ Estas reglas son estructurales y deben reforzarse con el esquema relacional:
   * `position > 0`
   * `duration_seconds >= 0` si tiene valor
 * indices de soporte para claves foraneas y consultas frecuentes
+  * `playlist_comparison (youtube_playlist_id, local_folder_id, compared_at, id)`
 
 ## Reglas que deben vivir en aplicacion
 

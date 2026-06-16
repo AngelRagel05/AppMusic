@@ -21,6 +21,8 @@ class PlaylistComparisonRepository(ABC):
         *,
         youtube_playlist_imported_at=None,
         local_library_scanned_at=None,
+        youtube_playlist_state_fingerprint: str | None = None,
+        local_library_state_fingerprint: str | None = None,
         ignored_terms_version: str | None = None,
         matching_rules_version: str | None = None,
     ) -> PlaylistComparison:

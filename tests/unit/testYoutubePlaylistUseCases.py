@@ -315,6 +315,8 @@ class InMemoryPlaylistComparisonRepository(PlaylistComparisonRepository):
         *,
         youtube_playlist_imported_at=None,
         local_library_scanned_at=None,
+        youtube_playlist_state_fingerprint: str | None = None,
+        local_library_state_fingerprint: str | None = None,
         ignored_terms_version: str | None = None,
         matching_rules_version: str | None = None,
     ) -> PlaylistComparison:
@@ -324,6 +326,8 @@ class InMemoryPlaylistComparisonRepository(PlaylistComparisonRepository):
             local_folder_id=local_folder_id,
             youtube_playlist_imported_at=youtube_playlist_imported_at,
             local_library_scanned_at=local_library_scanned_at,
+            youtube_playlist_state_fingerprint=youtube_playlist_state_fingerprint,
+            local_library_state_fingerprint=local_library_state_fingerprint,
             ignored_terms_version=ignored_terms_version,
             matching_rules_version=matching_rules_version,
         )

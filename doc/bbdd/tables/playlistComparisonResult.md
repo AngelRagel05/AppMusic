@@ -87,6 +87,7 @@ erDiagram
   * `match_status` vale `missing`
 * Debe existir una sola fila por pareja `playlist_comparison_id + youtube_playlist_item_id`.
 * `matched_by` no debe usarse como texto libre arbitrario.
+* No se persisten columnas redundantes como `is_locked_found` o `invalidated_reason`.
 * Validaciones operativas en aplicacion:
   * `match_status = missing` obliga `local_song_id = NULL`
   * `match_status = found` obliga `local_song_id` informado
@@ -106,6 +107,12 @@ erDiagram
 * `matched_by` distingue explicitamente el origen de la fila:
   * `auto:*` para decisiones del matcher
   * `manual:*` para correcciones del usuario
+* El estado de una fila `FOUND` congelada se deriva de:
+  * la propia fila
+  * la cabecera `playlist_comparison`
+  * el estado actual de `local_song`
+  * el estado actual de `youtube_playlist_item`
+* El motivo de invalidacion no se persiste porque depende de comparar ese snapshot con estado vivo posterior.
 * Esta tabla forma parte del snapshot historico de comparacion y hereda la politica de retencion por scope desde `playlist_comparison`.
 * La edicion manual vive solo en el snapshot actual que el usuario esta editando.
 * Si se ejecuta una comparacion nueva:

@@ -171,6 +171,10 @@ def test_compare_youtube_playlist_with_local_library_use_case_matches_real_repos
     assert persisted_results[0].score == result.items[0].score
     assert persisted_results[1].score == result.items[1].score
     assert persisted_results[2].score == result.items[2].score
+    assert persisted_comparison.youtube_playlist_state_fingerprint is not None
+    assert persisted_comparison.youtube_playlist_state_fingerprint.startswith("youtube_playlist:")
+    assert persisted_comparison.local_library_state_fingerprint is not None
+    assert persisted_comparison.local_library_state_fingerprint.startswith("local_library:")
     assert [item.match_status for item in persisted_results] == [
         ComparisonStatus.FOUND.value,
         ComparisonStatus.MISSING.value,
@@ -451,6 +455,83 @@ def test_load_persisted_playlist_comparison_use_case_restores_last_saved_snapsho
     assert comparison_result.summary.total_compared == 1
     assert comparison_result.items[0].comparison_status is ComparisonStatus.FOUND
     assert comparison_result.items[0].score > 0
+
+
+def test_load_persisted_playlist_comparison_use_case_rehydrates_legacy_snapshot_without_fingerprint_columns() -> None:
+    session = create_session()
+    local_folder_repository = LocalFolderSqlAlchemyRepository(session)
+    local_song_repository = LocalSongSqlAlchemyRepository(session)
+    playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
+    playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
+    youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
+    youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
+
+    active_folder = local_folder_repository.save_as_active(r"C:\Music\Active", "Active")
+    active_playlist = youtube_playlist_repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PL123",
+        "PL123",
+        "Favoritas",
+    )
+    local_song = local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="song one",
+            artist="artist one",
+            duration_seconds=181.0,
+        )
+    )
+    persisted_item = youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="found-item",
+                position=1,
+                raw_title="Song One",
+                raw_channel_name="Artist One",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            )
+        ],
+    )[0]
+
+    legacy_comparison = playlist_comparison_repository.create(
+        active_playlist.id or 0,
+        active_folder.id or 0,
+    )
+    playlist_comparison_result_repository.save_for_comparison(
+        legacy_comparison.id or 0,
+        [
+            PlaylistComparisonResult(
+                playlist_comparison_id=legacy_comparison.id or 0,
+                youtube_playlist_item_id=persisted_item.id or 0,
+                local_song_id=local_song.id,
+                match_status=ComparisonStatus.FOUND.value,
+                score=100.0,
+                matched_by="auto:title_artist_duration",
+            )
+        ],
+    )
+    session.commit()
+
+    rehydrated_snapshot = LoadPersistedPlaylistComparisonUseCase(
+        youtube_playlist_repository,
+        youtube_playlist_item_repository,
+        local_folder_repository,
+        local_song_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute()
+
+    assert rehydrated_snapshot is not None
+    _, comparison_result = rehydrated_snapshot
+    assert comparison_result.items[0].comparison_status is ComparisonStatus.FOUND
+    assert comparison_result.items[0].local_song_id == local_song.id
 
 
 def test_load_persisted_playlist_comparison_use_case_restores_manual_override_from_persisted_snapshot() -> None:
@@ -912,6 +993,37 @@ def test_playlist_comparison_repositories_support_retention_operations_by_scope(
     assert other_scope_latest.id == other_scope.id
 
 
+def test_playlist_comparison_repository_roundtrips_snapshot_metadata() -> None:
+    session = create_session()
+    repository = PlaylistComparisonSqlAlchemyRepository(session)
+
+    created_comparison = repository.create(
+        9,
+        7,
+        youtube_playlist_imported_at=datetime(2026, 6, 16, 10, 0, tzinfo=UTC),
+        local_library_scanned_at=datetime(2026, 6, 16, 10, 5, tzinfo=UTC),
+        youtube_playlist_state_fingerprint="youtube_playlist:abc123",
+        local_library_state_fingerprint="local_library:def456",
+        ignored_terms_version="ignored_terms:ghi789",
+        matching_rules_version="persisted_match_v6_schema",
+    )
+    repository.commit()
+
+    reloaded_comparison = repository.find_by_id(created_comparison.id or 0)
+
+    assert reloaded_comparison is not None
+    assert reloaded_comparison.youtube_playlist_imported_at == datetime(
+        2026, 6, 16, 10, 0, tzinfo=UTC
+    )
+    assert reloaded_comparison.local_library_scanned_at == datetime(
+        2026, 6, 16, 10, 5, tzinfo=UTC
+    )
+    assert reloaded_comparison.youtube_playlist_state_fingerprint == "youtube_playlist:abc123"
+    assert reloaded_comparison.local_library_state_fingerprint == "local_library:def456"
+    assert reloaded_comparison.ignored_terms_version == "ignored_terms:ghi789"
+    assert reloaded_comparison.matching_rules_version == "persisted_match_v6_schema"
+
+
 def test_compare_youtube_playlist_with_local_library_use_case_retains_only_three_snapshots_per_scope() -> None:
     session = create_session()
     local_folder_repository = LocalFolderSqlAlchemyRepository(session)
@@ -1026,7 +1138,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_retains_only_three
     assert latest_persisted.id == retained_scope[0].id
     assert last_result.last_compared_at is not None
     assert latest_persisted.compared_at is not None
-    assert last_result.last_compared_at.replace(tzinfo=None) == latest_persisted.compared_at
+    assert last_result.last_compared_at == latest_persisted.compared_at
     assert playlist_comparison_result_repository.list_by_comparison(first_snapshot_id) == []
     remaining_results = session.query(PlaylistComparisonResultModel).all()
     assert all(
@@ -1040,10 +1152,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_retains_only_three
     assert loaded_comparison_result.summary.total_compared == 1
     assert loaded_comparison_result.items[0].comparison_status is ComparisonStatus.FOUND
     assert loaded_comparison_result.last_compared_at is not None
-    assert (
-        loaded_comparison_result.last_compared_at.replace(tzinfo=None)
-        == latest_persisted.compared_at
-    )
+    assert loaded_comparison_result.last_compared_at == latest_persisted.compared_at
     other_scope_latest = playlist_comparison_repository.find_latest_for_scope(
         active_playlist.id or 0,
         99,

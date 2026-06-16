@@ -88,6 +88,20 @@ class DatabaseBootstrapper:
                         "ADD COLUMN ignored_terms_version VARCHAR(128) NULL"
                     )
                 )
+            if "youtube_playlist_state_fingerprint" not in playlistComparisonColumns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE playlist_comparison "
+                        "ADD COLUMN youtube_playlist_state_fingerprint VARCHAR(128) NULL"
+                    )
+                )
+            if "local_library_state_fingerprint" not in playlistComparisonColumns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE playlist_comparison "
+                        "ADD COLUMN local_library_state_fingerprint VARCHAR(128) NULL"
+                    )
+                )
             if "matching_rules_version" not in playlistComparisonColumns:
                 connection.execute(
                     text(
@@ -95,6 +109,14 @@ class DatabaseBootstrapper:
                         "ADD COLUMN matching_rules_version VARCHAR(64) NULL"
                     )
                 )
+            connection.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS "
+                    "ix_playlist_comparison_scope_compared_at "
+                    "ON playlist_comparison "
+                    "(youtube_playlist_id, local_folder_id, compared_at, id)"
+                )
+            )
 
     def _seed_ignored_terms(
         self,

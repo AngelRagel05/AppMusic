@@ -112,6 +112,12 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         current_ignored_terms_version = self._buildIgnoredTermsVersion()
         current_youtube_playlist_imported_at = self._buildSnapshotTimestamp(youtube_playlist_items)
         current_local_library_scanned_at = self._buildSnapshotTimestamp(persisted_local_songs)
+        current_youtube_playlist_state_fingerprint = self._buildYoutubePlaylistStateFingerprint(
+            youtube_playlist_items
+        )
+        current_local_library_state_fingerprint = self._buildLocalLibraryStateFingerprint(
+            persisted_local_songs
+        )
 
         comparison_items: list[PlaylistComparisonItemResultDto] = []
         match_result_by_item: dict[int, str | None] = {}
@@ -210,6 +216,8 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             active_local_folder.id,
             youtube_playlist_imported_at=current_youtube_playlist_imported_at,
             local_library_scanned_at=current_local_library_scanned_at,
+            youtube_playlist_state_fingerprint=current_youtube_playlist_state_fingerprint,
+            local_library_state_fingerprint=current_local_library_state_fingerprint,
             ignored_terms_version=current_ignored_terms_version,
             matching_rules_version=self.MATCHING_RULES_VERSION,
         )
@@ -407,10 +415,16 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             local_song_is_available=local_song.is_available,
         ):
             return True
-        local_song_updated_at = local_song.updated_at or local_song.created_at
+        local_song_updated_at = self._normalizeTimestamp(
+            local_song.updated_at or local_song.created_at
+        )
+        local_snapshot_timestamp = self._normalizeTimestamp(local_snapshot_timestamp)
         if local_song_updated_at is not None and local_song_updated_at > local_snapshot_timestamp:
             return True
-        youtube_item_updated_at = youtube_playlist_item.updated_at or youtube_playlist_item.created_at
+        youtube_item_updated_at = self._normalizeTimestamp(
+            youtube_playlist_item.updated_at or youtube_playlist_item.created_at
+        )
+        youtube_snapshot_timestamp = self._normalizeTimestamp(youtube_snapshot_timestamp)
         if youtube_item_updated_at is not None and youtube_item_updated_at > youtube_snapshot_timestamp:
             return True
         return False
@@ -432,7 +446,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
 
     def _buildSnapshotTimestamp(self, items: list[object]) -> datetime:
         timestamps = [
-            timestamp
+            self._normalizeTimestamp(timestamp)
             for item in items
             for timestamp in [getattr(item, "updated_at", None) or getattr(item, "created_at", None)]
             if timestamp is not None
@@ -464,6 +478,75 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             )
         digest = hashlib.sha1("\n".join(serialized_terms).encode("utf-8")).hexdigest()
         return f"ignored_terms:{digest}"
+
+    def _buildYoutubePlaylistStateFingerprint(self, youtube_playlist_items: list[object]) -> str:
+        serialized_items = []
+        for youtube_playlist_item in sorted(
+            youtube_playlist_items,
+            key=lambda item: (
+                getattr(item, "position", 0),
+                getattr(item, "external_video_id", ""),
+            ),
+        ):
+            serialized_items.append(
+                "|".join(
+                    [
+                        str(getattr(youtube_playlist_item, "id", None) or 0),
+                        getattr(youtube_playlist_item, "external_video_id", ""),
+                        str(getattr(youtube_playlist_item, "position", 0)),
+                        getattr(youtube_playlist_item, "normalized_title", ""),
+                        getattr(youtube_playlist_item, "normalized_artist", ""),
+                        str(getattr(youtube_playlist_item, "duration_seconds", None)),
+                        self._serializeTimestamp(
+                            getattr(youtube_playlist_item, "updated_at", None)
+                            or getattr(youtube_playlist_item, "created_at", None)
+                        ),
+                    ]
+                )
+            )
+        digest = hashlib.sha1("\n".join(serialized_items).encode("utf-8")).hexdigest()
+        return f"youtube_playlist:{digest}"
+
+    def _buildLocalLibraryStateFingerprint(self, local_songs: list[object]) -> str:
+        serialized_songs = []
+        for local_song in sorted(
+            local_songs,
+            key=lambda song: (
+                getattr(song, "file_path", ""),
+                getattr(song, "id", 0) or 0,
+            ),
+        ):
+            serialized_songs.append(
+                "|".join(
+                    [
+                        str(getattr(local_song, "id", None) or 0),
+                        getattr(local_song, "file_path", ""),
+                        getattr(local_song, "title", ""),
+                        getattr(local_song, "artist", ""),
+                        str(getattr(local_song, "duration_seconds", None)),
+                        "1" if getattr(local_song, "is_available", False) else "0",
+                        self._serializeTimestamp(
+                            getattr(local_song, "updated_at", None)
+                            or getattr(local_song, "created_at", None)
+                        ),
+                    ]
+                )
+            )
+        digest = hashlib.sha1("\n".join(serialized_songs).encode("utf-8")).hexdigest()
+        return f"local_library:{digest}"
+
+    def _serializeTimestamp(self, timestamp: datetime | None) -> str:
+        timestamp = self._normalizeTimestamp(timestamp)
+        if timestamp is None:
+            return "na"
+        return timestamp.isoformat()
+
+    def _normalizeTimestamp(self, timestamp: datetime | None) -> datetime | None:
+        if timestamp is None:
+            return None
+        if timestamp.tzinfo is None:
+            return timestamp.replace(tzinfo=UTC)
+        return timestamp.astimezone(UTC)
 
     def _buildFrozenFoundReason(self, matched_by: str | None) -> str:
         if matched_by in {MANUAL_USER_LINKED_LOCAL_SONG, MANUAL_USER_MARKED_FOUND}:

@@ -173,6 +173,13 @@ class PlaylistComparison(Base):
     __table_args__ = (
         Index("ix_playlist_comparison_youtube_playlist_id", "youtube_playlist_id"),
         Index("ix_playlist_comparison_local_folder_id", "local_folder_id"),
+        Index(
+            "ix_playlist_comparison_scope_compared_at",
+            "youtube_playlist_id",
+            "local_folder_id",
+            "compared_at",
+            "id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -192,6 +199,14 @@ class PlaylistComparison(Base):
     )
     local_library_scanned_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
+        nullable=True,
+    )
+    youtube_playlist_state_fingerprint: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+    )
+    local_library_state_fingerprint: Mapped[str | None] = mapped_column(
+        String(128),
         nullable=True,
     )
     ignored_terms_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
