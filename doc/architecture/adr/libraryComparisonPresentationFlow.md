@@ -16,15 +16,21 @@ La feature `Comparacion` pasa a usar:
 
 Flujo:
 
-* el controller solicita comparacion al cargar la pantalla
-* el viewmodel emite feedback inmediato de inicio
-* el worker ejecuta en segundo plano:
+* al cargar la pantalla, el controller intenta hidratar snapshot persistido si no hay cache
+* `Refrescar snapshot` recarga snapshot persistido e historial sin recomparar
+* `Recomparar` lanza el worker en segundo plano
+* el viewmodel expone el estado del snapshot:
+  * `fresh`
+  * `stale`
+  * `recomputing`
+* durante `Recomparar`, el worker ejecuta:
   * listado de canciones locales activas
   * comparacion completa contra la playlist activa
 * al volver al hilo principal, la UI actualiza:
   * tabla de resultados de comparacion
   * resumen y fecha de ultima comparacion
-  * subtitulo con mensaje de estado/resumen
+  * historico de snapshots
+  * subtitulo con mensaje de estado
 
 Flujo funcional de revision manual:
 
@@ -38,7 +44,7 @@ Regla de persistencia manual visible en UI:
 
 * la correccion manual queda guardada en el snapshot actual
 * `matched_by` distingue si el estado mostrado viene de calculo automatico o de ajuste manual
-* si el usuario refresca la comparacion completa, se crea un snapshot nuevo recalculado desde cero
+* si el usuario pulsa `Recomparar`, se crea un snapshot nuevo recalculado desde cero
 
 La paginacion existente se conserva y se aplica sobre los resultados comparados.
 

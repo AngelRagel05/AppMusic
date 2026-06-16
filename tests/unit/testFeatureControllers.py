@@ -27,6 +27,7 @@ from app.presentation.viewmodels.localLibrary.localLibraryScanViewModel import (
     LocalLibraryScanFeedback,
 )
 from app.presentation.viewmodels.comparison.libraryComparisonViewModel import (
+    ComparisonSnapshotState,
     LibraryComparisonFeedback,
 )
 from app.presentation.viewmodels.youtubePlaylists.youtubePlaylistImportViewModel import (
@@ -373,8 +374,9 @@ class YoutubePlaylistImportViewModelSpy:
 
 
 class ComparisonPageSpy:
-    DEFAULT_PRIMARY_ACTION_LABEL = "↻ Refrescar"
-    RERUN_PRIMARY_ACTION_LABEL = "↻ Volver a comparar"
+    REFRESH_PRIMARY_ACTION_LABEL = "↻ Refrescar snapshot"
+    RECOMPARE_SECONDARY_ACTION_LABEL = "↻ Recomparar"
+    RECOMPUTING_SECONDARY_ACTION_LABEL = "↻ Recomparando..."
 
     def __init__(self, *, confirms_comparison: bool = True) -> None:
         self.local_songs = None
@@ -385,10 +387,11 @@ class ComparisonPageSpy:
         self.loading_messages: list[str] = []
         self.loading_hidden = 0
         self.primary_action_callback = None
+        self.secondary_action_callback = None
         self.confirms_comparison = confirms_comparison
         self.confirmation_requests = 0
         self.confirmation_payloads: list[tuple[str, str]] = []
-        self.primary_action_labels: list[str] = []
+        self.action_labels: list[tuple[str | None, str | None]] = []
         self.manual_decision_callback = None
 
     def showLocalSongs(self, local_songs) -> None:
@@ -401,10 +404,13 @@ class ComparisonPageSpy:
     def onPrimaryActionRequested(self, callback) -> None:
         self.primary_action_callback = callback
 
+    def onSecondaryActionRequested(self, callback) -> None:
+        self.secondary_action_callback = callback
+
     def onManualDecisionRequested(self, callback) -> None:
         self.manual_decision_callback = callback
 
-    def confirmManualComparisonStart(self, *, playlist_title: str, folder_name: str) -> bool:
+    def confirmManualRecomparisonStart(self, *, playlist_title: str, folder_name: str) -> bool:
         self.confirmation_requests += 1
         self.confirmation_payloads.append((playlist_title, folder_name))
         return self.confirms_comparison
@@ -418,8 +424,13 @@ class ComparisonPageSpy:
     def showComparisonStatusMessage(self, message: str, tone: str = "info") -> None:
         self.status_messages.append((message, tone))
 
-    def setPrimaryActionLabel(self, label: str) -> None:
-        self.primary_action_labels.append(label)
+    def setActionLabels(
+        self,
+        *,
+        primary_label: str | None,
+        secondary_label: str | None,
+    ) -> None:
+        self.action_labels.append((primary_label, secondary_label))
 
     def showLoadingState(self, message: str) -> None:
         self.loading_messages.append(message)
@@ -443,17 +454,18 @@ class LibraryComparisonViewModelSpy:
         persisted_local_songs=None,
         persisted_comparison_result=None,
         persisted_comparison_history=None,
-        is_stale: bool = True,
+        snapshot_state: ComparisonSnapshotState = ComparisonSnapshotState.STALE,
     ) -> None:
         self.feedbacks = feedbacks or []
-        self.request_calls = 0
+        self.recomparison_calls = 0
+        self.refresh_calls = 0
         self.cached_local_songs = cached_local_songs or []
         self.cached_comparison_result = cached_comparison_result
         self.cached_comparison_history = cached_comparison_history or []
         self.persisted_local_songs = persisted_local_songs or []
         self.persisted_comparison_result = persisted_comparison_result
         self.persisted_comparison_history = persisted_comparison_history or []
-        self.is_stale = is_stale
+        self.snapshot_state_value = snapshot_state
         self.invalidate_calls = 0
         self.restore_calls = 0
         self.manual_decision_calls: list[tuple[int, str, int | None]] = []
@@ -462,12 +474,12 @@ class LibraryComparisonViewModelSpy:
             status_tone="success",
         )
 
-    def requestComparison(
+    def requestRecomparison(
         self,
         schedule_on_main_thread,
         on_feedback,
     ) -> None:
-        self.request_calls += 1
+        self.recomparison_calls += 1
         for feedback in self.feedbacks:
             on_feedback(feedback)
 
@@ -490,15 +502,29 @@ class LibraryComparisonViewModelSpy:
         self.cached_local_songs = list(self.persisted_local_songs)
         self.cached_comparison_result = self.persisted_comparison_result
         self.cached_comparison_history = list(self.persisted_comparison_history)
-        self.is_stale = False
+        self.snapshot_state_value = ComparisonSnapshotState.FRESH
+        return True
+
+    def refreshPersistedComparison(self) -> bool:
+        self.refresh_calls += 1
+        if self.persisted_comparison_result is None:
+            return False
+        self.cached_local_songs = list(self.persisted_local_songs)
+        self.cached_comparison_result = self.persisted_comparison_result
+        self.cached_comparison_history = list(self.persisted_comparison_history)
+        if self.snapshot_state_value is not ComparisonSnapshotState.STALE:
+            self.snapshot_state_value = ComparisonSnapshotState.FRESH
         return True
 
     def isComparisonStale(self) -> bool:
-        return self.is_stale
+        return self.snapshot_state_value is ComparisonSnapshotState.STALE
+
+    def snapshotState(self) -> ComparisonSnapshotState:
+        return self.snapshot_state_value
 
     def invalidateComparison(self) -> None:
         self.invalidate_calls += 1
-        self.is_stale = True
+        self.snapshot_state_value = ComparisonSnapshotState.STALE
 
     def updateComparisonItemDecision(
         self,
@@ -918,7 +944,7 @@ def test_youtube_playlists_controller_does_not_trigger_auto_import_on_load_witho
     assert import_view_model.request_calls == 0
 
 
-def test_comparison_controller_request_comparison_loads_local_songs_and_matching_results_into_page() -> None:
+def test_comparison_controller_request_recomparison_loads_local_songs_and_matching_results_into_page() -> None:
     page = ComparisonPageSpy()
     active_folder = LocalFolderDto(
         id=7,
@@ -982,12 +1008,14 @@ def test_comparison_controller_request_comparison_loads_local_songs_and_matching
     view_model = LibraryComparisonViewModelSpy(
         feedbacks=[
             LibraryComparisonFeedback(
-                status_message="Comparando biblioteca local contra playlist activa...",
+                status_message="Recomparando biblioteca local contra playlist activa...",
                 status_tone="info",
+                snapshot_state=ComparisonSnapshotState.RECOMPUTING,
             ),
             LibraryComparisonFeedback(
                 status_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
                 status_tone="success",
+                snapshot_state=ComparisonSnapshotState.FRESH,
                 local_songs=local_songs,
                 comparison_result=comparison_result,
                 comparison_history=comparison_history,
@@ -1003,26 +1031,26 @@ def test_comparison_controller_request_comparison_loads_local_songs_and_matching
         load_active_playlist=context.load_active_playlist,
     )
 
-    controller.requestComparison()
+    controller.requestRecomparison()
 
     assert page.confirmation_requests == 1
     assert page.confirmation_payloads == [("Favoritas", "Active")]
-    assert view_model.request_calls == 1
+    assert view_model.recomparison_calls == 1
     assert page.loading_messages == [
         'Recalculando la comparacion entre "Favoritas" y "Active"...'
     ]
     assert page.loading_hidden == 1
-    assert page.primary_action_labels[-1] == "↻ Refrescar"
+    assert page.action_labels[-1] == ("↻ Refrescar snapshot", "↻ Recomparar")
     assert page.local_songs == local_songs
     assert page.comparison_result == comparison_result
     assert page.comparison_history == comparison_history
     assert page.status_messages == [
-        ("Comparando biblioteca local contra playlist activa...", "info"),
+        ("Recomparando biblioteca local contra playlist activa...", "info"),
         ("Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.", "success"),
     ]
 
 
-def test_comparison_controller_request_comparison_shows_error_feedback_when_comparison_fails() -> None:
+def test_comparison_controller_request_recomparison_shows_error_feedback_when_comparison_fails() -> None:
     page = ComparisonPageSpy()
     context = ActiveComparisonContextSpy(
         folder=LocalFolderDto(
@@ -1042,12 +1070,14 @@ def test_comparison_controller_request_comparison_shows_error_feedback_when_comp
     view_model = LibraryComparisonViewModelSpy(
         feedbacks=[
             LibraryComparisonFeedback(
-                status_message="Comparando biblioteca local contra playlist activa...",
+                status_message="Recomparando biblioteca local contra playlist activa...",
                 status_tone="info",
+                snapshot_state=ComparisonSnapshotState.RECOMPUTING,
             ),
             LibraryComparisonFeedback(
                 status_message="No hay una biblioteca local activa para comparar.",
                 status_tone="error",
+                snapshot_state=ComparisonSnapshotState.STALE,
             ),
         ]
     )
@@ -1058,10 +1088,10 @@ def test_comparison_controller_request_comparison_shows_error_feedback_when_comp
         load_active_playlist=context.load_active_playlist,
     )
 
-    controller.requestComparison()
+    controller.requestRecomparison()
 
     assert page.confirmation_requests == 1
-    assert view_model.request_calls == 1
+    assert view_model.recomparison_calls == 1
     assert page.loading_messages == [
         'Recalculando la comparacion entre "Favoritas" y "Active"...'
     ]
@@ -1069,12 +1099,12 @@ def test_comparison_controller_request_comparison_shows_error_feedback_when_comp
     assert page.local_songs is None
     assert page.comparison_result is None
     assert page.status_messages == [
-        ("Comparando biblioteca local contra playlist activa...", "info"),
+        ("Recomparando biblioteca local contra playlist activa...", "info"),
         ("No hay una biblioteca local activa para comparar.", "error"),
     ]
 
 
-def test_comparison_controller_request_comparison_does_nothing_when_user_cancels_confirmation() -> None:
+def test_comparison_controller_request_recomparison_does_nothing_when_user_cancels_confirmation() -> None:
     page = ComparisonPageSpy(confirms_comparison=False)
     view_model = LibraryComparisonViewModelSpy()
     context = ActiveComparisonContextSpy(
@@ -1099,10 +1129,10 @@ def test_comparison_controller_request_comparison_does_nothing_when_user_cancels
         load_active_playlist=context.load_active_playlist,
     )
 
-    controller.requestComparison()
+    controller.requestRecomparison()
 
     assert page.confirmation_requests == 1
-    assert view_model.request_calls == 0
+    assert view_model.recomparison_calls == 0
     assert page.loading_messages == []
     assert page.loading_hidden == 0
 
@@ -1161,7 +1191,7 @@ def test_comparison_controller_reuses_cached_results_without_reloading() -> None
                 total_compared=1,
             )
         ],
-        is_stale=False,
+        snapshot_state=ComparisonSnapshotState.FRESH,
     )
     controller = ComparisonController(
         page=page,
@@ -1173,13 +1203,14 @@ def test_comparison_controller_reuses_cached_results_without_reloading() -> None
     controller.load()
 
     assert view_model.restore_calls == 0
-    assert view_model.request_calls == 0
+    assert view_model.recomparison_calls == 0
     assert page.loading_messages == []
     assert page.loading_hidden == 0
     assert page.local_songs == local_songs
     assert page.comparison_result == comparison_result
     assert len(page.comparison_history) == 1
-    assert page.status_messages == []
+    assert page.action_labels == [("↻ Refrescar snapshot", "↻ Recomparar"), ("↻ Refrescar snapshot", "↻ Recomparar")]
+    assert page.status_messages == [("Mostrando snapshot persistido actual.", "info")]
 
 
 def test_comparison_controller_load_shows_manual_message_without_cached_results() -> None:
@@ -1210,12 +1241,12 @@ def test_comparison_controller_load_shows_manual_message_without_cached_results(
     controller.load()
 
     assert view_model.restore_calls == 1
-    assert view_model.request_calls == 0
+    assert view_model.recomparison_calls == 0
     assert page.loading_messages == []
-    assert page.primary_action_labels == ["↻ Refrescar"]
+    assert page.action_labels == [("↻ Refrescar snapshot", "↻ Recomparar")]
     assert page.status_messages == [
         (
-            'Pulsa "Refrescar comparacion" para calcular la comparacion y guardar el resultado actualizado.',
+            'No hay snapshot persistido para la biblioteca y playlist activas. Pulsa "Recomparar" para generar el primero.',
             "info",
         )
     ]
@@ -1275,7 +1306,7 @@ def test_comparison_controller_load_restores_persisted_results_when_memory_cache
                 total_compared=1,
             )
         ],
-        is_stale=False,
+        snapshot_state=ComparisonSnapshotState.FRESH,
     )
     controller = ComparisonController(
         page=page,
@@ -1290,7 +1321,81 @@ def test_comparison_controller_load_restores_persisted_results_when_memory_cache
     assert page.local_songs == local_songs
     assert page.comparison_result == comparison_result
     assert len(page.comparison_history) == 1
-    assert page.status_messages == []
+    assert page.status_messages == [("Mostrando snapshot persistido actual.", "info")]
+
+
+def test_comparison_controller_refresh_view_reloads_persisted_snapshot_without_recomparison() -> None:
+    page = ComparisonPageSpy()
+    context = ActiveComparisonContextSpy(
+        folder=LocalFolderDto(
+            id=7,
+            path=r"C:\Music\Active",
+            display_name="Active",
+            is_active=True,
+        ),
+        playlist=YoutubePlaylistDto(
+            id=9,
+            title="Favoritas",
+            playlist_url="https://www.youtube.com/playlist?list=PL123",
+            external_playlist_id="PL123",
+            is_active=True,
+        ),
+    )
+    local_songs = [
+        LocalSongDto(
+            id=1,
+            local_folder_id=7,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            album="Album One",
+            release_year=2024,
+            track_number_album=1,
+            duration_seconds=180.0,
+        )
+    ]
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[],
+    )
+    view_model = LibraryComparisonViewModelSpy(
+        persisted_local_songs=local_songs,
+        persisted_comparison_result=comparison_result,
+        persisted_comparison_history=[
+            PlaylistComparisonHistoryEntryDto(
+                comparison_id=11,
+                compared_at=datetime(2026, 6, 8, 8, 50, tzinfo=UTC),
+                found_count=1,
+                missing_count=0,
+                possible_match_count=0,
+                total_compared=1,
+            )
+        ],
+        snapshot_state=ComparisonSnapshotState.FRESH,
+    )
+    controller = ComparisonController(
+        page=page,
+        view_model=view_model,
+        load_active_folder=context.load_active_folder,
+        load_active_playlist=context.load_active_playlist,
+    )
+
+    controller.refreshComparisonView()
+
+    assert view_model.refresh_calls == 1
+    assert view_model.recomparison_calls == 0
+    assert page.confirmation_requests == 0
+    assert page.local_songs == local_songs
+    assert page.comparison_result == comparison_result
+    assert len(page.comparison_history) == 1
+    assert page.status_messages == [("Mostrando snapshot persistido actual.", "info")]
 
 
 def test_comparison_controller_load_keeps_stale_cache_without_reloading() -> None:
@@ -1347,7 +1452,7 @@ def test_comparison_controller_load_keeps_stale_cache_without_reloading() -> Non
                 total_compared=1,
             )
         ],
-        is_stale=True,
+        snapshot_state=ComparisonSnapshotState.STALE,
     )
     controller = ComparisonController(
         page=page,
@@ -1358,14 +1463,14 @@ def test_comparison_controller_load_keeps_stale_cache_without_reloading() -> Non
 
     controller.load()
 
-    assert view_model.request_calls == 0
+    assert view_model.recomparison_calls == 0
     assert page.local_songs == local_songs
     assert page.comparison_result == comparison_result
     assert len(page.comparison_history) == 1
-    assert page.primary_action_labels[-1] == "↻ Volver a comparar"
+    assert page.action_labels[-1] == ("↻ Refrescar snapshot", "↻ Recomparar")
     assert page.status_messages == [
         (
-            'La biblioteca o la playlist activas han cambiado. Pulsa "Volver a comparar" para recalcular los resultados con el estado mas reciente.',
+            'Mostrando snapshot persistido desactualizado. Pulsa "Recomparar" para recalcular con el estado mas reciente.',
             "info",
         )
     ]
@@ -1393,7 +1498,7 @@ def test_comparison_controller_load_explains_missing_active_context() -> None:
     ]
 
 
-def test_comparison_controller_request_comparison_requires_active_playlist_and_folder() -> None:
+def test_comparison_controller_request_recomparison_requires_active_playlist_and_folder() -> None:
     page = ComparisonPageSpy()
     view_model = LibraryComparisonViewModelSpy()
     context = ActiveComparisonContextSpy(
@@ -1411,10 +1516,10 @@ def test_comparison_controller_request_comparison_requires_active_playlist_and_f
         load_active_playlist=context.load_active_playlist,
     )
 
-    controller.requestComparison()
+    controller.requestRecomparison()
 
     assert page.confirmation_requests == 0
-    assert view_model.request_calls == 0
+    assert view_model.recomparison_calls == 0
     assert page.loading_messages == []
     assert page.status_messages == [
         ("Activa una playlist de YouTube para ejecutar la comparacion.", "error")
@@ -1433,7 +1538,7 @@ def test_comparison_controller_invalidate_prompts_user_to_rerun_comparison_after
             ),
             items=[],
         ),
-        is_stale=False,
+        snapshot_state=ComparisonSnapshotState.FRESH,
     )
     context = ActiveComparisonContextSpy(
         folder=LocalFolderDto(
@@ -1460,10 +1565,10 @@ def test_comparison_controller_invalidate_prompts_user_to_rerun_comparison_after
     controller.invalidate()
 
     assert view_model.invalidate_calls == 1
-    assert page.primary_action_labels == ["↻ Volver a comparar"]
+    assert page.action_labels == [("↻ Refrescar snapshot", "↻ Recomparar")]
     assert page.status_messages == [
         (
-            'La biblioteca o la playlist activas han cambiado. Pulsa "Volver a comparar" para recalcular los resultados con el estado mas reciente.',
+            'Mostrando snapshot persistido desactualizado. Pulsa "Recomparar" para recalcular con el estado mas reciente.',
             "info",
         )
     ]
@@ -1544,7 +1649,7 @@ def test_comparison_controller_handles_manual_decision_from_page_callback() -> N
         cached_local_songs=local_songs,
         cached_comparison_result=comparison_result,
         cached_comparison_history=[],
-        is_stale=False,
+        snapshot_state=ComparisonSnapshotState.FRESH,
     )
     view_model.manual_decision_feedback = LibraryComparisonFeedback(
         status_message="Resultado marcado manualmente como encontrada con cancion local enlazada.",

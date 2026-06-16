@@ -16,9 +16,11 @@ Al entrar en la pantalla:
 * si la cache esta obsoleta, se sigue mostrando con aviso
 * si no hay cache, se muestra un estado informativo
 
-La recomparacion solo se ejecuta cuando el usuario pulsa `Refrescar comparacion`.
+La recomparacion solo se ejecuta cuando el usuario pulsa `Recomparar`.
 
-Esa accion:
+El refresh barato de vista queda separado en `Refrescar snapshot`.
+
+La accion `Recomparar`:
 
 * recalcula el matching completo para la playlist y biblioteca activas
 * genera un nuevo snapshot persistido en BBDD
@@ -26,10 +28,17 @@ Esa accion:
 * valida antes de arrancar que exista una playlist activa y una biblioteca activa
 * confirma explicitamente al usuario que la ejecucion se hara contra esa pareja activa
 
+La accion `Refrescar snapshot`:
+
+* recarga el ultimo snapshot persistido del ambito activo
+* no ejecuta el worker de comparacion
+* mantiene visible si el snapshot cargado esta `fresh` o `stale`
+
 ## Consecuencias
 
 * entrar en la pantalla deja de disparar trabajo pesado
 * la navegacion es mas estable y predecible
 * el usuario controla cuando asumir el coste de recalculo
+* el usuario puede refrescar la vista sin pagar una recomputacion total
 * se evita lanzar el worker cuando falta contexto activo
 * el feedback de confirmacion deja claro que el alcance siempre es la playlist activa y la biblioteca activa

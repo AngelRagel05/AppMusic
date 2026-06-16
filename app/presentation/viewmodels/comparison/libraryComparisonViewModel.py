@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import Enum
 
 from app.application.dto.localSongDto import LocalSongDto
 from app.application.dto.playlistComparisonHistoryEntryDto import (
@@ -19,10 +20,17 @@ from app.workers import LoadLibraryComparisonWorker
 class LibraryComparisonFeedback:
     status_message: str
     status_tone: str
+    snapshot_state: "ComparisonSnapshotState | None" = None
     local_songs: list[LocalSongDto] | None = None
     comparison_result: PlaylistComparisonResultDto | None = None
     comparison_history: list[PlaylistComparisonHistoryEntryDto] | None = None
     last_action_message: str | None = None
+
+
+class ComparisonSnapshotState(str, Enum):
+    FRESH = "fresh"
+    STALE = "stale"
+    RECOMPUTING = "recomputing"
 
 
 class LibraryComparisonViewModel:
@@ -62,28 +70,31 @@ class LibraryComparisonViewModel:
         self._local_songs_cache: list[LocalSongDto] = []
         self._comparison_result_cache: PlaylistComparisonResultDto | None = None
         self._comparison_history_cache: list[PlaylistComparisonHistoryEntryDto] = []
-        self._comparison_in_progress = False
-        self._comparison_is_stale = True
+        self._snapshot_state = ComparisonSnapshotState.FRESH
+        self._previous_snapshot_state = ComparisonSnapshotState.FRESH
 
-    def requestComparison(
+    def requestRecomparison(
         self,
         schedule_on_main_thread: Callable[[Callable[[], None]], None],
         on_feedback: Callable[[LibraryComparisonFeedback], None],
     ) -> None:
-        if self._comparison_in_progress:
+        if self._snapshot_state is ComparisonSnapshotState.RECOMPUTING:
             on_feedback(
                 LibraryComparisonFeedback(
-                    status_message="Ya hay una comparacion en curso.",
+                    status_message="Ya hay una recomparacion en curso.",
                     status_tone="info",
+                    snapshot_state=self._snapshot_state,
                 )
             )
             return
 
-        self._comparison_in_progress = True
+        self._previous_snapshot_state = self._snapshot_state
+        self._snapshot_state = ComparisonSnapshotState.RECOMPUTING
         on_feedback(
             LibraryComparisonFeedback(
-                status_message="Comparando biblioteca local contra playlist activa...",
+                status_message="Recomparando biblioteca local contra playlist activa...",
                 status_tone="info",
+                snapshot_state=self._snapshot_state,
             )
         )
         comparison_worker = LoadLibraryComparisonWorker(
@@ -115,6 +126,11 @@ class LibraryComparisonViewModel:
     def restorePersistedComparison(self) -> bool:
         if self._comparison_result_cache is not None:
             return True
+        return self.refreshPersistedComparison()
+
+    def refreshPersistedComparison(self) -> bool:
+        if self._snapshot_state is ComparisonSnapshotState.RECOMPUTING:
+            return self._comparison_result_cache is not None
 
         persisted_snapshot = self._load_persisted_comparison()
         if persisted_snapshot is None:
@@ -124,14 +140,20 @@ class LibraryComparisonViewModel:
         self._local_songs_cache = list(local_songs)
         self._comparison_result_cache = comparison_result
         self._comparison_history_cache = list(comparison_history)
-        self._comparison_is_stale = False
+        if self._snapshot_state is not ComparisonSnapshotState.STALE:
+            self._snapshot_state = ComparisonSnapshotState.FRESH
         return True
 
     def isComparisonStale(self) -> bool:
-        return self._comparison_is_stale
+        return self._snapshot_state is ComparisonSnapshotState.STALE
+
+    def snapshotState(self) -> ComparisonSnapshotState:
+        return self._snapshot_state
 
     def invalidateComparison(self) -> None:
-        self._comparison_is_stale = True
+        if self._snapshot_state is ComparisonSnapshotState.RECOMPUTING:
+            return
+        self._snapshot_state = ComparisonSnapshotState.STALE
 
     def updateComparisonItemDecision(
         self,
@@ -181,7 +203,7 @@ class LibraryComparisonViewModel:
         self._local_songs_cache = list(local_songs)
         self._comparison_result_cache = comparison_result
         self._comparison_history_cache = list(comparison_history)
-        self._comparison_is_stale = False
+        self._snapshot_state = ComparisonSnapshotState.FRESH
         message = self._buildManualDecisionMessage(
             match_status=match_status,
             local_song_id=local_song_id,
@@ -189,6 +211,7 @@ class LibraryComparisonViewModel:
         return LibraryComparisonFeedback(
             status_message=message,
             status_tone="success",
+            snapshot_state=self._snapshot_state,
             local_songs=list(local_songs),
             comparison_result=comparison_result,
             comparison_history=list(comparison_history),
@@ -217,11 +240,10 @@ class LibraryComparisonViewModel:
         comparison_history: list[PlaylistComparisonHistoryEntryDto],
         on_feedback: Callable[[LibraryComparisonFeedback], None],
     ) -> None:
-        self._comparison_in_progress = False
         self._local_songs_cache = list(local_songs)
         self._comparison_result_cache = comparison_result
         self._comparison_history_cache = list(comparison_history)
-        self._comparison_is_stale = False
+        self._snapshot_state = ComparisonSnapshotState.FRESH
         summary = comparison_result.summary
         message = (
             "Comparacion completada: "
@@ -233,6 +255,7 @@ class LibraryComparisonViewModel:
             LibraryComparisonFeedback(
                 status_message=message,
                 status_tone="success",
+                snapshot_state=self._snapshot_state,
                 local_songs=list(local_songs),
                 comparison_result=comparison_result,
                 comparison_history=list(comparison_history),
@@ -245,10 +268,11 @@ class LibraryComparisonViewModel:
         error: Exception,
         on_feedback: Callable[[LibraryComparisonFeedback], None],
     ) -> None:
-        self._comparison_in_progress = False
+        self._snapshot_state = self._previous_snapshot_state
         on_feedback(
             LibraryComparisonFeedback(
                 status_message=str(error),
                 status_tone="error",
+                snapshot_state=self._snapshot_state,
             )
         )

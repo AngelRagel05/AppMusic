@@ -1,6 +1,7 @@
 """Presentation viewmodels."""
 
 from app.presentation.viewmodels.comparison import (
+    ComparisonSnapshotState,
     LibraryComparisonFeedback,
     LibraryComparisonViewModel,
 )
@@ -16,6 +17,7 @@ from app.presentation.viewmodels.youtubePlaylists import (
 
 __all__ = [
     "IgnoredTermsViewModel",
+    "ComparisonSnapshotState",
     "LibraryComparisonFeedback",
     "LibraryComparisonViewModel",
     "LocalFolderViewModel",

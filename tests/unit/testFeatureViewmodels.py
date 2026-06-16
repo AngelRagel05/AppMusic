@@ -19,6 +19,7 @@ from app.application.dto.updatePlaylistComparisonResultInputDto import (
 )
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
 from app.presentation.viewmodels.comparison.libraryComparisonViewModel import (
+    ComparisonSnapshotState,
     LibraryComparisonFeedback,
     LibraryComparisonViewModel,
 )
@@ -150,7 +151,7 @@ def test_ignored_terms_view_model_create_term_refreshes_cached_terms() -> None:
     assert len(list_use_case.calls) == 1
 
 
-def test_library_comparison_view_model_emits_start_and_success_feedback() -> None:
+def test_library_comparison_view_model_emits_recomparison_start_and_success_feedback() -> None:
     local_songs = [
         LocalSongDto(
             id=1,
@@ -210,7 +211,7 @@ def test_library_comparison_view_model_emits_start_and_success_feedback() -> Non
     feedbacks: list[LibraryComparisonFeedback] = []
     scheduled_callbacks: list[Callable[[], None]] = []
 
-    view_model.requestComparison(
+    view_model.requestRecomparison(
         schedule_on_main_thread=scheduled_callbacks.append,
         on_feedback=feedbacks.append,
     )
@@ -223,8 +224,9 @@ def test_library_comparison_view_model_emits_start_and_success_feedback() -> Non
     assert len(compare_use_case.calls) == 1
     assert feedbacks == [
         LibraryComparisonFeedback(
-            status_message="Comparando biblioteca local contra playlist activa...",
+            status_message="Recomparando biblioteca local contra playlist activa...",
             status_tone="info",
+            snapshot_state=ComparisonSnapshotState.RECOMPUTING,
             local_songs=None,
             comparison_result=None,
             comparison_history=None,
@@ -233,6 +235,7 @@ def test_library_comparison_view_model_emits_start_and_success_feedback() -> Non
         LibraryComparisonFeedback(
             status_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
             status_tone="success",
+            snapshot_state=ComparisonSnapshotState.FRESH,
             local_songs=local_songs,
             comparison_result=comparison_result,
             comparison_history=comparison_history,
@@ -241,7 +244,7 @@ def test_library_comparison_view_model_emits_start_and_success_feedback() -> Non
     ]
 
 
-def test_library_comparison_view_model_invalidates_cached_comparison_until_next_success() -> None:
+def test_library_comparison_view_model_tracks_snapshot_state_across_invalidation_and_success() -> None:
     local_songs = [
         LocalSongDto(
             id=1,
@@ -276,10 +279,10 @@ def test_library_comparison_view_model_invalidates_cached_comparison_until_next_
     )
     scheduled_callbacks: list[Callable[[], None]] = []
 
-    assert view_model.isComparisonStale() is True
+    assert view_model.isComparisonStale() is False
     assert view_model.hasCachedComparison() is False
 
-    view_model.requestComparison(
+    view_model.requestRecomparison(
         schedule_on_main_thread=scheduled_callbacks.append,
         on_feedback=lambda _feedback: None,
     )
@@ -287,10 +290,12 @@ def test_library_comparison_view_model_invalidates_cached_comparison_until_next_
 
     assert view_model.hasCachedComparison() is True
     assert view_model.isComparisonStale() is False
+    assert view_model.snapshotState() is ComparisonSnapshotState.FRESH
 
     view_model.invalidateComparison()
 
     assert view_model.isComparisonStale() is True
+    assert view_model.snapshotState() is ComparisonSnapshotState.STALE
 
 
 def test_library_comparison_view_model_restores_persisted_snapshot_into_memory_cache() -> None:
@@ -346,6 +351,57 @@ def test_library_comparison_view_model_restores_persisted_snapshot_into_memory_c
     assert view_model.load_local_songs() == local_songs
     assert view_model.load_comparison_result() == comparison_result
     assert view_model.load_comparison_history() == comparison_history
+    assert view_model.snapshotState() is ComparisonSnapshotState.FRESH
+    assert len(persisted_loader.calls) == 1
+
+
+def test_library_comparison_view_model_refresh_persisted_comparison_keeps_stale_state() -> None:
+    local_songs = [
+        LocalSongDto(
+            id=1,
+            local_folder_id=2,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            album="Album One",
+            release_year=2024,
+            track_number_album=1,
+            duration_seconds=180.0,
+        )
+    ]
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[],
+    )
+    comparison_history = [
+        PlaylistComparisonHistoryEntryDto(
+            comparison_id=2,
+            compared_at=datetime(2026, 6, 8, 10, 45, tzinfo=UTC),
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        )
+    ]
+    persisted_loader = StubUseCase((local_songs, comparison_result, comparison_history))
+    view_model = LibraryComparisonViewModel(
+        load_library_comparison=lambda: (local_songs, comparison_result, comparison_history),
+        load_persisted_comparison=persisted_loader.execute,
+    )
+    view_model.invalidateComparison()
+
+    refreshed = view_model.refreshPersistedComparison()
+
+    assert refreshed is True
+    assert view_model.snapshotState() is ComparisonSnapshotState.STALE
+    assert view_model.load_comparison_result() == comparison_result
     assert len(persisted_loader.calls) == 1
 
 

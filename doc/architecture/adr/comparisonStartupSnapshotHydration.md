@@ -26,10 +26,11 @@ Si encuentra ese snapshot:
 
 * evita que una comparacion ya guardada desaparezca tras reiniciar la app
 * reutiliza persistencia ya existente en vez de recalcular innecesariamente
-* mantiene el flujo manual de `Comparar ahora` como accion explicita para refrescar
+* mantiene el flujo manual de `Recomparar` como accion explicita para recalcular
+* habilita un `Refrescar snapshot` barato para recargar solo la vista
 
 ## Consecuencias
 
 * la primera apertura de `Comparacion` puede leer datos desde BBDD
 * el resultado inicial mostrado pasa a ser el ultimo snapshot persistido del ambito activo
-* si no existe snapshot persistido, la pantalla mantiene el mensaje manual actual
+* si no existe snapshot persistido, la pantalla mantiene un estado informativo hasta que el usuario pulse `Recomparar`

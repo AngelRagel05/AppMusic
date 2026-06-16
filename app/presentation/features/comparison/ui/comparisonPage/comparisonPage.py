@@ -41,8 +41,9 @@ from app.presentation.widgets.pageHeader.pageHeader import PageHeader
 class ComparisonPage(ctk.CTkFrame):
     TOP_SECTION_RATIO = 0.17
     MINIMUM_TOP_SECTION_HEIGHT = 138
-    DEFAULT_PRIMARY_ACTION_LABEL = "↻ Refrescar"
-    RERUN_PRIMARY_ACTION_LABEL = "↻ Volver a comparar"
+    REFRESH_PRIMARY_ACTION_LABEL = "↻ Refrescar snapshot"
+    RECOMPARE_SECONDARY_ACTION_LABEL = "↻ Recomparar"
+    RECOMPUTING_SECONDARY_ACTION_LABEL = "↻ Recomparando..."
     HISTORY_COLUMNS: tuple[tuple[str, int | None, int, str, int], ...] = (
         ("Fecha", 132, 0, "w", 16),
         ("Biblioteca", None, 2, "w", 16),
@@ -77,6 +78,10 @@ class ComparisonPage(ctk.CTkFrame):
         self._ensureBuilt()
         self.header.primaryActionRequested.connect(callback)
 
+    def onSecondaryActionRequested(self, callback: Callable[[], None]) -> None:
+        self._ensureBuilt()
+        self.header.secondaryActionRequested.connect(callback)
+
     def onManualDecisionRequested(
         self,
         callback: Callable[[PlaylistComparisonItemResultDto, str, int | None], bool],
@@ -84,19 +89,19 @@ class ComparisonPage(ctk.CTkFrame):
         self._ensureBuilt()
         self.section.setManualDecisionRequestedHandler(callback)
 
-    def confirmManualComparisonStart(
+    def confirmManualRecomparisonStart(
         self,
         *,
         playlist_title: str,
         folder_name: str,
     ) -> bool:
         return messagebox.askokcancel(
-            "Refrescar comparación",
+            "Recomparar",
             (
-                "Esta accion volvera a calcular la comparacion entre:\n"
+                "Esta accion recalculara la comparacion entre:\n"
                 f'• Playlist: "{playlist_title}"\n'
                 f'• Biblioteca: "{folder_name}"\n\n'
-                "Tambien actualizara el snapshot guardado en la base de datos.\n\n"
+                "Generara un snapshot nuevo y actualizara el historial guardado.\n\n"
                 "Puede tardar unos minutos dependiendo del tamaño de la biblioteca "
                 "y la playlist.\n\n¿Quieres continuar ahora?"
             ),
@@ -154,15 +159,20 @@ class ComparisonPage(ctk.CTkFrame):
     def showComparisonStatusMessage(self, message: str, tone: str = "info") -> None:
         self._ensureBuilt()
         tone_prefix = {
-            "info": "Comparando",
+            "info": "Estado",
             "success": "Resultado",
             "error": "Error",
         }.get(tone, "Comparación")
         self.header.setSubtitle(f"{tone_prefix}: {message}" if message else self._defaultSubtitle)
 
-    def setPrimaryActionLabel(self, label: str) -> None:
+    def setActionLabels(
+        self,
+        *,
+        primary_label: str | None,
+        secondary_label: str | None,
+    ) -> None:
         self._ensureBuilt()
-        self.header.setActions(None, label)
+        self.header.setActions(secondary_label, primary_label)
 
     def showLoadingState(self, message: str) -> None:
         self._loadingOverlay.show(
@@ -197,7 +207,10 @@ class ComparisonPage(ctk.CTkFrame):
             subtitle=self._defaultSubtitle,
         )
         self.header.setContextVisible(False)
-        self.header.setActions(None, self.DEFAULT_PRIMARY_ACTION_LABEL)
+        self.header.setActions(
+            self.RECOMPARE_SECONDARY_ACTION_LABEL,
+            self.REFRESH_PRIMARY_ACTION_LABEL,
+        )
         applyButtonStyle(self.header.primaryButton.widget, "primary", self._theme)
         self.header.primaryButton.widget.configure(
             height=30,

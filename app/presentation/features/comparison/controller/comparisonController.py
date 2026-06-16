@@ -9,6 +9,7 @@ from app.presentation.features.comparison.ui.comparisonPage.comparisonPage impor
     ComparisonPage,
 )
 from app.presentation.viewmodels.comparison.libraryComparisonViewModel import (
+    ComparisonSnapshotState,
     LibraryComparisonFeedback,
     LibraryComparisonViewModel,
 )
@@ -31,7 +32,10 @@ class ComparisonController:
     def load(self) -> None:
         active_folder = self._load_active_folder()
         active_playlist = self._load_active_playlist()
-        self._page.setPrimaryActionLabel(self._page.DEFAULT_PRIMARY_ACTION_LABEL)
+        self._page.setActionLabels(
+            primary_label=self._page.REFRESH_PRIMARY_ACTION_LABEL,
+            secondary_label=self._page.RECOMPARE_SECONDARY_ACTION_LABEL,
+        )
         missing_context_message = self._buildMissingContextMessage(
             active_folder,
             active_playlist,
@@ -45,29 +49,53 @@ class ComparisonController:
             self._view_model.restorePersistedComparison()
 
         if self._view_model.hasCachedComparison():
-            comparison_result = self._view_model.load_comparison_result()
-            if comparison_result is not None:
-                self._page.showComparisonData(
-                    self._view_model.load_local_songs(),
-                    comparison_result,
-                )
-                self._page.showComparisonHistory(
-                    self._view_model.load_comparison_history()
-                )
-            else:
-                self._page.showLocalSongs(self._view_model.load_local_songs())
-                self._page.showComparisonHistory([])
-            if self._view_model.isComparisonStale():
-                self._showRerunPrompt()
+            self._renderCachedSnapshot()
+            self._showSnapshotStatusMessage()
             return
 
         self._page.showComparisonHistory([])
         self._page.showComparisonStatusMessage(
-            "Pulsa \"Refrescar comparacion\" para calcular la comparacion y guardar el resultado actualizado.",
+            (
+                "No hay snapshot persistido para la biblioteca y playlist activas. "
+                "Pulsa \"Recomparar\" para generar el primero."
+            ),
             tone="info",
         )
 
-    def requestComparison(self) -> None:
+    def refreshComparisonView(self) -> None:
+        active_folder = self._load_active_folder()
+        active_playlist = self._load_active_playlist()
+        missing_context_message = self._buildMissingContextMessage(
+            active_folder,
+            active_playlist,
+        )
+        if missing_context_message is not None:
+            self._page.showComparisonHistory([])
+            self._page.showComparisonStatusMessage(missing_context_message, tone="error")
+            return
+
+        if self._view_model.snapshotState() is ComparisonSnapshotState.RECOMPUTING:
+            self._page.showComparisonStatusMessage(
+                "Ya hay una recomparacion en curso.",
+                tone="info",
+            )
+            return
+
+        if not self._view_model.refreshPersistedComparison():
+            self._page.showComparisonHistory([])
+            self._page.showComparisonStatusMessage(
+                (
+                    "No hay snapshot persistido para la biblioteca y playlist activas. "
+                    "Pulsa \"Recomparar\" para generar el primero."
+                ),
+                tone="info",
+            )
+            return
+
+        self._renderCachedSnapshot()
+        self._showSnapshotStatusMessage()
+
+    def requestRecomparison(self) -> None:
         active_folder = self._load_active_folder()
         active_playlist = self._load_active_playlist()
         missing_context_message = self._buildMissingContextMessage(
@@ -81,7 +109,7 @@ class ComparisonController:
 
         playlist_title = getattr(active_playlist, "title", "Playlist activa")
         folder_name = getattr(active_folder, "display_name", "Biblioteca activa")
-        if not self._page.confirmManualComparisonStart(
+        if not self._page.confirmManualRecomparisonStart(
             playlist_title=playlist_title,
             folder_name=folder_name,
         ):
@@ -92,17 +120,17 @@ class ComparisonController:
                 f'y "{folder_name}"...'
             )
         )
-        self._page.after(16, self._startComparison)
+        self._page.after(16, self._startRecomparison)
 
     def invalidate(self) -> None:
         self._view_model.invalidateComparison()
         active_folder = self._load_active_folder()
         active_playlist = self._load_active_playlist()
         if self._buildMissingContextMessage(active_folder, active_playlist) is None:
-            self._showRerunPrompt()
+            self._showSnapshotStatusMessage()
 
-    def _startComparison(self) -> None:
-        self._view_model.requestComparison(
+    def _startRecomparison(self) -> None:
+        self._view_model.requestRecomparison(
             schedule_on_main_thread=lambda callback: self._page.after(0, callback),
             on_feedback=self._renderComparisonFeedback,
         )
@@ -112,10 +140,11 @@ class ComparisonController:
             feedback.status_message,
             tone=feedback.status_tone,
         )
+        self._syncActionLabels(
+            feedback.snapshot_state or self._view_model.snapshotState()
+        )
         if feedback.status_tone == "error" or feedback.comparison_result is not None:
             self._page.hideLoadingState()
-        if feedback.comparison_result is not None:
-            self._page.setPrimaryActionLabel(self._page.DEFAULT_PRIMARY_ACTION_LABEL)
         if (
             feedback.local_songs is not None
             and feedback.comparison_result is not None
@@ -148,14 +177,53 @@ class ComparisonController:
             return "Activa una biblioteca local para ejecutar la comparacion."
         return None
 
-    def _showRerunPrompt(self) -> None:
-        self._page.setPrimaryActionLabel(self._page.RERUN_PRIMARY_ACTION_LABEL)
+    def _renderCachedSnapshot(self) -> None:
+        comparison_result = self._view_model.load_comparison_result()
+        if comparison_result is not None:
+            self._page.showComparisonData(
+                self._view_model.load_local_songs(),
+                comparison_result,
+            )
+            self._page.showComparisonHistory(
+                self._view_model.load_comparison_history()
+            )
+            return
+        self._page.showLocalSongs(self._view_model.load_local_songs())
+        self._page.showComparisonHistory([])
+
+    def _showSnapshotStatusMessage(self) -> None:
+        self._syncActionLabels(self._view_model.snapshotState())
+        snapshot_state = self._view_model.snapshotState()
+        if snapshot_state is ComparisonSnapshotState.STALE:
+            self._page.showComparisonStatusMessage(
+                (
+                    "Mostrando snapshot persistido desactualizado. "
+                    "Pulsa \"Recomparar\" para recalcular con el estado mas reciente."
+                ),
+                tone="info",
+            )
+            return
+        if snapshot_state is ComparisonSnapshotState.RECOMPUTING:
+            self._page.showComparisonStatusMessage(
+                "Recomparando biblioteca local contra playlist activa...",
+                tone="info",
+            )
+            return
         self._page.showComparisonStatusMessage(
-            (
-                "La biblioteca o la playlist activas han cambiado. "
-                "Pulsa \"Volver a comparar\" para recalcular los resultados con el estado mas reciente."
-            ),
+            "Mostrando snapshot persistido actual.",
             tone="info",
+        )
+
+    def _syncActionLabels(
+        self,
+        snapshot_state: ComparisonSnapshotState,
+    ) -> None:
+        secondary_label = self._page.RECOMPARE_SECONDARY_ACTION_LABEL
+        if snapshot_state is ComparisonSnapshotState.RECOMPUTING:
+            secondary_label = self._page.RECOMPUTING_SECONDARY_ACTION_LABEL
+        self._page.setActionLabels(
+            primary_label=self._page.REFRESH_PRIMARY_ACTION_LABEL,
+            secondary_label=secondary_label,
         )
 
     def _handleManualLocalSongLinkRequested(

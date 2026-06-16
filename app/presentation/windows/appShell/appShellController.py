@@ -121,7 +121,10 @@ class AppShellController:
             load_active_playlist=self._youtube_playlists_controller.activePlaylist,
         )
         self._view.page.comparisonPage.onPrimaryActionRequested(
-            self._comparison_controller.requestComparison
+            self._comparison_controller.refreshComparisonView
+        )
+        self._view.page.comparisonPage.onSecondaryActionRequested(
+            self._comparison_controller.requestRecomparison
         )
         self._comparison_page_bound = True
 
