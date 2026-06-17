@@ -30,6 +30,7 @@ Cubren:
 * bootstrap de base de datos
 * repositorios concretos
 * persistencia real con SQLite en memoria
+* regresiones funcionales de comparacion con casos reales representativos
 
 ## e2e
 
@@ -65,3 +66,4 @@ La estrategia evita depender de un display grafico en CI, por lo que no intenta 
 ## Documento historico relacionado
 
 * `doc/architecture/adr/testLevelsClassification.md`
+* `doc/architecture/adr/comparisonObservabilityAndPerformanceValidation.md`

@@ -29,6 +29,7 @@ El resultado contiene:
 
 * `summary`
 * `items`
+* `observability` cuando la comparacion se recomputa
 
 ## Consecuencias
 
@@ -37,3 +38,4 @@ El resultado contiene:
 * el resultado queda persistido como snapshot reutilizable
 * la disponibilidad de una cancion local influye directamente en el matching
 * cada item conserva su `score` para uso posterior
+* el coste del recompute queda medible por fases y volumen

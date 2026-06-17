@@ -3,12 +3,22 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from time import perf_counter
 
 from app.application.dto.playlistComparisonItemResultDto import (
     PlaylistComparisonItemResultDto,
 )
+from app.application.dto.playlistComparisonObservabilityDto import (
+    PlaylistComparisonObservabilityDto,
+)
+from app.application.dto.playlistComparisonPhaseTimingsDto import (
+    PlaylistComparisonPhaseTimingsDto,
+)
 from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
+from app.application.dto.playlistComparisonVolumeMetricsDto import (
+    PlaylistComparisonVolumeMetricsDto,
+)
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
 from app.domain.library.repositories.localSongRepository import LocalSongRepository
 from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
@@ -24,6 +34,7 @@ from app.domain.playlists.services import (
     buildCandidateSelectionBatches,
     buildComparableLocalSongCandidateIndex,
     matchPersistedPlaylistItemToLocalSongs,
+    PersistedPlaylistItemMatchResult,
     shouldInvalidatePersistedFoundMatch,
 )
 from app.domain.playlists.repositories.playlistComparisonRepository import PlaylistComparisonRepository
@@ -42,6 +53,12 @@ class IncrementalComparisonPlan:
     frozen_rows_by_item_id: dict[int, PlaylistComparisonResult]
     youtube_items_to_recompare: list[object]
     reserved_local_song_ids: set[int]
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateStageMatchOutcome:
+    match_result: PersistedPlaylistItemMatchResult
+    unique_candidates_considered: int
 
 
 class CompareYoutubePlaylistWithLocalLibraryUseCase:
@@ -71,6 +88,8 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         *,
         force_full_recompute: bool = False,
     ) -> PlaylistComparisonResultDto:
+        total_started_at = perf_counter()
+        snapshot_load_started_at = total_started_at
         active_youtube_playlist = self._youtube_playlist_repository.get_active()
         if active_youtube_playlist is None or active_youtube_playlist.id is None:
             raise ValueError("No hay una playlist principal activa para comparar.")
@@ -83,21 +102,6 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             active_youtube_playlist.id
         )
         persisted_local_songs = self._local_song_repository.list_by_folder(active_local_folder.id)
-        available_local_songs = [local_song for local_song in persisted_local_songs if local_song.is_available]
-        comparable_local_songs = [
-            self._buildComparableLocalSong(local_song)
-            for local_song in available_local_songs
-            if local_song.id is not None
-        ]
-        candidate_index = buildComparableLocalSongCandidateIndex(comparable_local_songs)
-        local_song_by_id = {
-            local_song.id: local_song for local_song in persisted_local_songs if local_song.id is not None
-        }
-        youtube_playlist_item_by_id = {
-            youtube_playlist_item.id: youtube_playlist_item
-            for youtube_playlist_item in youtube_playlist_items
-            if youtube_playlist_item.id is not None
-        }
         latest_persisted_comparison = self._playlist_comparison_repository.find_latest_for_scope(
             active_youtube_playlist.id,
             active_local_folder.id,
@@ -118,9 +122,25 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         current_local_library_state_fingerprint = self._buildLocalLibraryStateFingerprint(
             persisted_local_songs
         )
+        snapshot_load_seconds = perf_counter() - snapshot_load_started_at
 
+        pool_build_started_at = perf_counter()
+        available_local_songs = [local_song for local_song in persisted_local_songs if local_song.is_available]
         comparison_items: list[PlaylistComparisonItemResultDto] = []
         match_result_by_item: dict[int, str | None] = {}
+        comparable_local_songs = [
+            self._buildComparableLocalSong(local_song)
+            for local_song in available_local_songs
+            if local_song.id is not None
+        ]
+        local_song_by_id = {
+            local_song.id: local_song for local_song in persisted_local_songs if local_song.id is not None
+        }
+        youtube_playlist_item_by_id = {
+            youtube_playlist_item.id: youtube_playlist_item
+            for youtube_playlist_item in youtube_playlist_items
+            if youtube_playlist_item.id is not None
+        }
         incremental_plan = self._buildIncrementalComparisonPlan(
             latest_results=latest_results,
             latest_persisted_comparison=latest_persisted_comparison,
@@ -130,7 +150,15 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             current_ignored_terms_version=current_ignored_terms_version,
             force_full_recompute=force_full_recompute,
         )
+        initially_reserved_local_song_count = len(incremental_plan.reserved_local_song_ids)
+        pool_build_seconds = perf_counter() - pool_build_started_at
 
+        indexing_started_at = perf_counter()
+        candidate_index = buildComparableLocalSongCandidateIndex(comparable_local_songs)
+        indexing_seconds = perf_counter() - indexing_started_at
+
+        matching_started_at = perf_counter()
+        total_candidates_considered = 0
         for youtube_playlist_item in youtube_playlist_items:
             frozen_row = incremental_plan.frozen_rows_by_item_id.get(youtube_playlist_item.id or 0)
             if frozen_row is not None:
@@ -165,11 +193,13 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             comparable_youtube_playlist_item = self._buildComparableYoutubePlaylistItem(
                 youtube_playlist_item
             )
-            match_result = self._matchWithCandidateStages(
+            match_outcome = self._matchWithCandidateStages(
                 comparable_youtube_playlist_item,
                 candidate_index,
                 reserved_local_song_ids=incremental_plan.reserved_local_song_ids,
             )
+            match_result = match_outcome.match_result
+            total_candidates_considered += match_outcome.unique_candidates_considered
             match_result_by_item[youtube_playlist_item.id or 0] = match_result.matched_by
             matched_local_song = (
                 local_song_by_id.get(match_result.local_song.id)
@@ -201,6 +231,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                     matched_by=match_result.matched_by,
                 )
             )
+        matching_seconds = perf_counter() - matching_started_at
 
         comparison_items_by_item_id = {
             item.youtube_playlist_item_id: item for item in comparison_items
@@ -211,6 +242,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             if (youtube_playlist_item.id or 0) in comparison_items_by_item_id
         ]
 
+        persistence_started_at = perf_counter()
         persisted_comparison = self._playlist_comparison_repository.create(
             active_youtube_playlist.id,
             active_local_folder.id,
@@ -249,6 +281,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             self._playlist_comparison_result_repository.delete_by_comparison_id(comparison_id)
         self._playlist_comparison_repository.delete_by_ids(excess_comparison_ids)
         self._playlist_comparison_repository.commit()
+        persistence_seconds = perf_counter() - persistence_started_at
 
         summary = PlaylistComparisonSummaryDto(
             found_count=sum(
@@ -268,6 +301,28 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             ),
             total_compared=len(comparison_items),
         )
+        recomputed_item_count = len(incremental_plan.youtube_items_to_recompare)
+        observability = PlaylistComparisonObservabilityDto(
+            phase_timings=PlaylistComparisonPhaseTimingsDto(
+                snapshot_load_seconds=snapshot_load_seconds,
+                pool_build_seconds=pool_build_seconds,
+                indexing_seconds=indexing_seconds,
+                matching_seconds=matching_seconds,
+                persistence_seconds=persistence_seconds,
+                total_seconds=perf_counter() - total_started_at,
+            ),
+            volume_metrics=PlaylistComparisonVolumeMetricsDto(
+                skipped_found_count=len(incremental_plan.frozen_rows_by_item_id),
+                reserved_local_song_count=initially_reserved_local_song_count,
+                recomputed_item_count=recomputed_item_count,
+                total_candidates_considered=total_candidates_considered,
+                average_candidates_per_recomputed_item=(
+                    total_candidates_considered / recomputed_item_count
+                    if recomputed_item_count > 0
+                    else 0.0
+                ),
+            ),
+        )
         return PlaylistComparisonResultDto(
             summary=summary,
             items=comparison_items,
@@ -275,6 +330,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             last_compared_at=(
                 persisted_comparison.compared_at or datetime.now(UTC)
             ),
+            observability=observability,
         )
 
     def _buildIncrementalComparisonPlan(
@@ -324,14 +380,20 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         candidate_index,
         *,
         reserved_local_song_ids: set[int],
-    ):
+    ) -> CandidateStageMatchOutcome:
         candidate_batches = buildCandidateSelectionBatches(
             youtube_playlist_item,
             candidate_index,
             reserved_local_song_ids=reserved_local_song_ids,
         )
         last_match_result = None
+        candidate_ids_considered: set[int] = set()
         for candidate_batch in candidate_batches:
+            candidate_ids_considered.update(
+                local_song.id
+                for local_song in candidate_batch.local_songs
+                if local_song.id is not None
+            )
             last_match_result = matchPersistedPlaylistItemToLocalSongs(
                 youtube_playlist_item,
                 candidate_batch.local_songs,
@@ -340,15 +402,27 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                 candidate_batch.stage is CandidateSelectionStage.EXACT
                 and last_match_result.comparison_status is ComparisonStatus.FOUND
             ):
-                return last_match_result
+                return CandidateStageMatchOutcome(
+                    match_result=last_match_result,
+                    unique_candidates_considered=len(candidate_ids_considered),
+                )
             if (
                 candidate_batch.stage is CandidateSelectionStage.VERY_SIMILAR
                 and last_match_result.comparison_status is ComparisonStatus.FOUND
             ):
-                return last_match_result
+                return CandidateStageMatchOutcome(
+                    match_result=last_match_result,
+                    unique_candidates_considered=len(candidate_ids_considered),
+                )
         if last_match_result is not None:
-            return last_match_result
-        return matchPersistedPlaylistItemToLocalSongs(youtube_playlist_item, ())
+            return CandidateStageMatchOutcome(
+                match_result=last_match_result,
+                unique_candidates_considered=len(candidate_ids_considered),
+            )
+        return CandidateStageMatchOutcome(
+            match_result=matchPersistedPlaylistItemToLocalSongs(youtube_playlist_item, ()),
+            unique_candidates_considered=0,
+        )
 
     def _buildFrozenFoundRowsByItemId(
         self,

@@ -15,8 +15,17 @@ from app.application.dto.playlistComparisonItemResultDto import (
 from app.application.dto.playlistComparisonHistoryEntryDto import (
     PlaylistComparisonHistoryEntryDto,
 )
+from app.application.dto.playlistComparisonObservabilityDto import (
+    PlaylistComparisonObservabilityDto,
+)
+from app.application.dto.playlistComparisonPhaseTimingsDto import (
+    PlaylistComparisonPhaseTimingsDto,
+)
 from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
+from app.application.dto.playlistComparisonVolumeMetricsDto import (
+    PlaylistComparisonVolumeMetricsDto,
+)
 from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.updatePlaylistComparisonResultInputDto import (
     UpdatePlaylistComparisonResultInputDto,
@@ -34,8 +43,11 @@ __all__ = [
     "LocalSongMetadataDto",
     "PlaylistComparisonHistoryEntryDto",
     "PlaylistComparisonItemResultDto",
+    "PlaylistComparisonObservabilityDto",
+    "PlaylistComparisonPhaseTimingsDto",
     "PlaylistComparisonResultDto",
     "PlaylistComparisonSummaryDto",
+    "PlaylistComparisonVolumeMetricsDto",
     "ScanLocalFolderProgressDto",
     "UpdatePlaylistComparisonResultInputDto",
     "UpdateIgnoredTermInputDto",

@@ -6,6 +6,9 @@ from datetime import datetime
 from app.application.dto.playlistComparisonItemResultDto import (
     PlaylistComparisonItemResultDto,
 )
+from app.application.dto.playlistComparisonObservabilityDto import (
+    PlaylistComparisonObservabilityDto,
+)
 from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonSummaryDto
 
 
@@ -15,3 +18,4 @@ class PlaylistComparisonResultDto:
     items: list[PlaylistComparisonItemResultDto]
     playlist_comparison_id: int | None = None
     last_compared_at: datetime | None = None
+    observability: PlaylistComparisonObservabilityDto | None = None

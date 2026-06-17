@@ -1672,6 +1672,188 @@ def test_compare_youtube_playlist_with_local_library_use_case_keeps_same_result_
     assert result.items[0].matched_by == full_match_result.matched_by
 
 
+def test_compare_youtube_playlist_with_local_library_use_case_exposes_observability_metrics_for_incremental_recompute() -> None:
+    playlist_repository = InMemoryYoutubePlaylistRepository()
+    active_playlist = playlist_repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        title="Favoritas",
+    )
+    active_folder = LocalFolder(
+        id=7,
+        path=r"C:\Music\Active",
+        display_name="Active",
+        is_active=True,
+    )
+    item_repository = InMemoryYoutubePlaylistItemRepository()
+    persisted_items = item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="frozen-found",
+                position=1,
+                raw_title="Song One",
+                raw_channel_name="Artist One",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="recompute-item",
+                position=2,
+                raw_title="Song Two",
+                raw_channel_name="Artist Two",
+                normalized_title="song two",
+                normalized_artist="artist two",
+                duration_seconds=200.0,
+            ),
+        ],
+    )
+    local_song_repository = LocalSongRepositorySpy(
+        songs_by_folder_id={
+            7: [
+                LocalSong(
+                    id=11,
+                    local_folder_id=7,
+                    file_name="song-one.mp3",
+                    is_available=True,
+                    title="song one",
+                    artist="artist one",
+                    duration_seconds=180.0,
+                ),
+                LocalSong(
+                    id=12,
+                    local_folder_id=7,
+                    file_name="song-two.mp3",
+                    is_available=True,
+                    title="song two",
+                    artist="artist two",
+                    duration_seconds=200.0,
+                ),
+            ]
+        }
+    )
+    comparison_repository = InMemoryPlaylistComparisonRepository()
+    comparison_result_repository = InMemoryPlaylistComparisonResultRepository()
+    previous_snapshot = comparison_repository.create(
+        active_playlist.id or 0,
+        active_folder.id or 0,
+        youtube_playlist_imported_at=datetime(2100, 1, 1, 10, 0, tzinfo=UTC),
+        local_library_scanned_at=datetime(2100, 1, 1, 10, 0, tzinfo=UTC),
+        ignored_terms_version="ignored_terms:untracked",
+        matching_rules_version=CompareYoutubePlaylistWithLocalLibraryUseCase.MATCHING_RULES_VERSION,
+    )
+    comparison_result_repository.save_for_comparison(
+        previous_snapshot.id or 0,
+        [
+            PlaylistComparisonResult(
+                playlist_comparison_id=previous_snapshot.id or 0,
+                youtube_playlist_item_id=persisted_items[0].id or 0,
+                local_song_id=11,
+                match_status=ComparisonStatus.FOUND.value,
+                score=100.0,
+                matched_by=AUTO_TITLE_ARTIST_DURATION,
+            ),
+            PlaylistComparisonResult(
+                playlist_comparison_id=previous_snapshot.id or 0,
+                youtube_playlist_item_id=persisted_items[1].id or 0,
+                local_song_id=None,
+                match_status=ComparisonStatus.MISSING.value,
+                score=0.0,
+                matched_by=AUTO_NO_COMPETITIVE_CANDIDATE,
+            ),
+        ],
+    )
+
+    result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        playlist_repository,
+        item_repository,
+        InMemoryLocalFolderRepository(active_folder),
+        local_song_repository,
+        comparison_repository,
+        comparison_result_repository,
+    ).execute()
+
+    assert result.observability is not None
+    assert result.observability.volume_metrics.skipped_found_count == 1
+    assert result.observability.volume_metrics.reserved_local_song_count == 1
+    assert result.observability.volume_metrics.recomputed_item_count == 1
+    assert result.observability.volume_metrics.total_candidates_considered == 1
+    assert result.observability.volume_metrics.average_candidates_per_recomputed_item == 1.0
+    assert result.observability.phase_timings.snapshot_load_seconds >= 0.0
+    assert result.observability.phase_timings.pool_build_seconds >= 0.0
+    assert result.observability.phase_timings.indexing_seconds >= 0.0
+    assert result.observability.phase_timings.matching_seconds >= 0.0
+    assert result.observability.phase_timings.persistence_seconds >= 0.0
+    assert result.observability.phase_timings.total_seconds >= (
+        result.observability.phase_timings.matching_seconds
+    )
+
+
+def test_compare_youtube_playlist_with_local_library_use_case_keeps_nadal015_memories_i_regression() -> None:
+    playlist_repository = InMemoryYoutubePlaylistRepository()
+    active_playlist = playlist_repository.save_as_active(
+        playlist_url="https://www.youtube.com/playlist?list=PL123",
+        external_playlist_id="PL123",
+        title="Favoritas",
+    )
+    active_folder = LocalFolder(
+        id=7,
+        path=r"C:\Music\Active",
+        display_name="Active",
+        is_active=True,
+    )
+    item_repository = InMemoryYoutubePlaylistItemRepository()
+    item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="nadal-015-memories-i",
+                position=1,
+                raw_title="NADAL 015 #MEMORIES I",
+                raw_channel_name="NADAL 015",
+                normalized_title="memories i",
+                normalized_artist="nadal015",
+                duration_seconds=176.0,
+            )
+        ],
+    )
+    local_song_repository = LocalSongRepositorySpy(
+        songs_by_folder_id={
+            7: [
+                LocalSong(
+                    id=19,
+                    local_folder_id=7,
+                    file_name="memories-i.mp3",
+                    is_available=True,
+                    title="memories i",
+                    artist="nadal015",
+                    duration_seconds=175.848,
+                )
+            ]
+        }
+    )
+
+    result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        playlist_repository,
+        item_repository,
+        InMemoryLocalFolderRepository(active_folder),
+        local_song_repository,
+        InMemoryPlaylistComparisonRepository(),
+        InMemoryPlaylistComparisonResultRepository(),
+    ).execute()
+
+    assert result.summary.found_count == 1
+    assert result.items[0].comparison_status is ComparisonStatus.FOUND
+    assert result.items[0].local_song_id == 19
+
+
 def test_compare_youtube_playlist_with_local_library_use_case_reduces_candidate_scoring_for_exact_stage(
     monkeypatch,
 ) -> None:
