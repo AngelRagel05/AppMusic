@@ -61,6 +61,27 @@ def test_update_modifies_persisted_ignored_term() -> None:
     assert updated_term.language == "en"
 
 
+def test_update_raises_error_for_duplicate_term_scope_and_language() -> None:
+    session = create_session()
+    repository = IgnoredTermSqlAlchemyRepository(session)
+    repository.create("live", "title", "global")
+    ignored_term = repository.create("official", "artist", "en")
+
+    with pytest.raises(ValueError, match="Ya existe"):
+        repository.update(ignored_term.id or 0, "live", "title", "global")
+
+
+def test_set_active_state_updates_persisted_ignored_term() -> None:
+    session = create_session()
+    repository = IgnoredTermSqlAlchemyRepository(session)
+    ignored_term = repository.create("live", "title", "global")
+
+    updated_term = repository.set_active_state(ignored_term.id or 0, False)
+
+    assert updated_term.is_active is False
+    assert session.get(IgnoredTermModel, ignored_term.id or 0).is_active is False
+
+
 def test_delete_removes_persisted_ignored_term() -> None:
     session = create_session()
     repository = IgnoredTermSqlAlchemyRepository(session)

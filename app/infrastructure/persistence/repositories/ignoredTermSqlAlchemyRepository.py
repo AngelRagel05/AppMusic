@@ -60,6 +60,17 @@ class IgnoredTermSqlAlchemyRepository(IgnoredTermRepository):
         self._session.refresh(model)
         return self._to_entity(model)
 
+    def set_active_state(self, term_id: int, is_active: bool) -> IgnoredTerm:
+        model = self._session.get(IgnoredTermModel, term_id)
+        if model is None:
+            msg = "El termino ignorado seleccionado no existe."
+            raise ValueError(msg)
+
+        model.is_active = is_active
+        self._session.commit()
+        self._session.refresh(model)
+        return self._to_entity(model)
+
     def delete(self, term_id: int) -> None:
         model = self._session.get(IgnoredTermModel, term_id)
         if model is None:

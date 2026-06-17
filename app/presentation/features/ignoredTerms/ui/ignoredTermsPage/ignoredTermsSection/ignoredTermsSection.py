@@ -31,6 +31,7 @@ class _IgnoredTermRow(ctk.CTkFrame):
             border_color=self._theme["border"],
         )
         self.editRequested = Signal()
+        self.toggleRequested = Signal()
         self.deleteRequested = Signal()
         self._ignored_term_id = ignored_term.id
 
@@ -61,6 +62,14 @@ class _IgnoredTermRow(ctk.CTkFrame):
         editButton = ActionButton(actions, "Editar", variant="secondary", theme=self._theme)
         editButton.clicked.connect(lambda: self.editRequested.emit(self._ignored_term_id))
         editButton.widget.pack(side="left", padx=(0, 10))
+        toggleButton = ActionButton(
+            actions,
+            "Desactivar" if ignored_term.is_active else "Activar",
+            variant="ghost" if ignored_term.is_active else "secondary",
+            theme=self._theme,
+        )
+        toggleButton.clicked.connect(lambda: self.toggleRequested.emit(self._ignored_term_id))
+        toggleButton.widget.pack(side="left", padx=(0, 10))
         deleteButton = ActionButton(actions, "Eliminar", variant="danger", theme=self._theme)
         deleteButton.clicked.connect(lambda: self.deleteRequested.emit(self._ignored_term_id))
         deleteButton.widget.pack(side="left")
@@ -71,6 +80,7 @@ class IgnoredTermsSection(ctk.CTkFrame):
         self._theme = theme
         super().__init__(parent, fg_color="transparent", corner_radius=0)
         self.editRequested = Signal()
+        self.toggleRequested = Signal()
         self.deleteRequested = Signal()
 
         topCard = createFrame(
@@ -168,6 +178,7 @@ class IgnoredTermsSection(ctk.CTkFrame):
         for ignored_term in ignored_terms:
             row = _IgnoredTermRow(self._rowsHost, ignored_term, self._theme)
             row.editRequested.connect(self.editRequested.emit)
+            row.toggleRequested.connect(self.toggleRequested.emit)
             row.deleteRequested.connect(self.deleteRequested.emit)
             row.pack(fill="x", pady=(0, 14))
 

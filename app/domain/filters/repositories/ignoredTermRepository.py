@@ -20,5 +20,9 @@ class IgnoredTermRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def set_active_state(self, term_id: int, is_active: bool) -> IgnoredTerm:
+        raise NotImplementedError
+
+    @abstractmethod
     def delete(self, term_id: int) -> None:
         raise NotImplementedError

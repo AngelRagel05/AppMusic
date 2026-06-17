@@ -196,6 +196,7 @@ class IgnoredTermsPageSpy:
     def __init__(self) -> None:
         self.saveRequested = PageCallbackPort()
         self.editRequested = PageCallbackPort()
+        self.toggleRequested = PageCallbackPort()
         self.deleteRequested = PageCallbackPort()
         self.term_text = ""
         self.term_scope = ""
@@ -208,6 +209,9 @@ class IgnoredTermsPageSpy:
 
     def onEditTermRequested(self, callback) -> None:
         self.editRequested.connect(callback)
+
+    def onToggleTermRequested(self, callback) -> None:
+        self.toggleRequested.connect(callback)
 
     def onDeleteTermRequested(self, callback) -> None:
         self.deleteRequested.connect(callback)
@@ -250,16 +254,35 @@ class IgnoredTermsViewModelSpy:
     def __init__(self, selected_term: IgnoredTermDto | None) -> None:
         self.selected_term = selected_term
         self.find_calls: list[int] = []
+        self.set_active_state_calls: list[tuple[int, bool]] = []
+        self.delete_calls: list[int] = []
 
     def refreshState(self):
-        return []
+        return [] if self.selected_term is None else [self.selected_term]
 
     def load_terms(self):
-        raise AssertionError("load_terms no debe usarse para buscar por id")
+        return [] if self.selected_term is None else [self.selected_term]
 
     def find_term_by_id(self, term_id: int):
         self.find_calls.append(term_id)
         return self.selected_term
+
+    def set_term_active_state(self, term_id: int, is_active: bool):
+        self.set_active_state_calls.append((term_id, is_active))
+        if self.selected_term is None:
+            raise AssertionError("Se esperaba un termino seleccionado")
+        self.selected_term = IgnoredTermDto(
+            id=self.selected_term.id,
+            term=self.selected_term.term,
+            scope=self.selected_term.scope,
+            language=self.selected_term.language,
+            is_active=is_active,
+        )
+        return self.selected_term
+
+    def delete_term(self, term_id: int) -> None:
+        self.delete_calls.append(term_id)
+        self.selected_term = None
 
 
 class YoutubePlaylistsPageSpy:
@@ -816,6 +839,7 @@ def test_ignored_terms_controller_uses_view_model_lookup_for_editing_selected_te
         page=page,
         view_model=view_model,
         show_page=lambda page_name, focus_input: shown_pages.append((page_name, focus_input)),
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
     )
 
@@ -828,6 +852,70 @@ def test_ignored_terms_controller_uses_view_model_lookup_for_editing_selected_te
     assert page.save_mode is True
     assert shown_pages == [("ignoredTerms", True)]
     assert page.status_messages[-1] == ('Editando el termino "live".', "info")
+
+
+def test_ignored_terms_controller_toggles_term_state_and_invalidates_comparison() -> None:
+    page = IgnoredTermsPageSpy()
+    selected_term = IgnoredTermDto(
+        id=4,
+        term="live",
+        scope="title",
+        language="global",
+        is_active=True,
+    )
+    view_model = IgnoredTermsViewModelSpy(selected_term)
+    invalidation_reasons: list[str | None] = []
+    recorded_actions: list[str] = []
+    controller = IgnoredTermsController(
+        page=page,
+        view_model=view_model,
+        show_page=lambda _page_name, _focus_input: None,
+        on_comparison_data_changed=invalidation_reasons.append,
+        on_action_recorded=recorded_actions.append,
+    )
+
+    controller._handleToggleTermById(4)
+
+    assert view_model.find_calls == [4]
+    assert view_model.set_active_state_calls == [(4, False)]
+    assert page.status_messages[-1] == (
+        'Termino "live" desactivado correctamente.',
+        "success",
+    )
+    assert invalidation_reasons == ["La configuracion de terminos ignorados ha cambiado."]
+    assert recorded_actions == ['Termino "live" desactivado correctamente.']
+
+
+def test_ignored_terms_controller_delete_invalidates_comparison() -> None:
+    page = IgnoredTermsPageSpy()
+    selected_term = IgnoredTermDto(
+        id=4,
+        term="live",
+        scope="title",
+        language="global",
+        is_active=True,
+    )
+    view_model = IgnoredTermsViewModelSpy(selected_term)
+    invalidation_reasons: list[str | None] = []
+    recorded_actions: list[str] = []
+    controller = IgnoredTermsController(
+        page=page,
+        view_model=view_model,
+        show_page=lambda _page_name, _focus_input: None,
+        on_comparison_data_changed=invalidation_reasons.append,
+        on_action_recorded=recorded_actions.append,
+    )
+
+    controller._handleDeleteTermById(4)
+
+    assert view_model.find_calls == [4]
+    assert view_model.delete_calls == [4]
+    assert page.status_messages[-1] == (
+        'Termino "live" eliminado correctamente.',
+        "success",
+    )
+    assert invalidation_reasons == ["La configuracion de terminos ignorados ha cambiado."]
+    assert recorded_actions == ['Termino "live" eliminado correctamente.']
 
 
 def test_youtube_playlists_controller_does_not_reactivate_active_playlist() -> None:

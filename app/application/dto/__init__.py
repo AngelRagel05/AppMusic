@@ -27,6 +27,9 @@ from app.application.dto.playlistComparisonVolumeMetricsDto import (
     PlaylistComparisonVolumeMetricsDto,
 )
 from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
+from app.application.dto.setIgnoredTermActiveStateInputDto import (
+    SetIgnoredTermActiveStateInputDto,
+)
 from app.application.dto.updatePlaylistComparisonResultInputDto import (
     UpdatePlaylistComparisonResultInputDto,
 )
@@ -49,6 +52,7 @@ __all__ = [
     "PlaylistComparisonSummaryDto",
     "PlaylistComparisonVolumeMetricsDto",
     "ScanLocalFolderProgressDto",
+    "SetIgnoredTermActiveStateInputDto",
     "UpdatePlaylistComparisonResultInputDto",
     "UpdateIgnoredTermInputDto",
     "YoutubePlaylistItemDto",

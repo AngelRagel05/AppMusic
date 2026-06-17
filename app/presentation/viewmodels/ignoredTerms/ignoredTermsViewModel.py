@@ -3,11 +3,15 @@ from __future__ import annotations
 from app.application.dto.createIgnoredTermInputDto import CreateIgnoredTermInputDto
 from app.application.dto.deleteIgnoredTermInputDto import DeleteIgnoredTermInputDto
 from app.application.dto.ignoredTermDto import IgnoredTermDto
+from app.application.dto.setIgnoredTermActiveStateInputDto import (
+    SetIgnoredTermActiveStateInputDto,
+)
 from app.application.dto.updateIgnoredTermInputDto import UpdateIgnoredTermInputDto
 from app.application.use_cases import (
     CreateIgnoredTermUseCase,
     DeleteIgnoredTermUseCase,
     ListIgnoredTermsUseCase,
+    SetIgnoredTermActiveStateUseCase,
     UpdateIgnoredTermUseCase,
 )
 
@@ -18,11 +22,13 @@ class IgnoredTermsViewModel:
         list_use_case: ListIgnoredTermsUseCase,
         create_use_case: CreateIgnoredTermUseCase,
         update_use_case: UpdateIgnoredTermUseCase,
+        set_active_state_use_case: SetIgnoredTermActiveStateUseCase,
         delete_use_case: DeleteIgnoredTermUseCase,
     ) -> None:
         self._list_use_case = list_use_case
         self._create_use_case = create_use_case
         self._update_use_case = update_use_case
+        self._set_active_state_use_case = set_active_state_use_case
         self._delete_use_case = delete_use_case
         self._terms_cache: list[IgnoredTermDto] = []
         self._terms_by_id: dict[int, IgnoredTermDto] = {}
@@ -60,6 +66,16 @@ class IgnoredTermsViewModel:
                 term=term,
                 scope=scope,
                 language=language,
+            )
+        )
+        self.refreshState()
+        return ignoredTerm
+
+    def set_term_active_state(self, term_id: int, is_active: bool) -> IgnoredTermDto:
+        ignoredTerm = self._set_active_state_use_case.execute(
+            SetIgnoredTermActiveStateInputDto(
+                term_id=term_id,
+                is_active=is_active,
             )
         )
         self.refreshState()

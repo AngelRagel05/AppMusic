@@ -140,6 +140,7 @@ def test_ignored_terms_view_model_create_term_refreshes_cached_terms() -> None:
         list_use_case=list_use_case,
         create_use_case=create_use_case,
         update_use_case=StubUseCase(created_term),
+        set_active_state_use_case=StubUseCase(created_term),
         delete_use_case=StubUseCase(None),
     )
 
@@ -149,6 +150,33 @@ def test_ignored_terms_view_model_create_term_refreshes_cached_terms() -> None:
     assert view_model.load_terms() == [created_term]
     assert view_model.find_term_by_id(4) == created_term
     assert len(create_use_case.calls) == 1
+    assert len(list_use_case.calls) == 1
+
+
+def test_ignored_terms_view_model_toggle_term_refreshes_cached_terms() -> None:
+    deactivated_term = IgnoredTermDto(
+        id=4,
+        term="live",
+        scope="title",
+        language="global",
+        is_active=False,
+    )
+    list_use_case = StubUseCase([deactivated_term])
+    set_active_state_use_case = StubUseCase(deactivated_term)
+    view_model = IgnoredTermsViewModel(
+        list_use_case=list_use_case,
+        create_use_case=StubUseCase(deactivated_term),
+        update_use_case=StubUseCase(deactivated_term),
+        set_active_state_use_case=set_active_state_use_case,
+        delete_use_case=StubUseCase(None),
+    )
+
+    returned_term = view_model.set_term_active_state(4, False)
+
+    assert returned_term == deactivated_term
+    assert view_model.load_terms() == [deactivated_term]
+    assert view_model.find_term_by_id(4) == deactivated_term
+    assert len(set_active_state_use_case.calls) == 1
     assert len(list_use_case.calls) == 1
 
 

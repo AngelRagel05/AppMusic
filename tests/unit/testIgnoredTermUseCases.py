@@ -3,11 +3,15 @@ from __future__ import annotations
 import pytest
 from app.application.dto.createIgnoredTermInputDto import CreateIgnoredTermInputDto
 from app.application.dto.deleteIgnoredTermInputDto import DeleteIgnoredTermInputDto
+from app.application.dto.setIgnoredTermActiveStateInputDto import (
+    SetIgnoredTermActiveStateInputDto,
+)
 from app.application.dto.updateIgnoredTermInputDto import UpdateIgnoredTermInputDto
 from app.application.use_cases import (
     CreateIgnoredTermUseCase,
     DeleteIgnoredTermUseCase,
     ListIgnoredTermsUseCase,
+    SetIgnoredTermActiveStateUseCase,
     UpdateIgnoredTermUseCase,
 )
 from app.domain.filters.entities.ignoredTerm import IgnoredTerm
@@ -23,6 +27,7 @@ class InMemoryIgnoredTermRepository(IgnoredTermRepository):
         return list(self._terms)
 
     def create(self, term: str, scope: str, language: str) -> IgnoredTerm:
+        self._ensure_unique(None, term, scope, language)
         ignored_term = IgnoredTerm(
             id=self._next_id,
             term=term,
@@ -37,12 +42,29 @@ class InMemoryIgnoredTermRepository(IgnoredTermRepository):
     def update(self, term_id: int, term: str, scope: str, language: str) -> IgnoredTerm:
         for index, ignored_term in enumerate(self._terms):
             if ignored_term.id == term_id:
+                self._ensure_unique(term_id, term, scope, language)
                 updated_term = IgnoredTerm(
                     id=ignored_term.id,
                     term=term,
                     scope=scope,
                     language=language,
                     is_active=ignored_term.is_active,
+                )
+                self._terms[index] = updated_term
+                return updated_term
+
+        msg = "El termino ignorado seleccionado no existe."
+        raise ValueError(msg)
+
+    def set_active_state(self, term_id: int, is_active: bool) -> IgnoredTerm:
+        for index, ignored_term in enumerate(self._terms):
+            if ignored_term.id == term_id:
+                updated_term = IgnoredTerm(
+                    id=ignored_term.id,
+                    term=ignored_term.term,
+                    scope=ignored_term.scope,
+                    language=ignored_term.language,
+                    is_active=is_active,
                 )
                 self._terms[index] = updated_term
                 return updated_term
@@ -58,6 +80,24 @@ class InMemoryIgnoredTermRepository(IgnoredTermRepository):
 
         msg = "El termino ignorado seleccionado no existe."
         raise ValueError(msg)
+
+    def _ensure_unique(
+        self,
+        current_term_id: int | None,
+        term: str,
+        scope: str,
+        language: str,
+    ) -> None:
+        for ignored_term in self._terms:
+            if ignored_term.id == current_term_id:
+                continue
+            if (
+                ignored_term.term == term
+                and ignored_term.scope == scope
+                and ignored_term.language == language
+            ):
+                msg = "Ya existe un termino ignorado con esa combinacion."
+                raise ValueError(msg)
 
 
 def test_list_ignored_terms_use_case_maps_entities_to_dto() -> None:
@@ -119,6 +159,39 @@ def test_update_ignored_term_use_case_updates_values() -> None:
     assert ignored_term.term == "official"
     assert ignored_term.scope == "artist"
     assert ignored_term.language == "en"
+
+
+def test_set_ignored_term_active_state_use_case_updates_persisted_state() -> None:
+    repository = InMemoryIgnoredTermRepository()
+    created_term = repository.create("audio", "title", "global")
+    use_case = SetIgnoredTermActiveStateUseCase(repository)
+
+    ignored_term = use_case.execute(
+        SetIgnoredTermActiveStateInputDto(
+            term_id=created_term.id or 0,
+            is_active=False,
+        )
+    )
+
+    assert ignored_term.is_active is False
+    assert repository.list_all()[0].is_active is False
+
+
+def test_update_ignored_term_use_case_rejects_duplicate_combination() -> None:
+    repository = InMemoryIgnoredTermRepository()
+    repository.create("live", "title", "global")
+    created_term = repository.create("official", "artist", "en")
+    use_case = UpdateIgnoredTermUseCase(repository)
+
+    with pytest.raises(ValueError, match="Ya existe"):
+        use_case.execute(
+            UpdateIgnoredTermInputDto(
+                term_id=created_term.id or 0,
+                term=" live ",
+                scope=" title ",
+                language=" global ",
+            )
+        )
 
 
 def test_delete_ignored_term_use_case_removes_term() -> None:

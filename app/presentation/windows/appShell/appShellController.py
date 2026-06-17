@@ -61,6 +61,7 @@ class AppShellController:
             page=view.page.ignoredTermsPage,
             view_model=ignored_terms_view_model,
             show_page=view.page.showPage,
+            on_comparison_data_changed=self._invalidateComparisonIfReady,
             on_action_recorded=self._recordLastAction,
         )
 

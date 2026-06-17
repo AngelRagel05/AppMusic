@@ -16,6 +16,7 @@ from app.application.use_cases import (
     ListPersistedPlaylistComparisonHistoryUseCase,
     ListActiveLocalSongsUseCase,
     ListIgnoredTermsUseCase,
+    SetIgnoredTermActiveStateUseCase,
     ListLocalFoldersUseCase,
     LoadPersistedPlaylistComparisonUseCase,
     ListYoutubePlaylistsUseCase,
@@ -67,6 +68,9 @@ class ApplicationFactory:
                 persistence_registry.ignoredTermRepository
             ),
             update_use_case=UpdateIgnoredTermUseCase(
+                persistence_registry.ignoredTermRepository
+            ),
+            set_active_state_use_case=SetIgnoredTermActiveStateUseCase(
                 persistence_registry.ignoredTermRepository
             ),
             delete_use_case=DeleteIgnoredTermUseCase(

@@ -39,6 +39,9 @@ class IgnoredTermsPage(ctk.CTkFrame):
     def onEditTermRequested(self, callback: Callable[[int], None]) -> None:
         self.section.editRequested.connect(callback)
 
+    def onToggleTermRequested(self, callback: Callable[[int], None]) -> None:
+        self.section.toggleRequested.connect(callback)
+
     def onDeleteTermRequested(self, callback: Callable[[int], None]) -> None:
         self.section.deleteRequested.connect(callback)
 

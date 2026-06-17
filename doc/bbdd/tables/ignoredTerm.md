@@ -44,4 +44,5 @@ erDiagram
 
 ## Notas
 
-* Conviene evitar duplicados por combinacion `term + scope + language`.
+* No se permiten duplicados por combinacion `term + scope + language`.
+* El flag `is_active` permite desactivar temporalmente un termino sin eliminarlo.

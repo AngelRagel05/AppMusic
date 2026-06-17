@@ -533,6 +533,23 @@ class InMemoryIgnoredTermRepository(IgnoredTermRepository):
             return updated_term
         raise ValueError("El termino ignorado seleccionado no existe.")
 
+    def set_active_state(self, term_id: int, is_active: bool) -> IgnoredTerm:
+        for index, current_term in enumerate(self._terms):
+            if current_term.id != term_id:
+                continue
+            updated_term = IgnoredTerm(
+                id=current_term.id,
+                term=current_term.term,
+                scope=current_term.scope,
+                language=current_term.language,
+                is_active=is_active,
+                created_at=current_term.created_at,
+                updated_at=datetime.now(UTC),
+            )
+            self._terms[index] = updated_term
+            return updated_term
+        raise ValueError("El termino ignorado seleccionado no existe.")
+
     def delete(self, term_id: int) -> None:
         self._terms = [term for term in self._terms if term.id != term_id]
 
