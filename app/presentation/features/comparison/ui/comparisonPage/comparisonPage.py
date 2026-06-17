@@ -42,8 +42,10 @@ class ComparisonPage(ctk.CTkFrame):
     TOP_SECTION_RATIO = 0.17
     MINIMUM_TOP_SECTION_HEIGHT = 138
     REFRESH_PRIMARY_ACTION_LABEL = "↻ Refrescar snapshot"
-    RECOMPARE_SECONDARY_ACTION_LABEL = "↻ Recomparar"
-    RECOMPUTING_SECONDARY_ACTION_LABEL = "↻ Recomparando..."
+    RECOMPARE_PENDING_SECONDARY_ACTION_LABEL = "↻ Recomparar pendientes"
+    RECOMPUTING_PENDING_SECONDARY_ACTION_LABEL = "↻ Recomparando pendientes..."
+    RECOMPARE_FULL_TERTIARY_ACTION_LABEL = "↻ Recomparar todo"
+    RECOMPUTING_FULL_TERTIARY_ACTION_LABEL = "↻ Recalculando todo..."
     HISTORY_COLUMNS: tuple[tuple[str, int | None, int, str, int], ...] = (
         ("Fecha", 132, 0, "w", 16),
         ("Biblioteca", None, 2, "w", 16),
@@ -82,6 +84,10 @@ class ComparisonPage(ctk.CTkFrame):
         self._ensureBuilt()
         self.header.secondaryActionRequested.connect(callback)
 
+    def onTertiaryActionRequested(self, callback: Callable[[], None]) -> None:
+        self._ensureBuilt()
+        self._tertiaryActionButton.configure(command=callback)
+
     def onManualDecisionRequested(
         self,
         callback: Callable[[PlaylistComparisonItemResultDto, str, int | None], bool],
@@ -104,6 +110,25 @@ class ComparisonPage(ctk.CTkFrame):
                 "Generara un snapshot nuevo y actualizara el historial guardado.\n\n"
                 "Puede tardar unos minutos dependiendo del tamaño de la biblioteca "
                 "y la playlist.\n\n¿Quieres continuar ahora?"
+            ),
+            parent=self.winfo_toplevel(),
+        )
+
+    def confirmFullRecomparisonStart(
+        self,
+        *,
+        playlist_title: str,
+        folder_name: str,
+    ) -> bool:
+        return messagebox.askokcancel(
+            "Recomparar todo",
+            (
+                "Esta accion recalculara toda la comparacion desde cero entre:\n"
+                f'• Playlist: "{playlist_title}"\n'
+                f'• Biblioteca: "{folder_name}"\n\n'
+                "Ignorara el ahorro incremental del snapshot actual y puede tardar "
+                "bastante mas que recomparar solo pendientes.\n\n"
+                "¿Quieres continuar ahora?"
             ),
             parent=self.winfo_toplevel(),
         )
@@ -170,9 +195,34 @@ class ComparisonPage(ctk.CTkFrame):
         *,
         primary_label: str | None,
         secondary_label: str | None,
+        tertiary_label: str | None = None,
     ) -> None:
         self._ensureBuilt()
         self.header.setActions(secondary_label, primary_label)
+        if tertiary_label is None or tertiary_label == "":
+            self._tertiaryActionButton.grid_remove()
+            return
+        self._tertiaryActionButton.configure(text=tertiary_label)
+        self._tertiaryActionButton.grid()
+
+    def showSnapshotState(
+        self,
+        *,
+        title: str,
+        detail: str | None,
+        tone: str = "info",
+    ) -> None:
+        self._ensureBuilt()
+        tone_text_color = {
+            "info": self._theme["text_secondary"],
+            "success": self._theme["success"],
+            "warning": self._theme["accent"],
+            "error": self._theme["danger"],
+        }.get(tone, self._theme["text_secondary"])
+        self._snapshotStateValue.configure(text=title, text_color=tone_text_color)
+        self._snapshotStateDetail.configure(
+            text=detail or "Sin incidencias detectadas para el snapshot cargado."
+        )
 
     def showLoadingState(self, message: str) -> None:
         self._loadingOverlay.show(
@@ -208,7 +258,7 @@ class ComparisonPage(ctk.CTkFrame):
         )
         self.header.setContextVisible(False)
         self.header.setActions(
-            self.RECOMPARE_SECONDARY_ACTION_LABEL,
+            self.RECOMPARE_PENDING_SECONDARY_ACTION_LABEL,
             self.REFRESH_PRIMARY_ACTION_LABEL,
         )
         applyButtonStyle(self.header.primaryButton.widget, "primary", self._theme)
@@ -292,7 +342,7 @@ class ComparisonPage(ctk.CTkFrame):
         )
 
         search_block = createFrame(wrapper, theme=self._theme, fg_color="transparent")
-        search_block.grid(row=0, column=1, columnspan=2, sticky="ew", padx=(4, 8), pady=6)
+        search_block.grid(row=0, column=1, sticky="ew", padx=(4, 8), pady=6)
         search_block.grid_columnconfigure(0, weight=1)
         search_variable = ctk.StringVar(value="")
         self._search_variable = search_variable
@@ -330,6 +380,43 @@ class ComparisonPage(ctk.CTkFrame):
         filter_menu.configure(font=("Segoe UI", 10), height=30)
         filter_menu.configure(command=self.section.setComparisonFilter)
         filter_menu.pack(side="left")
+
+        snapshot_block = createFrame(wrapper, theme=self._theme, fg_color="transparent")
+        snapshot_block.grid(row=0, column=2, sticky="e", padx=(4, 8), pady=6)
+        snapshot_block.grid_columnconfigure(0, weight=1)
+        createLabel(
+            snapshot_block,
+            "Snapshot",
+            theme=self._theme,
+            text_color=self._theme["text_muted"],
+            font=("Segoe UI", 10),
+        ).grid(row=0, column=0, sticky="e")
+        self._snapshotStateValue = createLabel(
+            snapshot_block,
+            "Sin cargar",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 11, "bold"),
+        )
+        self._snapshotStateValue.grid(row=1, column=0, sticky="e", pady=(2, 0))
+        self._snapshotStateDetail = createLabel(
+            snapshot_block,
+            "Sin incidencias detectadas para el snapshot cargado.",
+            theme=self._theme,
+            text_color=self._theme["text_secondary"],
+            font=("Segoe UI", 10),
+            anchor="e",
+            justify="right",
+        )
+        self._snapshotStateDetail.grid(row=2, column=0, sticky="e", pady=(2, 0))
+        self._tertiaryActionButton = ctk.CTkButton(snapshot_block, text="")
+        applyButtonStyle(self._tertiaryActionButton, "secondary", self._theme)
+        self._tertiaryActionButton.configure(
+            height=28,
+            width=156,
+            font=("Segoe UI", 10, "bold"),
+        )
+        self._tertiaryActionButton.grid(row=3, column=0, sticky="e", pady=(8, 0))
         return wrapper
 
     def _buildHistoryCard(self, parent):

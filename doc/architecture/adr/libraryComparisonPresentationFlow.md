@@ -18,14 +18,18 @@ Flujo:
 
 * al cargar la pantalla, el controller intenta hidratar snapshot persistido si no hay cache
 * `Refrescar snapshot` recarga snapshot persistido e historial sin recomparar
-* `Recomparar` lanza el worker en segundo plano
+* `Recomparar pendientes` lanza el worker incremental en segundo plano
+* `Recomparar todo` lanza el worker de recomputacion completa en segundo plano
 * el viewmodel expone el estado del snapshot:
   * `fresh`
   * `stale`
   * `recomputing`
+* la UI muestra ademas:
+  * etiqueta visible del estado del snapshot
+  * motivo de obsolescencia si existe
 * durante `Recomparar`, el worker ejecuta:
   * listado de canciones locales activas
-  * comparacion completa contra la playlist activa
+  * comparacion incremental o completa contra la playlist activa segun la accion elegida
 * al volver al hilo principal, la UI actualiza:
   * tabla de resultados de comparacion
   * resumen y fecha de ultima comparacion
@@ -44,7 +48,8 @@ Regla de persistencia manual visible en UI:
 
 * la correccion manual queda guardada en el snapshot actual
 * `matched_by` distingue si el estado mostrado viene de calculo automatico o de ajuste manual
-* si el usuario pulsa `Recomparar`, se crea un snapshot nuevo recalculado desde cero
+* si el usuario pulsa `Recomparar pendientes`, se crea un snapshot incremental nuevo
+* si el usuario pulsa `Recomparar todo`, se crea un snapshot nuevo recalculado desde cero
 
 La paginacion existente se conserva y se aplica sobre los resultados comparados.
 

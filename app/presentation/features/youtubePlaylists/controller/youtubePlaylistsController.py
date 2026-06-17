@@ -22,7 +22,7 @@ class YoutubePlaylistsController:
         import_view_model: YoutubePlaylistImportViewModel,
         show_page: Callable[[str, bool], None],
         on_state_changed: Callable[[], None],
-        on_comparison_data_changed: Callable[[], None],
+        on_comparison_data_changed: Callable[[str | None], None],
         on_action_recorded: Callable[[str], None],
         on_active_playlist_changed: Callable[[str], None],
     ) -> None:
@@ -93,7 +93,9 @@ class YoutubePlaylistsController:
         self._editing_playlist_id = None
         self._page.clearForm()
         self._renderState()
-        self._on_comparison_data_changed()
+        self._on_comparison_data_changed(
+            "La playlist activa ha cambiado."
+        )
         self._page.showStatusMessage(message, tone="success")
         self._on_action_recorded(message)
 
@@ -120,7 +122,9 @@ class YoutubePlaylistsController:
             return
 
         self._renderState()
-        self._on_comparison_data_changed()
+        self._on_comparison_data_changed(
+            "La playlist activa ha cambiado."
+        )
         self._page.showStatusMessage(
             f'Ahora estas comparando contra la playlist "{youtube_playlist.title}".',
             tone="success",
@@ -167,7 +171,9 @@ class YoutubePlaylistsController:
             self._editing_playlist_id = None
             self._page.clearForm()
         self._renderState()
-        self._on_comparison_data_changed()
+        self._on_comparison_data_changed(
+            "La playlist activa ha cambiado."
+        )
         self._page.showStatusMessage(
             f'Playlist "{selected_playlist.title}" eliminada correctamente.',
             tone="success",
@@ -190,6 +196,8 @@ class YoutubePlaylistsController:
     def _renderImportFeedback(self, feedback: YoutubePlaylistImportFeedback) -> None:
         self._page.showStatusMessage(feedback.status_message, tone=feedback.status_tone)
         if feedback.status_tone == "success":
-            self._on_comparison_data_changed()
+            self._on_comparison_data_changed(
+                "El snapshot importado de YouTube ha cambiado."
+            )
         if feedback.last_action_message is not None:
             self._on_action_recorded(feedback.last_action_message)

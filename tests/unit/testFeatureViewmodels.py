@@ -19,6 +19,7 @@ from app.application.dto.updatePlaylistComparisonResultInputDto import (
 )
 from app.application.dto.youtubePlaylistDto import YoutubePlaylistDto
 from app.presentation.viewmodels.comparison.libraryComparisonViewModel import (
+    ComparisonRecomparisonMode,
     ComparisonSnapshotState,
     LibraryComparisonFeedback,
     LibraryComparisonViewModel,
@@ -201,7 +202,12 @@ def test_library_comparison_view_model_emits_recomparison_start_and_success_feed
         )
     ]
     view_model = LibraryComparisonViewModel(
-        load_library_comparison=lambda: (
+        recompare_pending_library_comparison=lambda: (
+            local_songs_use_case.execute(),
+            compare_use_case.execute(),
+            comparison_history,
+        ),
+        recompare_full_library_comparison=lambda: (
             local_songs_use_case.execute(),
             compare_use_case.execute(),
             comparison_history,
@@ -224,22 +230,24 @@ def test_library_comparison_view_model_emits_recomparison_start_and_success_feed
     assert len(compare_use_case.calls) == 1
     assert feedbacks == [
         LibraryComparisonFeedback(
-            status_message="Recomparando biblioteca local contra playlist activa...",
+            status_message="Recomparando coincidencias pendientes con el estado actual...",
             status_tone="info",
             snapshot_state=ComparisonSnapshotState.RECOMPUTING,
+            recomparison_mode=ComparisonRecomparisonMode.PENDING_ONLY,
             local_songs=None,
             comparison_result=None,
             comparison_history=None,
             last_action_message=None,
         ),
         LibraryComparisonFeedback(
-            status_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
+            status_message="Recomparacion de pendientes completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
             status_tone="success",
             snapshot_state=ComparisonSnapshotState.FRESH,
+            recomparison_mode=ComparisonRecomparisonMode.PENDING_ONLY,
             local_songs=local_songs,
             comparison_result=comparison_result,
             comparison_history=comparison_history,
-            last_action_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
+            last_action_message="Recomparacion de pendientes completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
         ),
     ]
 
@@ -270,7 +278,12 @@ def test_library_comparison_view_model_tracks_snapshot_state_across_invalidation
         items=[],
     )
     view_model = LibraryComparisonViewModel(
-        load_library_comparison=lambda: (
+        recompare_pending_library_comparison=lambda: (
+            StubUseCase(local_songs).execute(),
+            StubUseCase(comparison_result).execute(),
+            [],
+        ),
+        recompare_full_library_comparison=lambda: (
             StubUseCase(local_songs).execute(),
             StubUseCase(comparison_result).execute(),
             [],
@@ -296,6 +309,99 @@ def test_library_comparison_view_model_tracks_snapshot_state_across_invalidation
 
     assert view_model.isComparisonStale() is True
     assert view_model.snapshotState() is ComparisonSnapshotState.STALE
+
+
+def test_library_comparison_view_model_keeps_invalidation_reason_until_recomparison_succeeds() -> None:
+    local_songs = [
+        LocalSongDto(
+            id=1,
+            local_folder_id=2,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            album="Album One",
+            release_year=2024,
+            track_number_album=1,
+            duration_seconds=180.0,
+        )
+    ]
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[],
+    )
+    view_model = LibraryComparisonViewModel(
+        recompare_pending_library_comparison=lambda: (local_songs, comparison_result, []),
+        recompare_full_library_comparison=lambda: (local_songs, comparison_result, []),
+        load_persisted_comparison=lambda: None,
+    )
+    scheduled_callbacks: list[Callable[[], None]] = []
+
+    view_model.invalidateComparison("El snapshot importado de YouTube ha cambiado.")
+
+    assert view_model.invalidationReason() == "El snapshot importado de YouTube ha cambiado."
+
+    view_model.requestRecomparison(
+        schedule_on_main_thread=scheduled_callbacks.append,
+        on_feedback=lambda _feedback: None,
+    )
+    runScheduledCallbacks(scheduled_callbacks)
+
+    assert view_model.invalidationReason() is None
+
+
+def test_library_comparison_view_model_emits_full_recompute_feedback() -> None:
+    local_songs = [
+        LocalSongDto(
+            id=1,
+            local_folder_id=2,
+            file_path=r"C:\Music\Active\song-one.mp3",
+            file_name="song-one.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            album="Album One",
+            release_year=2024,
+            track_number_album=1,
+            duration_seconds=180.0,
+        )
+    ]
+    comparison_result = PlaylistComparisonResultDto(
+        summary=PlaylistComparisonSummaryDto(
+            found_count=1,
+            missing_count=0,
+            possible_match_count=0,
+            total_compared=1,
+        ),
+        items=[],
+    )
+    view_model = LibraryComparisonViewModel(
+        recompare_pending_library_comparison=lambda: ([], comparison_result, []),
+        recompare_full_library_comparison=lambda: (local_songs, comparison_result, []),
+        load_persisted_comparison=lambda: None,
+    )
+    feedbacks: list[LibraryComparisonFeedback] = []
+    scheduled_callbacks: list[Callable[[], None]] = []
+
+    view_model.requestRecomparison(
+        schedule_on_main_thread=scheduled_callbacks.append,
+        on_feedback=feedbacks.append,
+        mode=ComparisonRecomparisonMode.FULL,
+    )
+    runScheduledCallbacks(scheduled_callbacks)
+
+    assert feedbacks[0].status_message == "Recalculando toda la comparacion desde cero..."
+    assert feedbacks[0].recomparison_mode is ComparisonRecomparisonMode.FULL
+    assert feedbacks[1].status_message == (
+        "Recomparacion completa finalizada: 1 encontradas, 0 posibles coincidencias y 0 faltan."
+    )
+    assert feedbacks[1].recomparison_mode is ComparisonRecomparisonMode.FULL
 
 
 def test_library_comparison_view_model_restores_persisted_snapshot_into_memory_cache() -> None:
@@ -335,7 +441,12 @@ def test_library_comparison_view_model_restores_persisted_snapshot_into_memory_c
     ]
     persisted_loader = StubUseCase((local_songs, comparison_result, comparison_history))
     view_model = LibraryComparisonViewModel(
-        load_library_comparison=lambda: (
+        recompare_pending_library_comparison=lambda: (
+            StubUseCase(local_songs).execute(),
+            StubUseCase(comparison_result).execute(),
+            comparison_history,
+        ),
+        recompare_full_library_comparison=lambda: (
             StubUseCase(local_songs).execute(),
             StubUseCase(comparison_result).execute(),
             comparison_history,
@@ -392,7 +503,8 @@ def test_library_comparison_view_model_refresh_persisted_comparison_keeps_stale_
     ]
     persisted_loader = StubUseCase((local_songs, comparison_result, comparison_history))
     view_model = LibraryComparisonViewModel(
-        load_library_comparison=lambda: (local_songs, comparison_result, comparison_history),
+        recompare_pending_library_comparison=lambda: (local_songs, comparison_result, comparison_history),
+        recompare_full_library_comparison=lambda: (local_songs, comparison_result, comparison_history),
         load_persisted_comparison=persisted_loader.execute,
     )
     view_model.invalidateComparison()
@@ -477,7 +589,8 @@ def test_library_comparison_view_model_updates_manual_decision_and_refreshes_cac
     ]
     manual_update_use_case = StubUseCase((local_songs, refreshed_result, comparison_history))
     view_model = LibraryComparisonViewModel(
-        load_library_comparison=lambda: (local_songs, cached_result, []),
+        recompare_pending_library_comparison=lambda: (local_songs, cached_result, []),
+        recompare_full_library_comparison=lambda: (local_songs, cached_result, []),
         load_persisted_comparison=lambda: None,
         update_playlist_comparison_result=manual_update_use_case.execute,
     )
@@ -582,7 +695,8 @@ def test_library_comparison_view_model_marks_missing_and_refreshes_cached_snapsh
     ]
     manual_update_use_case = StubUseCase((local_songs, refreshed_result, comparison_history))
     view_model = LibraryComparisonViewModel(
-        load_library_comparison=lambda: (local_songs, cached_result, []),
+        recompare_pending_library_comparison=lambda: (local_songs, cached_result, []),
+        recompare_full_library_comparison=lambda: (local_songs, cached_result, []),
         load_persisted_comparison=lambda: None,
         update_playlist_comparison_result=manual_update_use_case.execute,
     )

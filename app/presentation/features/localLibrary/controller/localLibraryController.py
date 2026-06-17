@@ -38,7 +38,7 @@ class LocalLibraryController:
         folder_monitor_worker: LocalFolderMonitorWorkerPort,
         show_page: Callable[[str, bool], None],
         on_state_changed: Callable[[], None],
-        on_comparison_data_changed: Callable[[], None],
+        on_comparison_data_changed: Callable[[str | None], None],
         on_action_recorded: Callable[[str], None],
         on_active_folder_changed: Callable[[str], None],
         on_song_count_changed: Callable[[str], None],
@@ -117,7 +117,9 @@ class LocalLibraryController:
         self._editing_folder_id = None
         self._page.clearForm()
         self._renderState()
-        self._on_comparison_data_changed()
+        self._on_comparison_data_changed(
+            "La biblioteca local activa ha cambiado."
+        )
         self._page.showStatusMessage(message, tone="success")
         self._on_action_recorded(message)
 
@@ -144,7 +146,9 @@ class LocalLibraryController:
             return
 
         self._renderState()
-        self._on_comparison_data_changed()
+        self._on_comparison_data_changed(
+            "La biblioteca local activa ha cambiado."
+        )
         self._page.showStatusMessage(
             f'Ahora estas trabajando con la biblioteca "{local_folder.display_name}".',
             tone="success",
@@ -191,7 +195,9 @@ class LocalLibraryController:
             self._editing_folder_id = None
             self._page.clearForm()
         self._renderState()
-        self._on_comparison_data_changed()
+        self._on_comparison_data_changed(
+            "La biblioteca local activa ha cambiado."
+        )
         self._page.showStatusMessage(
             f'Biblioteca "{selected_folder.display_name}" eliminada correctamente.',
             tone="success",
@@ -225,7 +231,9 @@ class LocalLibraryController:
             self._on_song_count_changed(feedback.song_count_label)
         self._page.showStatusMessage(feedback.status_message, tone=feedback.status_tone)
         if feedback.status_tone == "success":
-            self._on_comparison_data_changed()
+            self._on_comparison_data_changed(
+                "El ultimo escaneo local ha cambiado la biblioteca comparada."
+            )
         if feedback.last_action_message is not None:
             self._on_action_recorded(feedback.last_action_message)
 

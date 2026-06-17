@@ -124,10 +124,13 @@ class AppShellController:
             self._comparison_controller.refreshComparisonView
         )
         self._view.page.comparisonPage.onSecondaryActionRequested(
-            self._comparison_controller.requestRecomparison
+            self._comparison_controller.requestPendingRecomparison
+        )
+        self._view.page.comparisonPage.onTertiaryActionRequested(
+            self._comparison_controller.requestFullRecomparison
         )
         self._comparison_page_bound = True
 
-    def _invalidateComparisonIfReady(self) -> None:
+    def _invalidateComparisonIfReady(self, reason: str | None = None) -> None:
         if self._comparison_controller is not None:
-            self._comparison_controller.invalidate()
+            self._comparison_controller.invalidate(reason)

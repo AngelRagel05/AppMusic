@@ -27,6 +27,7 @@ from app.presentation.viewmodels.localLibrary.localLibraryScanViewModel import (
     LocalLibraryScanFeedback,
 )
 from app.presentation.viewmodels.comparison.libraryComparisonViewModel import (
+    ComparisonRecomparisonMode,
     ComparisonSnapshotState,
     LibraryComparisonFeedback,
 )
@@ -375,23 +376,29 @@ class YoutubePlaylistImportViewModelSpy:
 
 class ComparisonPageSpy:
     REFRESH_PRIMARY_ACTION_LABEL = "↻ Refrescar snapshot"
-    RECOMPARE_SECONDARY_ACTION_LABEL = "↻ Recomparar"
-    RECOMPUTING_SECONDARY_ACTION_LABEL = "↻ Recomparando..."
+    RECOMPARE_PENDING_SECONDARY_ACTION_LABEL = "↻ Recomparar pendientes"
+    RECOMPUTING_PENDING_SECONDARY_ACTION_LABEL = "↻ Recomparando pendientes..."
+    RECOMPARE_FULL_TERTIARY_ACTION_LABEL = "↻ Recomparar todo"
+    RECOMPUTING_FULL_TERTIARY_ACTION_LABEL = "↻ Recalculando todo..."
 
     def __init__(self, *, confirms_comparison: bool = True) -> None:
         self.local_songs = None
         self.comparison_result = None
         self.comparison_history = None
         self.status_messages: list[tuple[str, str]] = []
+        self.snapshot_states: list[tuple[str, str | None, str]] = []
         self.after_calls: list[int] = []
         self.loading_messages: list[str] = []
         self.loading_hidden = 0
         self.primary_action_callback = None
         self.secondary_action_callback = None
+        self.tertiary_action_callback = None
         self.confirms_comparison = confirms_comparison
         self.confirmation_requests = 0
+        self.full_confirmation_requests = 0
         self.confirmation_payloads: list[tuple[str, str]] = []
-        self.action_labels: list[tuple[str | None, str | None]] = []
+        self.full_confirmation_payloads: list[tuple[str, str]] = []
+        self.action_labels: list[tuple[str | None, str | None, str | None]] = []
         self.manual_decision_callback = None
 
     def showLocalSongs(self, local_songs) -> None:
@@ -407,12 +414,20 @@ class ComparisonPageSpy:
     def onSecondaryActionRequested(self, callback) -> None:
         self.secondary_action_callback = callback
 
+    def onTertiaryActionRequested(self, callback) -> None:
+        self.tertiary_action_callback = callback
+
     def onManualDecisionRequested(self, callback) -> None:
         self.manual_decision_callback = callback
 
     def confirmManualRecomparisonStart(self, *, playlist_title: str, folder_name: str) -> bool:
         self.confirmation_requests += 1
         self.confirmation_payloads.append((playlist_title, folder_name))
+        return self.confirms_comparison
+
+    def confirmFullRecomparisonStart(self, *, playlist_title: str, folder_name: str) -> bool:
+        self.full_confirmation_requests += 1
+        self.full_confirmation_payloads.append((playlist_title, folder_name))
         return self.confirms_comparison
 
     def showComparisonResults(self, comparison_result) -> None:
@@ -429,8 +444,12 @@ class ComparisonPageSpy:
         *,
         primary_label: str | None,
         secondary_label: str | None,
+        tertiary_label: str | None = None,
     ) -> None:
-        self.action_labels.append((primary_label, secondary_label))
+        self.action_labels.append((primary_label, secondary_label, tertiary_label))
+
+    def showSnapshotState(self, *, title: str, detail: str | None, tone: str = "info") -> None:
+        self.snapshot_states.append((title, detail, tone))
 
     def showLoadingState(self, message: str) -> None:
         self.loading_messages.append(message)
@@ -473,11 +492,14 @@ class LibraryComparisonViewModelSpy:
             status_message="Resultado marcado manualmente como encontrada con cancion local enlazada.",
             status_tone="success",
         )
+        self.invalidation_reason_value: str | None = None
 
     def requestRecomparison(
         self,
         schedule_on_main_thread,
         on_feedback,
+        *,
+        mode: ComparisonRecomparisonMode = ComparisonRecomparisonMode.PENDING_ONLY,
     ) -> None:
         self.recomparison_calls += 1
         for feedback in self.feedbacks:
@@ -522,9 +544,13 @@ class LibraryComparisonViewModelSpy:
     def snapshotState(self) -> ComparisonSnapshotState:
         return self.snapshot_state_value
 
-    def invalidateComparison(self) -> None:
+    def invalidationReason(self) -> str | None:
+        return self.invalidation_reason_value
+
+    def invalidateComparison(self, reason: str | None = None) -> None:
         self.invalidate_calls += 1
         self.snapshot_state_value = ComparisonSnapshotState.STALE
+        self.invalidation_reason_value = reason
 
     def updateComparisonItemDecision(
         self,
@@ -566,7 +592,7 @@ def test_local_library_controller_uses_view_model_lookup_for_editing_selected_fo
         folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda page_name, focus_input: shown_pages.append((page_name, focus_input)),
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: None,
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -598,7 +624,7 @@ def test_local_library_controller_does_not_reactivate_active_folder() -> None:
         folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: None,
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -629,7 +655,7 @@ def test_local_library_controller_sends_visible_name_when_updating_folder() -> N
         folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: None,
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -675,7 +701,7 @@ def test_local_library_controller_delegates_scan_and_updates_song_count() -> Non
         folder_monitor_worker=folder_monitor_worker,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: recorded_actions.append("invalidate"),
+        on_comparison_data_changed=lambda _reason=None: recorded_actions.append("invalidate"),
         on_action_recorded=recorded_actions.append,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=song_count_updates.append,
@@ -704,7 +730,7 @@ def test_local_library_controller_registers_only_primary_scan_action() -> None:
         folder_monitor_worker=LocalFolderMonitorWorkerSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: None,
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -733,7 +759,7 @@ def test_local_library_controller_starts_auto_refresh_for_active_folder_on_load(
         folder_monitor_worker=folder_monitor_worker,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: None,
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -761,7 +787,7 @@ def test_local_library_controller_triggers_scan_when_auto_refresh_detects_change
         folder_monitor_worker=folder_monitor_worker,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: None,
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
         on_active_folder_changed=lambda _name: None,
         on_song_count_changed=lambda _value: None,
@@ -820,7 +846,7 @@ def test_youtube_playlists_controller_does_not_reactivate_active_playlist() -> N
         import_view_model=YoutubePlaylistImportViewModelSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: None,
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
         on_active_playlist_changed=lambda _title: None,
     )
@@ -840,7 +866,7 @@ def test_youtube_playlists_controller_registers_primary_import_action() -> None:
         import_view_model=YoutubePlaylistImportViewModelSpy(),
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: None,
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
         on_active_playlist_changed=lambda _title: None,
     )
@@ -879,7 +905,7 @@ def test_youtube_playlists_controller_delegates_import_and_shows_feedback() -> N
         import_view_model=import_view_model,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: recorded_actions.append("invalidate"),
+        on_comparison_data_changed=lambda _reason=None: recorded_actions.append("invalidate"),
         on_action_recorded=recorded_actions.append,
         on_active_playlist_changed=lambda _title: None,
     )
@@ -914,7 +940,7 @@ def test_youtube_playlists_controller_does_not_trigger_import_on_load_for_active
         import_view_model=import_view_model,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: None,
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
         on_active_playlist_changed=lambda _title: None,
     )
@@ -934,7 +960,7 @@ def test_youtube_playlists_controller_does_not_trigger_auto_import_on_load_witho
         import_view_model=import_view_model,
         show_page=lambda _page_name, _focus_input: None,
         on_state_changed=lambda: None,
-        on_comparison_data_changed=lambda: None,
+        on_comparison_data_changed=lambda _reason=None: None,
         on_action_recorded=lambda _message: None,
         on_active_playlist_changed=lambda _title: None,
     )
@@ -1008,18 +1034,18 @@ def test_comparison_controller_request_recomparison_loads_local_songs_and_matchi
     view_model = LibraryComparisonViewModelSpy(
         feedbacks=[
             LibraryComparisonFeedback(
-                status_message="Recomparando biblioteca local contra playlist activa...",
+                status_message="Recomparando coincidencias pendientes con el estado actual...",
                 status_tone="info",
                 snapshot_state=ComparisonSnapshotState.RECOMPUTING,
             ),
             LibraryComparisonFeedback(
-                status_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
+                status_message="Recomparacion de pendientes completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
                 status_tone="success",
                 snapshot_state=ComparisonSnapshotState.FRESH,
                 local_songs=local_songs,
                 comparison_result=comparison_result,
                 comparison_history=comparison_history,
-                last_action_message="Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
+                last_action_message="Recomparacion de pendientes completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.",
             ),
         ]
     )
@@ -1037,16 +1063,20 @@ def test_comparison_controller_request_recomparison_loads_local_songs_and_matchi
     assert page.confirmation_payloads == [("Favoritas", "Active")]
     assert view_model.recomparison_calls == 1
     assert page.loading_messages == [
-        'Recalculando la comparacion entre "Favoritas" y "Active"...'
+        'Recomparando solo pendientes entre "Favoritas" y "Active"...'
     ]
     assert page.loading_hidden == 1
-    assert page.action_labels[-1] == ("↻ Refrescar snapshot", "↻ Recomparar")
+    assert page.action_labels[-1] == (
+        "↻ Refrescar snapshot",
+        "↻ Recomparar pendientes",
+        "↻ Recomparar todo",
+    )
     assert page.local_songs == local_songs
     assert page.comparison_result == comparison_result
     assert page.comparison_history == comparison_history
     assert page.status_messages == [
-        ("Recomparando biblioteca local contra playlist activa...", "info"),
-        ("Comparacion completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.", "success"),
+        ("Recomparando coincidencias pendientes con el estado actual...", "info"),
+        ("Recomparacion de pendientes completada: 1 encontradas, 0 posibles coincidencias y 0 faltan.", "success"),
     ]
 
 
@@ -1070,7 +1100,7 @@ def test_comparison_controller_request_recomparison_shows_error_feedback_when_co
     view_model = LibraryComparisonViewModelSpy(
         feedbacks=[
             LibraryComparisonFeedback(
-                status_message="Recomparando biblioteca local contra playlist activa...",
+                status_message="Recomparando coincidencias pendientes con el estado actual...",
                 status_tone="info",
                 snapshot_state=ComparisonSnapshotState.RECOMPUTING,
             ),
@@ -1093,13 +1123,13 @@ def test_comparison_controller_request_recomparison_shows_error_feedback_when_co
     assert page.confirmation_requests == 1
     assert view_model.recomparison_calls == 1
     assert page.loading_messages == [
-        'Recalculando la comparacion entre "Favoritas" y "Active"...'
+        'Recomparando solo pendientes entre "Favoritas" y "Active"...'
     ]
     assert page.loading_hidden == 1
     assert page.local_songs is None
     assert page.comparison_result is None
     assert page.status_messages == [
-        ("Recomparando biblioteca local contra playlist activa...", "info"),
+        ("Recomparando coincidencias pendientes con el estado actual...", "info"),
         ("No hay una biblioteca local activa para comparar.", "error"),
     ]
 
@@ -1135,6 +1165,99 @@ def test_comparison_controller_request_recomparison_does_nothing_when_user_cance
     assert view_model.recomparison_calls == 0
     assert page.loading_messages == []
     assert page.loading_hidden == 0
+
+
+def test_comparison_controller_request_full_recomparison_uses_explicit_full_action() -> None:
+    page = ComparisonPageSpy()
+    view_model = LibraryComparisonViewModelSpy(
+        feedbacks=[
+            LibraryComparisonFeedback(
+                status_message="Recalculando toda la comparacion desde cero...",
+                status_tone="info",
+                snapshot_state=ComparisonSnapshotState.RECOMPUTING,
+                recomparison_mode=ComparisonRecomparisonMode.FULL,
+            )
+        ]
+    )
+    context = ActiveComparisonContextSpy(
+        folder=LocalFolderDto(
+            id=7,
+            path=r"C:\Music\Active",
+            display_name="Active",
+            is_active=True,
+        ),
+        playlist=YoutubePlaylistDto(
+            id=9,
+            title="Favoritas",
+            playlist_url="https://www.youtube.com/playlist?list=PL123",
+            external_playlist_id="PL123",
+            is_active=True,
+        ),
+    )
+    controller = ComparisonController(
+        page=page,
+        view_model=view_model,
+        load_active_folder=context.load_active_folder,
+        load_active_playlist=context.load_active_playlist,
+    )
+
+    controller.requestFullRecomparison()
+
+    assert page.confirmation_requests == 0
+    assert page.full_confirmation_requests == 1
+    assert page.loading_messages == [
+        'Recalculando toda la comparacion entre "Favoritas" y "Active"...'
+    ]
+    assert view_model.recomparison_calls == 1
+
+
+def test_comparison_controller_invalidate_shows_invalidation_reason_in_snapshot_state() -> None:
+    page = ComparisonPageSpy()
+    view_model = LibraryComparisonViewModelSpy(
+        cached_comparison_result=PlaylistComparisonResultDto(
+            summary=PlaylistComparisonSummaryDto(
+                found_count=1,
+                missing_count=0,
+                possible_match_count=0,
+                total_compared=1,
+            ),
+            items=[],
+        ),
+        snapshot_state=ComparisonSnapshotState.FRESH,
+    )
+    context = ActiveComparisonContextSpy(
+        folder=LocalFolderDto(
+            id=7,
+            path=r"C:\Music\Active",
+            display_name="Active",
+            is_active=True,
+        ),
+        playlist=YoutubePlaylistDto(
+            id=9,
+            title="Favoritas",
+            playlist_url="https://www.youtube.com/playlist?list=PL123",
+            external_playlist_id="PL123",
+            is_active=True,
+        ),
+    )
+    controller = ComparisonController(
+        page=page,
+        view_model=view_model,
+        load_active_folder=context.load_active_folder,
+        load_active_playlist=context.load_active_playlist,
+    )
+
+    controller.invalidate("El snapshot importado de YouTube ha cambiado.")
+
+    assert page.snapshot_states[-1] == (
+        "Snapshot obsoleto",
+        "El snapshot importado de YouTube ha cambiado.",
+        "warning",
+    )
+    assert page.status_messages[-1] == (
+        'Mostrando snapshot persistido desactualizado. Pulsa "Recomparar" para recalcular con el estado mas reciente. Motivo: El snapshot importado de YouTube ha cambiado.',
+        "info",
+    )
 
 
 def test_comparison_controller_reuses_cached_results_without_reloading() -> None:
@@ -1209,7 +1332,10 @@ def test_comparison_controller_reuses_cached_results_without_reloading() -> None
     assert page.local_songs == local_songs
     assert page.comparison_result == comparison_result
     assert len(page.comparison_history) == 1
-    assert page.action_labels == [("↻ Refrescar snapshot", "↻ Recomparar"), ("↻ Refrescar snapshot", "↻ Recomparar")]
+    assert page.action_labels == [
+        ("↻ Refrescar snapshot", "↻ Recomparar pendientes", "↻ Recomparar todo"),
+        ("↻ Refrescar snapshot", "↻ Recomparar pendientes", "↻ Recomparar todo"),
+    ]
     assert page.status_messages == [("Mostrando snapshot persistido actual.", "info")]
 
 
@@ -1243,7 +1369,9 @@ def test_comparison_controller_load_shows_manual_message_without_cached_results(
     assert view_model.restore_calls == 1
     assert view_model.recomparison_calls == 0
     assert page.loading_messages == []
-    assert page.action_labels == [("↻ Refrescar snapshot", "↻ Recomparar")]
+    assert page.action_labels == [
+        ("↻ Refrescar snapshot", "↻ Recomparar pendientes", "↻ Recomparar todo")
+    ]
     assert page.status_messages == [
         (
             'No hay snapshot persistido para la biblioteca y playlist activas. Pulsa "Recomparar" para generar el primero.',
@@ -1467,7 +1595,11 @@ def test_comparison_controller_load_keeps_stale_cache_without_reloading() -> Non
     assert page.local_songs == local_songs
     assert page.comparison_result == comparison_result
     assert len(page.comparison_history) == 1
-    assert page.action_labels[-1] == ("↻ Refrescar snapshot", "↻ Recomparar")
+    assert page.action_labels[-1] == (
+        "↻ Refrescar snapshot",
+        "↻ Recomparar pendientes",
+        "↻ Recomparar todo",
+    )
     assert page.status_messages == [
         (
             'Mostrando snapshot persistido desactualizado. Pulsa "Recomparar" para recalcular con el estado mas reciente.',
@@ -1565,7 +1697,9 @@ def test_comparison_controller_invalidate_prompts_user_to_rerun_comparison_after
     controller.invalidate()
 
     assert view_model.invalidate_calls == 1
-    assert page.action_labels == [("↻ Refrescar snapshot", "↻ Recomparar")]
+    assert page.action_labels == [
+        ("↻ Refrescar snapshot", "↻ Recomparar pendientes", "↻ Recomparar todo")
+    ]
     assert page.status_messages == [
         (
             'Mostrando snapshot persistido desactualizado. Pulsa "Recomparar" para recalcular con el estado mas reciente.',

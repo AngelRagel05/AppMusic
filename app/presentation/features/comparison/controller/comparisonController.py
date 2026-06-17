@@ -9,6 +9,7 @@ from app.presentation.features.comparison.ui.comparisonPage.comparisonPage impor
     ComparisonPage,
 )
 from app.presentation.viewmodels.comparison.libraryComparisonViewModel import (
+    ComparisonRecomparisonMode,
     ComparisonSnapshotState,
     LibraryComparisonFeedback,
     LibraryComparisonViewModel,
@@ -27,6 +28,7 @@ class ComparisonController:
         self._view_model = view_model
         self._load_active_folder = load_active_folder
         self._load_active_playlist = load_active_playlist
+        self._current_recomparison_mode = ComparisonRecomparisonMode.PENDING_ONLY
         self._page.onManualDecisionRequested(self._handleManualDecisionRequested)
 
     def load(self) -> None:
@@ -34,7 +36,8 @@ class ComparisonController:
         active_playlist = self._load_active_playlist()
         self._page.setActionLabels(
             primary_label=self._page.REFRESH_PRIMARY_ACTION_LABEL,
-            secondary_label=self._page.RECOMPARE_SECONDARY_ACTION_LABEL,
+            secondary_label=self._page.RECOMPARE_PENDING_SECONDARY_ACTION_LABEL,
+            tertiary_label=self._page.RECOMPARE_FULL_TERTIARY_ACTION_LABEL,
         )
         missing_context_message = self._buildMissingContextMessage(
             active_folder,
@@ -95,7 +98,16 @@ class ComparisonController:
         self._renderCachedSnapshot()
         self._showSnapshotStatusMessage()
 
+    def requestPendingRecomparison(self) -> None:
+        self._requestRecomparison(ComparisonRecomparisonMode.PENDING_ONLY)
+
     def requestRecomparison(self) -> None:
+        self.requestPendingRecomparison()
+
+    def requestFullRecomparison(self) -> None:
+        self._requestRecomparison(ComparisonRecomparisonMode.FULL)
+
+    def _requestRecomparison(self, mode: ComparisonRecomparisonMode) -> None:
         active_folder = self._load_active_folder()
         active_playlist = self._load_active_playlist()
         missing_context_message = self._buildMissingContextMessage(
@@ -109,36 +121,61 @@ class ComparisonController:
 
         playlist_title = getattr(active_playlist, "title", "Playlist activa")
         folder_name = getattr(active_folder, "display_name", "Biblioteca activa")
-        if not self._page.confirmManualRecomparisonStart(
-            playlist_title=playlist_title,
-            folder_name=folder_name,
-        ):
-            return
-        self._page.showLoadingState(
-            (
-                f'Recalculando la comparacion entre "{playlist_title}" '
-                f'y "{folder_name}"...'
+        if mode is ComparisonRecomparisonMode.FULL:
+            if not self._page.confirmFullRecomparisonStart(
+                playlist_title=playlist_title,
+                folder_name=folder_name,
+            ):
+                return
+            self._page.showLoadingState(
+                (
+                    f'Recalculando toda la comparacion entre "{playlist_title}" '
+                    f'y "{folder_name}"...'
+                )
             )
-        )
-        self._page.after(16, self._startRecomparison)
+        else:
+            if not self._page.confirmManualRecomparisonStart(
+                playlist_title=playlist_title,
+                folder_name=folder_name,
+            ):
+                return
+            self._page.showLoadingState(
+                (
+                    f'Recomparando solo pendientes entre "{playlist_title}" '
+                    f'y "{folder_name}"...'
+                )
+            )
+        self._current_recomparison_mode = mode
+        self._page.after(16, lambda mode=mode: self._startRecomparison(mode))
 
-    def invalidate(self) -> None:
-        self._view_model.invalidateComparison()
+    def invalidate(self, reason: str | None = None) -> None:
+        self._view_model.invalidateComparison(reason)
         active_folder = self._load_active_folder()
         active_playlist = self._load_active_playlist()
         if self._buildMissingContextMessage(active_folder, active_playlist) is None:
             self._showSnapshotStatusMessage()
 
-    def _startRecomparison(self) -> None:
+    def _startRecomparison(self, mode: ComparisonRecomparisonMode) -> None:
         self._view_model.requestRecomparison(
             schedule_on_main_thread=lambda callback: self._page.after(0, callback),
             on_feedback=self._renderComparisonFeedback,
+            mode=mode,
         )
 
     def _renderComparisonFeedback(self, feedback: LibraryComparisonFeedback) -> None:
         self._page.showComparisonStatusMessage(
             feedback.status_message,
             tone=feedback.status_tone,
+        )
+        self._page.showSnapshotState(
+            title=self._buildSnapshotStateTitle(
+                feedback.snapshot_state or self._view_model.snapshotState(),
+                feedback.recomparison_mode or self._current_recomparison_mode,
+            ),
+            detail=feedback.invalidation_reason or self._view_model.invalidationReason(),
+            tone=self._buildSnapshotStateTone(
+                feedback.snapshot_state or self._view_model.snapshotState()
+            ),
         )
         self._syncActionLabels(
             feedback.snapshot_state or self._view_model.snapshotState()
@@ -194,18 +231,31 @@ class ComparisonController:
     def _showSnapshotStatusMessage(self) -> None:
         self._syncActionLabels(self._view_model.snapshotState())
         snapshot_state = self._view_model.snapshotState()
+        invalidation_reason = self._view_model.invalidationReason()
+        self._page.showSnapshotState(
+            title=self._buildSnapshotStateTitle(
+                snapshot_state,
+                self._current_recomparison_mode,
+            ),
+            detail=invalidation_reason,
+            tone=self._buildSnapshotStateTone(snapshot_state),
+        )
         if snapshot_state is ComparisonSnapshotState.STALE:
+            detail_suffix = ""
+            if invalidation_reason:
+                detail_suffix = f" Motivo: {invalidation_reason}"
             self._page.showComparisonStatusMessage(
                 (
                     "Mostrando snapshot persistido desactualizado. "
                     "Pulsa \"Recomparar\" para recalcular con el estado mas reciente."
+                    f"{detail_suffix}"
                 ),
                 tone="info",
             )
             return
         if snapshot_state is ComparisonSnapshotState.RECOMPUTING:
             self._page.showComparisonStatusMessage(
-                "Recomparando biblioteca local contra playlist activa...",
+                "Hay una recomparacion en progreso.",
                 tone="info",
             )
             return
@@ -218,13 +268,39 @@ class ComparisonController:
         self,
         snapshot_state: ComparisonSnapshotState,
     ) -> None:
-        secondary_label = self._page.RECOMPARE_SECONDARY_ACTION_LABEL
+        secondary_label = self._page.RECOMPARE_PENDING_SECONDARY_ACTION_LABEL
+        tertiary_label = self._page.RECOMPARE_FULL_TERTIARY_ACTION_LABEL
         if snapshot_state is ComparisonSnapshotState.RECOMPUTING:
-            secondary_label = self._page.RECOMPUTING_SECONDARY_ACTION_LABEL
+            secondary_label = self._page.RECOMPUTING_PENDING_SECONDARY_ACTION_LABEL
+            tertiary_label = self._page.RECOMPUTING_FULL_TERTIARY_ACTION_LABEL
         self._page.setActionLabels(
             primary_label=self._page.REFRESH_PRIMARY_ACTION_LABEL,
             secondary_label=secondary_label,
+            tertiary_label=tertiary_label,
         )
+
+    def _buildSnapshotStateTitle(
+        self,
+        snapshot_state: ComparisonSnapshotState,
+        recomparison_mode: ComparisonRecomparisonMode,
+    ) -> str:
+        if snapshot_state is ComparisonSnapshotState.RECOMPUTING:
+            if recomparison_mode is ComparisonRecomparisonMode.FULL:
+                return "Recalculando todo"
+            return "Recomparando pendientes"
+        if snapshot_state is ComparisonSnapshotState.STALE:
+            return "Snapshot obsoleto"
+        return "Snapshot cargado"
+
+    def _buildSnapshotStateTone(
+        self,
+        snapshot_state: ComparisonSnapshotState,
+    ) -> str:
+        if snapshot_state is ComparisonSnapshotState.RECOMPUTING:
+            return "warning"
+        if snapshot_state is ComparisonSnapshotState.STALE:
+            return "warning"
+        return "success"
 
     def _handleManualLocalSongLinkRequested(
         self,
