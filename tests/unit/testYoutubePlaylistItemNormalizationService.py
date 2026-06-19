@@ -104,6 +104,18 @@ def test_normalize_youtube_playlist_item_metadata_removes_ignored_youtube_noise_
     )
 
 
+def test_normalize_youtube_playlist_item_metadata_extracts_beast_mode_and_primary_artist_from_visualizer_title() -> None:
+    normalized = normalizeYoutubePlaylistItemMetadata(
+        raw_title="CRUZ CAFUNÉ - BEAST MODE (ft. WEST DUBAI) [Visualizer]",
+        raw_channel_name="Cruz Cafuné",
+    )
+
+    assert normalized == NormalizedYoutubePlaylistItemMetadata(
+        normalized_title="beast mode",
+        normalized_artist="cruz cafune",
+    )
+
+
 def test_normalize_youtube_playlist_item_metadata_flips_title_first_tracks_when_channel_does_not_help() -> None:
     normalized = normalizeYoutubePlaylistItemMetadata(
         raw_title="3. ROOKIES - Rulo y Cookin Mama (PROD. DJ TIESO) [BULLDOGS]",

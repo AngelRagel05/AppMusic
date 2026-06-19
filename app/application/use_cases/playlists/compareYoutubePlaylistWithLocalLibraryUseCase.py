@@ -39,6 +39,7 @@ from app.domain.playlists.services import (
 )
 from app.domain.metadata.services import (
     normalizeMusicComparisonArtist,
+    normalizeMusicComparisonArtistParts,
     normalizeMusicComparisonTitle,
 )
 from app.domain.playlists.repositories.playlistComparisonRepository import PlaylistComparisonRepository
@@ -66,7 +67,7 @@ class FoundReservationState:
 
 class CompareYoutubePlaylistWithLocalLibraryUseCase:
     SNAPSHOT_RETENTION_LIMIT = 3
-    MATCHING_RULES_VERSION = "persisted_match_v8_sequential_contract_invalidation"
+    MATCHING_RULES_VERSION = "persisted_match_v11_artist_semantic_validation"
 
     def __init__(
         self,
@@ -623,6 +624,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
     def _buildComparableLocalSong(self, local_song) -> ComparableLocalSong:
         if local_song.id is None:
             raise ValueError("La cancion local comparable requiere un id persistido.")
+        normalized_artist_parts = normalizeMusicComparisonArtistParts(local_song.artist)
         return ComparableLocalSong(
             id=local_song.id,
             title=local_song.title,
@@ -631,10 +633,12 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                 local_song.normalized_title
                 or normalizeMusicComparisonTitle(local_song.title)
             ),
-            normalized_artist=(
+            normalized_artist_full=(
                 local_song.normalized_artist
                 or normalizeMusicComparisonArtist(local_song.artist)
             ),
+            normalized_artist_primary=normalized_artist_parts.primary_value,
+            normalized_artist_collaborators=normalized_artist_parts.collaborators,
             duration_seconds=local_song.duration_seconds,
             is_available=local_song.is_available,
         )
@@ -642,9 +646,14 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
     def _buildComparableYoutubePlaylistItem(self, youtube_playlist_item) -> ComparableYoutubePlaylistItem:
         if youtube_playlist_item.id is None:
             raise ValueError("El item de YouTube comparable requiere un id persistido.")
+        normalized_artist_parts = normalizeMusicComparisonArtistParts(
+            youtube_playlist_item.normalized_artist
+        )
         return ComparableYoutubePlaylistItem(
             id=youtube_playlist_item.id,
             normalized_title=youtube_playlist_item.normalized_title,
-            normalized_artist=youtube_playlist_item.normalized_artist,
+            normalized_artist_full=youtube_playlist_item.normalized_artist,
+            normalized_artist_primary=normalized_artist_parts.primary_value,
+            normalized_artist_collaborators=normalized_artist_parts.collaborators,
             duration_seconds=youtube_playlist_item.duration_seconds,
         )

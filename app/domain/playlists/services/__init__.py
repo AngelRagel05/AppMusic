@@ -33,6 +33,9 @@ from app.domain.playlists.services.matchDecisionSource import (
     isAutomaticMatchedBy,
     isManualMatchedBy,
 )
+from app.domain.playlists.services.artistComparisonValidationService import (
+    classifyComparableArtistMatchForSelection,
+)
 from app.domain.playlists.services.playlistItemMatchingRules import (
     ArtistMatchEvidence,
     CandidateMatchEvidence,
@@ -71,6 +74,7 @@ __all__ = [
     "NormalizedYoutubePlaylistItemMetadata",
     "TitleMatchEvidence",
     "buildAutomaticMatchedBy",
+    "classifyComparableArtistMatchForSelection",
     "buildArtistMatchEvidence",
     "buildComparableLocalSongSequentialIndex",
     "buildCandidateMatchEvidence",

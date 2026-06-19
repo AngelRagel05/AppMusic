@@ -264,7 +264,7 @@ def test_match_persisted_playlist_item_to_local_songs_uses_only_persisted_compar
         ComparableYoutubePlaylistItem(
             id=21,
             normalized_title="memories i",
-            normalized_artist="nadal015",
+            normalized_artist_full="nadal015",
             duration_seconds=176.0,
         ),
         [

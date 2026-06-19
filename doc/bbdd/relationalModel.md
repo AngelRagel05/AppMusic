@@ -440,7 +440,9 @@ Estas reglas dependen del flujo del sistema o son mas portables si se resuelven 
 El contrato comparable del matching debe mapear ambos lados a una misma semantica:
 
 * `comparable_title`
-* `comparable_artist`
+* `comparable_artist_full`
+* `comparable_artist_primary`
+* `comparable_artist_collaborators`
 
 Persistencia objetivo:
 

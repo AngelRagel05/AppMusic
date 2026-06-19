@@ -578,7 +578,7 @@ def test_library_comparison_view_model_updates_manual_decision_and_refreshes_cac
                 local_title=None,
                 local_artist=None,
                 score=0.0,
-                reason="No hay candidata suficientemente competitiva.",
+                reason="Existe titulo pero no artista principal valido.",
             )
         ],
         playlist_comparison_id=9,

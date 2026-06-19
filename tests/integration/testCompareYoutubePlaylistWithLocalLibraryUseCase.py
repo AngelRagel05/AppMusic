@@ -295,7 +295,218 @@ def test_compare_youtube_playlist_with_local_library_use_case_marks_missing_when
     assert result.summary.found_count == 0
     assert result.summary.missing_count == 1
     assert result.items[0].comparison_status is ComparisonStatus.MISSING
-    assert result.items[0].reason == "Existe titulo pero no artista."
+    assert result.items[0].reason == "Existe titulo pero no artista principal valido."
+
+
+def test_compare_youtube_playlist_with_local_library_use_case_accepts_local_artist_collaborators_for_found() -> None:
+    session = create_session()
+    local_folder_repository = LocalFolderSqlAlchemyRepository(session)
+    local_song_repository = LocalSongSqlAlchemyRepository(session)
+    playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
+    playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
+    youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
+    youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
+
+    active_folder = local_folder_repository.save_as_active(r"C:\Music\Active", "Active")
+    active_playlist = youtube_playlist_repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PL123",
+        "PL123",
+        "Favoritas",
+    )
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\beast-mode.mp3",
+            file_name="beast-mode.mp3",
+            is_available=True,
+            title="BEAST MODE",
+            artist="Cruz Cafune feat West Dubai",
+            duration_seconds=176.2,
+        )
+    )
+    youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="beast-mode",
+                position=1,
+                raw_title="CRUZ CAFUNE - BEAST MODE (ft. WEST DUBAI)",
+                raw_channel_name="Cruz Cafune",
+                normalized_title="beast mode",
+                normalized_artist="cruz cafune",
+                duration_seconds=176.0,
+            )
+        ],
+    )
+
+    result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        youtube_playlist_repository,
+        youtube_playlist_item_repository,
+        local_folder_repository,
+        local_song_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute()
+
+    assert result.summary.found_count == 1
+    assert result.summary.missing_count == 0
+    assert result.items[0].comparison_status is ComparisonStatus.FOUND
+    assert result.items[0].local_song_id is not None
+
+
+def test_compare_youtube_playlist_with_local_library_use_case_matches_cruz_cafune_batch_as_found() -> None:
+    session = create_session()
+    local_folder_repository = LocalFolderSqlAlchemyRepository(session)
+    local_song_repository = LocalSongSqlAlchemyRepository(session)
+    playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
+    playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
+    youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
+    youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
+
+    active_folder = local_folder_repository.save_as_active(r"C:\Music\Active", "Active")
+    active_playlist = youtube_playlist_repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PL123",
+        "PL123",
+        "Favoritas",
+    )
+
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\beast-mode.mp3",
+            file_name="beast-mode.mp3",
+            is_available=True,
+            title="BEAST MODE",
+            artist="Cruz Cafune feat West Dubai",
+            duration_seconds=176.2,
+        )
+    )
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\mapa-de-calor.mp3",
+            file_name="mapa-de-calor.mp3",
+            is_available=True,
+            title="MAPA DE CALOR",
+            artist="Cruz Cafune",
+            duration_seconds=191.0,
+        )
+    )
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\tlc.mp3",
+            file_name="tlc.mp3",
+            is_available=True,
+            title="TLC",
+            artist="Cruz Cafune feat Maikel Delacalle",
+            duration_seconds=210.0,
+        )
+    )
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\stone-island.mp3",
+            file_name="stone-island.mp3",
+            is_available=True,
+            title="STONE ISLAND",
+            artist="Cruz Cafune",
+            duration_seconds=201.0,
+        )
+    )
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\vision-tunel.mp3",
+            file_name="vision-tunel.mp3",
+            is_available=True,
+            title="VISION TUNEL",
+            artist="Cruz Cafune",
+            duration_seconds=199.0,
+        )
+    )
+
+    youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="beast-mode",
+                position=1,
+                raw_title="CRUZ CAFUNÉ - BEAST MODE (ft. WEST DUBAI)",
+                raw_channel_name="Cruz Cafuné",
+                normalized_title="beast mode",
+                normalized_artist="cruz cafune",
+                duration_seconds=176.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="mapa-de-calor",
+                position=2,
+                raw_title="CRUZ CAFUNÉ - MAPA DE CALOR (Visualizer)",
+                raw_channel_name="Cruz Cafuné",
+                normalized_title="mapa de calor",
+                normalized_artist="cruz cafune",
+                duration_seconds=191.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="tlc",
+                position=3,
+                raw_title="CRUZ CAFUNÉ - TLC (ft. MAIKEL DELACALLE)",
+                raw_channel_name="Cruz Cafuné",
+                normalized_title="tlc",
+                normalized_artist="cruz cafune",
+                duration_seconds=210.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="stone-island",
+                position=4,
+                raw_title="CRUZ CAFUNÉ - STONE ISLAND (Visualizer)",
+                raw_channel_name="Cruz Cafuné",
+                normalized_title="stone island",
+                normalized_artist="cruz cafune",
+                duration_seconds=201.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="vision-tunel",
+                position=5,
+                raw_title="CRUZ CAFUNÉ - VISIÓN TÚNEL",
+                raw_channel_name="Cruz Cafuné",
+                normalized_title="vision tunel",
+                normalized_artist="cruz cafune",
+                duration_seconds=199.0,
+            ),
+        ],
+    )
+
+    result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        youtube_playlist_repository,
+        youtube_playlist_item_repository,
+        local_folder_repository,
+        local_song_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute()
+
+    assert result.summary.found_count == 5
+    assert result.summary.missing_count == 0
+    assert [item.comparison_status for item in result.items] == [
+        ComparisonStatus.FOUND,
+        ComparisonStatus.FOUND,
+        ComparisonStatus.FOUND,
+        ComparisonStatus.FOUND,
+        ComparisonStatus.FOUND,
+    ]
 
 
 def test_compare_youtube_playlist_with_local_library_use_case_excludes_reserved_found_song_from_later_items() -> None:
@@ -643,7 +854,113 @@ def test_compare_youtube_playlist_with_local_library_use_case_invalidates_frozen
     assert result.summary.found_count == 1
     assert result.observability is not None
     assert result.observability.volume_metrics.skipped_found_count == 0
+    assert result.observability.volume_metrics.reserved_local_song_count == 0
     assert result.observability.volume_metrics.recomputed_item_count == 1
+
+
+def test_compare_youtube_playlist_with_local_library_use_case_does_not_keep_old_frozen_found_reservation_after_artist_rule_change() -> None:
+    session = create_session()
+    local_folder_repository = LocalFolderSqlAlchemyRepository(session)
+    local_song_repository = LocalSongSqlAlchemyRepository(session)
+    playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
+    playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
+    youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
+    youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
+
+    active_folder = local_folder_repository.save_as_active(r"C:\Music\Active", "Active")
+    active_playlist = youtube_playlist_repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PL123",
+        "PL123",
+        "Favoritas",
+    )
+    local_song_one = local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\intro-sfdk.mp3",
+            file_name="intro-sfdk.mp3",
+            is_available=True,
+            title="Intro",
+            artist="SFDK",
+            duration_seconds=180.0,
+        )
+    )
+    persisted_items = youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="legacy-frozen-found",
+                position=1,
+                raw_title="Intro",
+                raw_channel_name="SFDK",
+                normalized_title="intro",
+                normalized_artist="sfdk",
+                duration_seconds=180.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="recomputed-same-song",
+                position=2,
+                raw_title="Intro",
+                raw_channel_name="SFDK",
+                normalized_title="intro",
+                normalized_artist="sfdk",
+                duration_seconds=180.0,
+            ),
+        ],
+    )
+    previous_snapshot = playlist_comparison_repository.create(
+        active_playlist.id or 0,
+        active_folder.id or 0,
+        youtube_playlist_imported_at=datetime(2100, 1, 1, 10, 0, tzinfo=UTC),
+        local_library_scanned_at=datetime(2100, 1, 1, 10, 0, tzinfo=UTC),
+        ignored_terms_version="ignored_terms:untracked",
+        matching_rules_version="persisted_match_v10_artist_contract_split",
+    )
+    playlist_comparison_result_repository.save_for_comparison(
+        previous_snapshot.id or 0,
+        [
+            PlaylistComparisonResult(
+                playlist_comparison_id=previous_snapshot.id or 0,
+                youtube_playlist_item_id=persisted_items[0].id or 0,
+                local_song_id=local_song_one.id,
+                match_status=ComparisonStatus.FOUND.value,
+                score=100.0,
+                matched_by="auto:title_artist_duration",
+            ),
+            PlaylistComparisonResult(
+                playlist_comparison_id=previous_snapshot.id or 0,
+                youtube_playlist_item_id=persisted_items[1].id or 0,
+                local_song_id=None,
+                match_status=ComparisonStatus.MISSING.value,
+                score=0.0,
+                matched_by=None,
+            ),
+        ],
+    )
+    playlist_comparison_repository.commit()
+
+    result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        youtube_playlist_repository,
+        youtube_playlist_item_repository,
+        local_folder_repository,
+        local_song_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute()
+
+    assert [item.comparison_status for item in result.items] == [
+        ComparisonStatus.FOUND,
+        ComparisonStatus.MISSING,
+    ]
+    assert result.items[0].reason == "Coincidencia confirmada por titulo y artista validos."
+    assert result.items[1].reason == "La cancion local ya esta reservada por otro FOUND."
+    assert result.items[0].local_song_id == local_song_one.id
+    assert result.observability is not None
+    assert result.observability.volume_metrics.skipped_found_count == 0
+    assert result.observability.volume_metrics.reserved_local_song_count == 0
 
 
 def test_compare_youtube_playlist_with_local_library_use_case_keeps_frozen_found_reservation_for_later_rows() -> None:

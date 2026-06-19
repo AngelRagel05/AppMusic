@@ -38,10 +38,13 @@ def test_build_comparison_reason_summary_returns_readable_possible_match_explana
         local_title="Song One",
         local_artist="Artist One feat Guest",
         score=76.0,
-        reason="Varias candidatas del mismo titulo y artista.",
+        reason="Varias candidatas del mismo titulo y artista valido.",
     )
 
-    assert buildComparisonReasonSummary(item) == "Varias candidatas del mismo titulo y artista."
+    assert (
+        buildComparisonReasonSummary(item)
+        == "Varias candidatas del mismo titulo y artista valido."
+    )
 
 
 def test_build_comparison_reason_summary_returns_readable_missing_explanation() -> None:

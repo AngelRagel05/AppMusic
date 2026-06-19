@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence
 
+from app.domain.playlists.services.artistComparisonValidationService import (
+    classifyComparableArtistMatchForSelection,
+)
 from app.domain.playlists.services.matchDecisionSource import buildAutomaticMatchedBy
 from app.domain.playlists.services.persistedComparisonModels import (
     ComparableLocalSong,
@@ -14,7 +17,6 @@ from app.domain.playlists.services.playlistItemMatchingRules import (
     CandidateScoreBreakdown,
     DurationMatchEvidence,
     TitleMatchEvidence,
-    buildArtistMatchEvidence,
     buildCandidateMatchEvidence,
     buildDurationMatchEvidence,
 )
@@ -65,7 +67,7 @@ def matchPersistedPlaylistItemToLocalSongs(
             local_song=None,
             comparison_status=ComparisonStatus.MISSING,
             score=0.0,
-            reason="No hay canciones locales candidatas validadas por titulo y artista.",
+            reason="Existe titulo pero no artista principal valido.",
             matched_by=None,
         )
 
@@ -82,7 +84,7 @@ def matchPersistedPlaylistItemToLocalSongs(
     ]
     if not valid_candidate_evaluations:
         return _buildMissingResult(
-            reason="No hay canciones locales candidatas validadas por titulo y artista.",
+            reason="Existe titulo pero no artista principal valido.",
         )
 
     valid_candidate_evaluations.sort(
@@ -124,13 +126,13 @@ def _evaluateValidatedCandidate(
         youtube_playlist_item.comparable_title,
         local_song.comparable_title,
     )
-    artist_evidence = buildArtistMatchEvidence(
-        youtube_playlist_item.comparable_artist,
-        local_song.comparable_artist,
+    artist_selection_evidence = classifyComparableArtistMatchForSelection(
+        youtube_playlist_item,
+        local_song,
     )
     if title_evidence is TitleMatchEvidence.NONE:
         return None
-    if artist_evidence is not ArtistMatchEvidence.STRONG:
+    if artist_selection_evidence is not ArtistMatchEvidence.STRONG:
         return None
 
     duration_evidence, duration_distance = buildDurationMatchEvidence(
@@ -143,7 +145,7 @@ def _evaluateValidatedCandidate(
     )
     evidence = buildCandidateMatchEvidence(
         title_match=title_evidence,
-        artist_match=artist_evidence,
+        artist_match=artist_selection_evidence,
         duration_match=duration_evidence,
     )
     can_confirm_found = _canConfirmFound(
@@ -256,7 +258,7 @@ def _buildPossibleMatchResult(
         local_song=candidate_evaluation.local_song,
         comparison_status=ComparisonStatus.POSSIBLE_MATCH,
         score=candidate_evaluation.score,
-        reason=reason or "Varias candidatas del mismo titulo y artista.",
+        reason=reason or "Varias candidatas del mismo titulo y artista valido.",
         matched_by=buildAutomaticMatchedBy(
             status=ComparisonStatus.POSSIBLE_MATCH,
             evidence=evidence,

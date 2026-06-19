@@ -1815,7 +1815,7 @@ def test_comparison_controller_handles_manual_decision_from_page_callback() -> N
                 local_title=None,
                 local_artist=None,
                 score=0.0,
-                reason="No hay candidata suficientemente competitiva.",
+                reason="Existe titulo pero no artista principal valido.",
             )
         ],
         playlist_comparison_id=4,

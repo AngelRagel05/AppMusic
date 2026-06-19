@@ -7,6 +7,7 @@ from app.domain.metadata.services import (
     NormalizedMusicComparisonMetadata,
     normalizeMusicComparisonAlbum,
     normalizeMusicComparisonArtist,
+    normalizeMusicComparisonArtistParts,
     normalizeMusicComparisonMetadata,
     normalizeMusicComparisonText,
     normalizeMusicComparisonTitle,
@@ -137,3 +138,38 @@ def test_normalize_music_comparison_title_ignores_vol_symmetrically_for_local_me
     normalized = normalizeMusicComparisonTitle("Otra vez Vol. 4")
 
     assert normalized == "otra vez 4"
+
+
+def test_normalize_music_comparison_artist_parts_extracts_primary_artist_before_feat() -> None:
+    normalized_parts = normalizeMusicComparisonArtistParts("Cruz Cafune feat West Dubai")
+
+    assert normalized_parts.primary_value == "cruz cafune"
+    assert normalized_parts.collaborators == ("west dubai",)
+
+
+def test_normalize_music_comparison_artist_parts_extracts_primary_artist_before_feat_with_accents() -> None:
+    normalized_parts = normalizeMusicComparisonArtistParts("Cruz Cafuné ft. West Dubai")
+
+    assert normalized_parts.primary_value == "cruz cafune"
+    assert normalized_parts.collaborators == ("west dubai",)
+
+
+def test_normalize_music_comparison_artist_parts_keeps_comma_separated_artists_as_multiple_primary_block() -> None:
+    normalized_parts = normalizeMusicComparisonArtistParts("Cruz Cafuné, Maikel Delacalle")
+
+    assert normalized_parts.primary_value == "cruz cafune maikel delacalle"
+    assert normalized_parts.collaborators == ()
+
+
+def test_normalize_music_comparison_artist_parts_keeps_multiple_main_artists_without_feat_markers() -> None:
+    normalized_parts = normalizeMusicComparisonArtistParts("SFDK & Mama San")
+
+    assert normalized_parts.primary_value == "sfdk mama san"
+    assert normalized_parts.collaborators == ()
+
+
+def test_normalize_music_comparison_artist_parts_keeps_comma_separated_main_artists_without_feat_markers() -> None:
+    normalized_parts = normalizeMusicComparisonArtistParts("Natos y Waor, Recycled J")
+
+    assert normalized_parts.primary_value == "natos y waor recycled j"
+    assert normalized_parts.collaborators == ()

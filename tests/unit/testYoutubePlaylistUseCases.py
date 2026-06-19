@@ -1563,7 +1563,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_keeps_same_result_
         ComparableYoutubePlaylistItem(
             id=1,
             normalized_title="song one",
-            normalized_artist="artist one",
+            normalized_artist_full="artist one",
             duration_seconds=180.0,
         ),
         [
@@ -1655,7 +1655,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_keeps_same_result_
         ComparableYoutubePlaylistItem(
             id=1,
             normalized_title="song one",
-            normalized_artist="artist one",
+            normalized_artist_full="artist one",
             duration_seconds=180.0,
         ),
         [

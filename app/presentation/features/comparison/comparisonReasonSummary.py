@@ -16,4 +16,4 @@ def buildComparisonReasonSummary(
         return "Coincidencia validada."
     if comparison_item.comparison_status is ComparisonStatus.POSSIBLE_MATCH:
         return "Coincidencia posible pendiente de revision."
-    return "No hay candidata suficientemente competitiva."
+    return "Existe titulo pero no artista principal valido."

@@ -40,19 +40,29 @@ El matcher debe trabajar sobre un contrato comparable homogéneo.
 
 * `id`
 * `comparable_title`
-* `comparable_artist`
+* `comparable_artist_full`
+* `comparable_artist_primary`
+* `comparable_artist_collaborators` opcional
 * `duration_seconds`
 
 `ComparableLocalSong` debe exponer:
 
 * `id`
 * `comparable_title`
-* `comparable_artist`
+* `comparable_artist_full`
+* `comparable_artist_primary`
+* `comparable_artist_collaborators` opcional
 * `duration_seconds`
 * `is_available`
 * `is_reserved` cuando la orquestacion lo necesite
 
 La comparacion deja de usar `title` y `artist` como superficie funcional del contrato comparable.
+
+Regla semantica del contrato:
+
+* `primary` representa el artista base de decision
+* `full` representa la cadena comparable completa
+* `collaborators` sirve como apoyo y nunca como llave principal de `FOUND`
 
 ### Decision de persistencia
 
@@ -84,7 +94,9 @@ Debe persistirse de forma estable.
 El adaptador hacia el contrato comparable debe mapear ambos lados a:
 
 * `comparable_title`
-* `comparable_artist`
+* `comparable_artist_full`
+* `comparable_artist_primary`
+* `comparable_artist_collaborators` cuando exista
 
 Con esta decision:
 
@@ -106,6 +118,81 @@ El flujo correcto pasa a comparar siempre:
 * comparable YouTube normalizado
 * comparable local normalizado
 
+La validacion de artista ya no depende de igualdad exacta del artista completo.
+
+Regla vigente:
+
+* primero se valida el titulo exacto normalizado
+* despues el artista ya no se decide por igualdad estricta del string completo
+* el selector clasifica la validacion artistica al menos en `STRONG`, `MEDIUM` y `NONE`
+* solo las candidatas con artista `STRONG` pasan al matcher activo
+* las candidatas `MEDIUM` pueden servir como diagnostico, pero no abren `FOUND`
+* las candidatas `NONE` se descartan siempre
+
+Regla funcional del selector artistico:
+
+* `STRONG`
+  * `playlist primary == local primary`
+  * o `playlist primary` coincide claramente con el bloque principal local
+* `MEDIUM`
+  * `playlist primary` aparece dentro del `artist full` local, pero no queda claro que sea principal
+* `NONE`
+  * artista realmente distinto
+
+Los colaboradores solo pueden aportar evidencia secundaria y nunca abrir por si solos un `FOUND`.
+
+### Regla estable de normalizacion del artista principal
+
+Para tags locales:
+
+* `feat`, `ft` y `featuring` cortan el bloque principal
+* todo lo que quede antes de ese bloque es `artista principal`
+* todo lo que quede despues pasa a `collaborators`
+* el artista completo normalizado se conserva para trazabilidad
+
+Para playlist:
+
+* primero se usa la heuristica actual de extraccion desde YouTube
+* el artista inferido desde el titulo o el canal se normaliza
+* sobre ese valor ya normalizado se separa `primary` y `collaborators`
+* si el caso real indica un artista base unico, no se mezclan colaboradores dentro del `primary`
+
+Decision explicita sobre varios artistas sin marcador `feat`:
+
+* si los artistas vienen unidos por `&`, `and`, `y`, coma, `+`, `x` o separadores equivalentes pero sin `feat/ft/featuring`, todo ese bloque se considera `artista principal multiple`
+* en esos casos `collaborators` queda vacio
+
+Ejemplos cerrados:
+
+* `Cruz Cafune ft. West Dubai`
+  * `primary`: `cruz cafune`
+  * `full`: `cruz cafune west dubai`
+  * `collaborators`: `west dubai`
+* `SFDK & Mama San`
+  * `primary`: `sfdk mama san`
+  * `full`: `sfdk mama san`
+  * `collaborators`: vacio
+* `Natos y Waor, Recycled J`
+  * `primary`: `natos y waor recycled j`
+  * `full`: `natos y waor recycled j`
+  * `collaborators`: vacio
+
+### Ejemplos de validacion de artista
+
+Caso valido:
+
+* playlist: `Cruz Cafune`
+* local: `Cruz Cafune ft. West Dubai`
+* resultado: valido
+* motivo: el artista principal de playlist coincide con el artista principal local aunque el local tenga colaboradores
+
+Caso invalido:
+
+* playlist: `SFDK`
+* local: `Eazyboi`
+* resultado: invalido
+* motivo: el artista principal no coincide y no puede salir `FOUND`
+
 ## Estados funcionales
 
 ### `FOUND`
@@ -119,6 +206,7 @@ Se usa cuando:
 Regla dura:
 
 * no puede existir `FOUND` con artista no validado
+* no puede existir `FOUND` con artista realmente incorrecto aunque el titulo coincida
 * en titulos genericos como `intro`, `outro`, `skit`, `interludio` y similares no basta el titulo; la duracion debe ayudar a confirmar
 
 ### `POSSIBLE_MATCH`
@@ -136,7 +224,8 @@ No es una salida válida para artistas incorrectos.
 Se usa cuando:
 
 * no existe titulo en local
-* existe titulo pero no artista comparable
+* existe titulo pero no artista principal valido
+* existe artista parecido solo por colaboradores o ruido, pero no valida el artista principal
 * tras exclusiones ya no queda candidata util
 * no hay base suficiente para una decision defendible
 
@@ -167,8 +256,10 @@ El matcher ya no decide el acceso al subconjunto.
 Su responsabilidad queda reducida a:
 
 * puntuar candidatas que ya han pasado `titulo -> artista -> reserva`
+* trabajar solo con candidatas de titulo validado y artista `STRONG`
 * resolver si una unica candidata queda en `FOUND`
 * marcar `POSSIBLE_MATCH` cuando varias candidatas validas siguen siendo ambiguas
+* no inferir artista desde ruido, containment debil ni colaboradores secundarios
 
 No forma parte del flujo vigente ningun ruleset generico de score textual sobre pools amplios.
 
@@ -217,17 +308,20 @@ Reglas activas:
 * un `FOUND` valido no se reabre solo porque aparezca una candidata aparentemente mejor
 * cualquier snapshot con `matching_rules_version` distinta a la vigente queda invalidado para congelacion automatica
 * cualquier cambio de `matching_rules_version` invalida la congelacion automatica anterior
+* el cambio de semantica del artista principal obliga a invalidar `FOUND` congelados calculados con reglas rigidas anteriores
 
 ## Razones legibles
 
 Razones mínimas esperadas:
 
 * `No existe titulo en local.`
-* `Existe titulo pero no artista.`
+* `Existe titulo pero no artista principal valido.`
 * `La cancion local ya esta reservada por otro FOUND.`
-* `Varias candidatas del mismo titulo y artista.`
+* `Varias candidatas del mismo titulo y artista valido.`
 * `Duracion dudosa entre candidatas validas.`
 * `Coincidencia confirmada por titulo y artista validos.`
+
+La evidencia `MEDIUM` puede registrarse para diagnostico, pero no debe mostrarse como razon final por defecto.
 
 ## Aplicacion y UI
 
@@ -238,21 +332,39 @@ Razones mínimas esperadas:
 * carga de playlist activa
 * carga de biblioteca local activa
 * preparacion de comparables
-* construccion del indice normalizado por titulo y artista
+* construccion del indice normalizado por titulo
+* validacion semantica de artista sobre el subconjunto del titulo
 * matching
 * reserva incremental de `FOUND`
 * persistencia del snapshot
 * devolucion de DTOs con resumen, items y observabilidad
 
+El filtro artistico del flujo principal debe respetar siempre:
+
+* un artista principal valido con colaboradores locales no debe caer en `MISSING`
+* un artista distinto real no puede colarse como `FOUND`
+
 El flujo principal debe mantenerse unico y lineal:
 
 1. preparar comparables
-2. construir indice normalizado
+2. construir indice normalizado por titulo
 3. recorrer la playlist en orden
 4. reutilizar `FOUND` congelados validos si existen
 5. aplicar selector secuencial para el resto
-6. reservar solo nuevos `FOUND`
-7. persistir snapshot
+6. validar artista de forma semantica dentro del subconjunto del titulo
+7. reservar solo nuevos `FOUND`
+8. persistir snapshot
+
+### Indice de candidatas
+
+El indice activo del selector no decide por `title + artist`.
+
+Contrato vigente:
+
+* el indice duro solo agrupa `local_song` por `title` normalizado
+* el artista se resuelve despues, dentro del subconjunto recuperado por titulo
+* no existe decision funcional rigida por `local_song_ids_by_title_artist`
+* si en algun momento se reintroduce una optimizacion por `title + artist`, debe ser solo secundaria y nunca puede sustituir la validacion semantica de artista
 
 ### Pantalla de comparacion
 
