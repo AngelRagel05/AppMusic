@@ -14,6 +14,8 @@ class LocalSong:
     is_available: bool = True
     title: str = ""
     artist: str = ""
+    normalized_title: str = ""
+    normalized_artist: str = ""
     album: str = ""
     release_year: int = 0
     track_number_album: int = 0

@@ -16,6 +16,87 @@ El flujo activo y canónico es:
 6. clasificacion en `FOUND`, `POSSIBLE_MATCH` o `MISSING`
 7. persistencia de snapshot de comparacion
 
+## Modelo comparable rediseñado
+
+La Fase 2 elimina la asimetria funcional actual entre:
+
+* playlist con comparables ya normalizados
+* biblioteca local aun expuesta al matcher mediante `title` y `artist`
+
+El matcher debe trabajar sobre un contrato comparable homogéneo.
+
+### Contrato objetivo
+
+`ComparableYoutubePlaylistItem` debe exponer:
+
+* `id`
+* `comparable_title`
+* `comparable_artist`
+* `duration_seconds`
+
+`ComparableLocalSong` debe exponer:
+
+* `id`
+* `comparable_title`
+* `comparable_artist`
+* `duration_seconds`
+* `is_available`
+* `is_reserved` cuando la orquestacion lo necesite
+
+La comparacion deja de usar `title` y `artist` como superficie funcional del contrato comparable.
+
+### Decision de persistencia
+
+Se decide persistir campos comparables tambien en `local_song`.
+
+Motivos:
+
+* evita recalcular la normalizacion completa en cada matching
+* alinea playlist y biblioteca local bajo el mismo contrato de datos comparables
+* permite que fingerprints, snapshots e incrementalidad describan exactamente los valores comparables usados por el matcher
+* deja la preparacion de comparables en scan/import y no dentro del matcher
+
+La fase de preparacion sigue existiendo, pero ya no como transformacion efimera en memoria del lado local.
+
+Debe persistirse de forma estable.
+
+### Campos persistidos objetivo
+
+`youtube_playlist_item` ya dispone de:
+
+* `normalized_title`
+* `normalized_artist`
+
+`local_song` debe añadir:
+
+* `normalized_title`
+* `normalized_artist`
+
+El adaptador hacia el contrato comparable debe mapear ambos lados a:
+
+* `comparable_title`
+* `comparable_artist`
+
+Con esta decision:
+
+* `normalized_*` sigue siendo un nombre de persistencia valido
+* `comparable_*` pasa a ser el nombre semantico del contrato de matching
+
+### Regla funcional
+
+Queda eliminada la dependencia funcional de comparar:
+
+* YouTube normalizado
+
+contra:
+
+* local sin normalizar
+
+El flujo correcto pasa a comparar siempre:
+
+* comparable YouTube normalizado
+* comparable local normalizado
+
 ## Estados funcionales
 
 ### `FOUND`
@@ -145,4 +226,3 @@ La UI debe:
 Este documento sustituye como referencia viva la documentacion fragmentada de comparación.
 
 Si aparece un documento antiguo que contradice este flujo, prevalece este documento.
-

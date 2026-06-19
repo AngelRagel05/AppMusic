@@ -156,6 +156,8 @@ class LocalSong(TimestampMixin, Base):
     is_available: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     artist: Mapped[str] = mapped_column(String(255), nullable=False)
+    normalized_title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    normalized_artist: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     album: Mapped[str] = mapped_column(String(255), nullable=False)
     release_year: Mapped[int] = mapped_column(Integer, nullable=False)
     track_number_album: Mapped[int] = mapped_column(Integer, nullable=False)

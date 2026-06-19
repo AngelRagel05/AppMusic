@@ -22,6 +22,8 @@ Es la fuente local que se compara contra los items de YouTube.
 | `is_available` | booleano | si | - | Indica si el archivo sigue presente en el ultimo escaneo de la carpeta |
 | `title` | texto | si | - | Titulo de la cancion |
 | `artist` | texto | si | - | Artista principal |
+| `normalized_title` | texto | si | - | Titulo comparable persistido para matching |
+| `normalized_artist` | texto | si | - | Artista comparable persistido para matching |
 | `album` | texto | si | - | Album; si no hay tag se guarda vacio |
 | `release_year` | entero | si | - | Año de lanzamiento; si no hay tag se guarda `0` |
 | `track_number_album` | entero | si | - | Numero de pista dentro del album; si no hay tag se guarda `0` |
@@ -48,6 +50,8 @@ erDiagram
         boolean is_available
         string title
         string artist
+        string normalized_title
+        string normalized_artist
         string album
         int release_year
         int track_number_album
@@ -81,9 +85,12 @@ erDiagram
 * Durante el escaneo local, `file_path` y `file_name` se obtienen del filesystem.
 * `is_available` queda en `true` cuando el archivo aparece en el ultimo escaneo y en `false` cuando desaparece sin poder reconciliarse como movido.
 * `title`, `artist`, `album`, `release_year`, `track_number_album` y `duration_seconds` se intentan extraer con `Mutagen`.
+* `normalized_title` y `normalized_artist` deben persistirse durante el escaneo con las mismas reglas de normalizacion que usa el flujo de comparacion.
 * Si el MP3 no tiene tags o falla la lectura de metadata, la app usa fallback seguro:
   * `title`: nombre del archivo sin extension
   * `artist`: cadena vacia
+  * `normalized_title`: normalizacion del `title` final resuelto
+  * `normalized_artist`: normalizacion del `artist` final resuelto
   * `album`: cadena vacia
   * `release_year`: `0`
   * `track_number_album`: `0`
@@ -91,3 +98,4 @@ erDiagram
 * La deteccion de movidas se hace de forma conservadora:
   * la ruta nueva debe mantener el mismo `file_name`
   * la metadata basica debe coincidir exactamente con la ultima persistida
+* `title` y `artist` siguen siendo metadata visible; `normalized_title` y `normalized_artist` pasan a ser la superficie persistida para matching.

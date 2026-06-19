@@ -37,6 +37,8 @@ erDiagram
         boolean is_available
         string title
         string artist
+        string normalized_title
+        string normalized_artist
         string album
         int release_year
         int track_number_album
@@ -161,6 +163,8 @@ Columnas clave:
 * `is_available`
 * `title`
 * `artist`
+* `normalized_title`
+* `normalized_artist`
 * `album`
 * `release_year`
 * `track_number_album`
@@ -181,6 +185,7 @@ Notas de carga actual:
 * si un registro persistido deja de aparecer y no se puede reconciliar como movido, `is_available` pasa a `false`
 * si aparece una ruta nueva con el mismo `file_name` y la misma metadata basica de una cancion ausente, se interpreta como movimiento y se actualiza `file_path`
 * `title`, `artist`, `album`, `release_year`, `track_number_album` y `duration_seconds` se rellenan desde metadata leida con `Mutagen`
+* `normalized_title` y `normalized_artist` se persisten desde el escaneo para dejar el lado local listo para comparacion homogénea con YouTube
 * si un archivo no contiene tags legibles, la aplicacion usa valores de fallback seguros
 
 ### `youtube_playlist`
@@ -428,3 +433,17 @@ Estas reglas dependen del flujo del sistema o son mas portables si se resuelven 
 
 * la BBDD protege estructura, referencias y unicidad objetiva
 * la aplicacion protege reglas operativas, validaciones de entorno y decisiones de negocio dinamicas
+
+## Decision de Fase 2
+
+El contrato comparable del matching debe mapear ambos lados a una misma semantica:
+
+* `comparable_title`
+* `comparable_artist`
+
+Persistencia objetivo:
+
+* `youtube_playlist_item` sigue aportando `normalized_title` y `normalized_artist`
+* `local_song` debe añadir `normalized_title` y `normalized_artist`
+
+Con ello desaparece la dependencia funcional de comparar YouTube normalizado contra local sin normalizar.

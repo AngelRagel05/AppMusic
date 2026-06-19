@@ -5,6 +5,10 @@ from collections.abc import Iterable
 from sqlalchemy import Engine, inspect, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.domain.metadata.services import (
+    normalizeMusicComparisonArtist,
+    normalizeMusicComparisonTitle,
+)
 from app.infrastructure.persistence.database.base import Base
 from app.infrastructure.persistence.database.models import IgnoredTerm
 
@@ -67,6 +71,20 @@ class DatabaseBootstrapper:
                         "ADD COLUMN is_available BOOLEAN NOT NULL DEFAULT TRUE"
                     )
                 )
+            if "normalized_title" not in localSongColumns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE local_song "
+                        "ADD COLUMN normalized_title VARCHAR(255) NOT NULL DEFAULT ''"
+                    )
+                )
+            if "normalized_artist" not in localSongColumns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE local_song "
+                        "ADD COLUMN normalized_artist VARCHAR(255) NOT NULL DEFAULT ''"
+                    )
+                )
             if "youtube_playlist_imported_at" not in playlistComparisonColumns:
                 connection.execute(
                     text(
@@ -117,6 +135,37 @@ class DatabaseBootstrapper:
                     "(youtube_playlist_id, local_folder_id, compared_at, id)"
                 )
             )
+            localSongRows = connection.execute(
+                text(
+                    "SELECT id, title, artist, normalized_title, normalized_artist "
+                    "FROM local_song"
+                )
+            ).mappings()
+            for row in localSongRows:
+                normalizedTitle = row["normalized_title"] or normalizeMusicComparisonTitle(
+                    row["title"] or ""
+                )
+                normalizedArtist = row["normalized_artist"] or normalizeMusicComparisonArtist(
+                    row["artist"] or ""
+                )
+                if (
+                    normalizedTitle == (row["normalized_title"] or "")
+                    and normalizedArtist == (row["normalized_artist"] or "")
+                ):
+                    continue
+                connection.execute(
+                    text(
+                        "UPDATE local_song "
+                        "SET normalized_title = :normalized_title, "
+                        "normalized_artist = :normalized_artist "
+                        "WHERE id = :song_id"
+                    ),
+                    {
+                        "normalized_title": normalizedTitle,
+                        "normalized_artist": normalizedArtist,
+                        "song_id": row["id"],
+                    },
+                )
 
     def _seed_ignored_terms(
         self,

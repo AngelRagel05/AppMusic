@@ -8,6 +8,10 @@ from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
 from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.scanLocalFolderResultDto import ScanLocalFolderResultDto
 from app.domain.library.entities.localSong import LocalSong
+from app.domain.metadata.services import (
+    normalizeMusicComparisonArtist,
+    normalizeMusicComparisonTitle,
+)
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
 from app.domain.library.repositories.localSongRepository import LocalSongRepository
 
@@ -143,6 +147,8 @@ class ScanLocalFolderUseCase:
                     is_available=False,
                     title=missingSong.title,
                     artist=missingSong.artist,
+                    normalized_title=missingSong.normalized_title,
+                    normalized_artist=missingSong.normalized_artist,
                     album=missingSong.album,
                     release_year=missingSong.release_year,
                     track_number_album=missingSong.track_number_album,
@@ -185,6 +191,8 @@ class ScanLocalFolderUseCase:
         active_local_folder_id: int,
         existing_song: LocalSong | None = None,
     ) -> LocalSong:
+        normalized_title = normalizeMusicComparisonTitle(metadata.title)
+        normalized_artist = normalizeMusicComparisonArtist(metadata.artist)
         return LocalSong(
             id=existing_song.id if existing_song is not None else None,
             local_folder_id=active_local_folder_id,
@@ -194,6 +202,8 @@ class ScanLocalFolderUseCase:
             is_available=True,
             title=metadata.title,
             artist=metadata.artist,
+            normalized_title=normalized_title,
+            normalized_artist=normalized_artist,
             album=metadata.album,
             release_year=metadata.release_year,
             track_number_album=metadata.track_number_album,
@@ -245,6 +255,8 @@ class ScanLocalFolderUseCase:
             or persisted_song.is_available != scanned_song.is_available
             or persisted_song.title != scanned_song.title
             or persisted_song.artist != scanned_song.artist
+            or persisted_song.normalized_title != scanned_song.normalized_title
+            or persisted_song.normalized_artist != scanned_song.normalized_artist
             or persisted_song.album != scanned_song.album
             or persisted_song.release_year != scanned_song.release_year
             or persisted_song.track_number_album != scanned_song.track_number_album

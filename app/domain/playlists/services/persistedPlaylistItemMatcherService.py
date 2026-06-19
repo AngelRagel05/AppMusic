@@ -135,18 +135,18 @@ def _tryResolveEarlyClearMatch(
     clear_candidates: list[ComparableLocalSong] = []
     for local_song in local_songs:
         title_evidence = buildTextMatchEvidence(
-            youtube_playlist_item.normalized_title,
-            local_song.title,
+            youtube_playlist_item.comparable_title,
+            local_song.comparable_title,
         )
         artist_evidence = buildArtistMatchEvidence(
-            youtube_playlist_item.normalized_artist,
-            local_song.artist,
+            youtube_playlist_item.comparable_artist,
+            local_song.comparable_artist,
         )
         if artist_evidence is not ruleset.early_cutoff_thresholds.require_artist_evidence:
             continue
         if not isEarlyCutoffClearTitleMatch(
             left_value=youtube_playlist_item.normalized_title,
-            right_value=local_song.title,
+            right_value=local_song.comparable_title,
             title_evidence=title_evidence,
             thresholds=ruleset.early_cutoff_thresholds,
         ):
@@ -166,21 +166,21 @@ def _scoreCandidate(
     ruleset: PlaylistItemMatchingRuleset,
 ) -> CandidateEvaluation:
     title_evidence = buildTextMatchEvidence(
-        youtube_playlist_item.normalized_title,
-        local_song.title,
+        youtube_playlist_item.comparable_title,
+        local_song.comparable_title,
     )
     artist_evidence = buildArtistMatchEvidence(
-        youtube_playlist_item.normalized_artist,
-        local_song.artist,
+        youtube_playlist_item.comparable_artist,
+        local_song.comparable_artist,
     )
     title_score = scoreNormalizedText(
-        youtube_playlist_item.normalized_title,
-        local_song.title,
+        youtube_playlist_item.comparable_title,
+        local_song.comparable_title,
         ruleset.title_weights,
     )
     artist_score = scoreNormalizedText(
-        youtube_playlist_item.normalized_artist,
-        local_song.artist,
+        youtube_playlist_item.comparable_artist,
+        local_song.comparable_artist,
         ruleset.artist_weights,
     )
     duration_evidence, duration_distance = buildDurationMatchEvidence(

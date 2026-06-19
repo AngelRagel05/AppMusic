@@ -44,10 +44,10 @@ def buildComparableLocalSongCandidateIndex(
 
     for local_song in local_songs:
         local_song_by_id[local_song.id] = local_song
-        local_song_ids_by_title.setdefault(local_song.title, []).append(local_song.id)
-        local_song_ids_by_artist.setdefault(local_song.artist, []).append(local_song.id)
+        local_song_ids_by_title.setdefault(local_song.comparable_title, []).append(local_song.id)
+        local_song_ids_by_artist.setdefault(local_song.comparable_artist, []).append(local_song.id)
         local_song_ids_by_title_artist.setdefault(
-            (local_song.title, local_song.artist),
+            (local_song.comparable_title, local_song.comparable_artist),
             [],
         ).append(local_song.id)
 
@@ -134,13 +134,13 @@ def _collectExactCandidateIds(
     for candidate_ids in (
         candidate_index.local_song_ids_by_title_artist.get(
             (
-                youtube_playlist_item.normalized_title,
-                youtube_playlist_item.normalized_artist,
+                youtube_playlist_item.comparable_title,
+                youtube_playlist_item.comparable_artist,
             ),
             (),
         ),
         candidate_index.local_song_ids_by_title.get(
-            youtube_playlist_item.normalized_title,
+            youtube_playlist_item.comparable_title,
             (),
         ),
     ):
@@ -163,10 +163,10 @@ def _collectVerySimilarTitleCandidateIds(
 ) -> tuple[int, ...]:
     ranked_title_matches: list[tuple[float, str]] = []
     for local_title in candidate_index.local_song_ids_by_title.keys():
-        if local_title == youtube_playlist_item.normalized_title:
+        if local_title == youtube_playlist_item.comparable_title:
             continue
         similarity_ratio = SequenceMatcher(
-            a=youtube_playlist_item.normalized_title,
+            a=youtube_playlist_item.comparable_title,
             b=local_title,
         ).ratio()
         if similarity_ratio < VERY_SIMILAR_TITLE_RATIO:
@@ -198,7 +198,7 @@ def _collectBroadCandidateIds(
     seen_ids: set[int] = set()
 
     for local_song_id in candidate_index.local_song_ids_by_artist.get(
-        youtube_playlist_item.normalized_artist,
+        youtube_playlist_item.comparable_artist,
         (),
     ):
         if local_song_id in reserved_ids or local_song_id in excluded_ids:

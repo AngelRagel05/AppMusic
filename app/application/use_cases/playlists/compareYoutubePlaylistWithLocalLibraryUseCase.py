@@ -37,6 +37,10 @@ from app.domain.playlists.services import (
     PersistedPlaylistItemMatchResult,
     shouldInvalidatePersistedFoundMatch,
 )
+from app.domain.metadata.services import (
+    normalizeMusicComparisonArtist,
+    normalizeMusicComparisonTitle,
+)
 from app.domain.playlists.repositories.playlistComparisonRepository import PlaylistComparisonRepository
 from app.domain.playlists.repositories.playlistComparisonResultRepository import PlaylistComparisonResultRepository
 from app.domain.playlists.repositories.youtubePlaylistItemRepository import (
@@ -597,6 +601,8 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                         getattr(local_song, "file_path", ""),
                         getattr(local_song, "title", ""),
                         getattr(local_song, "artist", ""),
+                        getattr(local_song, "normalized_title", ""),
+                        getattr(local_song, "normalized_artist", ""),
                         str(getattr(local_song, "duration_seconds", None)),
                         "1" if getattr(local_song, "is_available", False) else "0",
                         self._serializeTimestamp(
@@ -634,6 +640,14 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             id=local_song.id,
             title=local_song.title,
             artist=local_song.artist,
+            normalized_title=(
+                local_song.normalized_title
+                or normalizeMusicComparisonTitle(local_song.title)
+            ),
+            normalized_artist=(
+                local_song.normalized_artist
+                or normalizeMusicComparisonArtist(local_song.artist)
+            ),
             duration_seconds=local_song.duration_seconds,
             is_available=local_song.is_available,
         )

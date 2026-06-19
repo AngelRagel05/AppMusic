@@ -4,6 +4,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.domain.library.entities.localSong import LocalSong
+from app.domain.metadata.services import (
+    normalizeMusicComparisonArtist,
+    normalizeMusicComparisonTitle,
+)
 from app.infrastructure.persistence import LocalFolderSqlAlchemyRepository, LocalSongSqlAlchemyRepository
 from app.infrastructure.persistence.database.base import Base
 
@@ -31,6 +35,8 @@ def test_save_persists_local_song() -> None:
             file_name="song.mp3",
             title="Song",
             artist="Artist",
+            normalized_title=normalizeMusicComparisonTitle("Song"),
+            normalized_artist=normalizeMusicComparisonArtist("Artist"),
             album="Album",
             release_year=2024,
             track_number_album=1,
@@ -44,6 +50,8 @@ def test_save_persists_local_song() -> None:
     assert local_song.is_available is True
     assert local_song.title == "Song"
     assert local_song.artist == "Artist"
+    assert local_song.normalized_title == "song"
+    assert local_song.normalized_artist == "artist"
     assert local_song.album == "Album"
     assert local_song.release_year == 2024
     assert local_song.track_number_album == 1
@@ -61,6 +69,8 @@ def test_get_by_file_path_returns_saved_local_song() -> None:
             file_name="song.mp3",
             title="Song",
             artist="Artist",
+            normalized_title=normalizeMusicComparisonTitle("Song"),
+            normalized_artist=normalizeMusicComparisonArtist("Artist"),
             album="Album",
             release_year=2024,
             track_number_album=1,
@@ -89,6 +99,8 @@ def test_list_by_folder_returns_only_songs_for_selected_folder() -> None:
             file_name="song.mp3",
             title="Song",
             artist="Artist",
+            normalized_title=normalizeMusicComparisonTitle("Song"),
+            normalized_artist=normalizeMusicComparisonArtist("Artist"),
             album="Album",
             release_year=2024,
             track_number_album=1,
@@ -102,6 +114,8 @@ def test_list_by_folder_returns_only_songs_for_selected_folder() -> None:
             file_name="other.mp3",
             title="Other",
             artist="Artist",
+            normalized_title=normalizeMusicComparisonTitle("Other"),
+            normalized_artist=normalizeMusicComparisonArtist("Artist"),
             album="Album",
             release_year=2023,
             track_number_album=2,
@@ -127,6 +141,8 @@ def test_save_updates_existing_song_when_file_path_already_exists() -> None:
             file_name="song.mp3",
             title="Song",
             artist="Artist",
+            normalized_title=normalizeMusicComparisonTitle("Song"),
+            normalized_artist=normalizeMusicComparisonArtist("Artist"),
             album="Album",
             release_year=2024,
             track_number_album=1,
@@ -141,6 +157,8 @@ def test_save_updates_existing_song_when_file_path_already_exists() -> None:
             file_name="song.mp3",
             title="Song remaster",
             artist="Artist",
+            normalized_title=normalizeMusicComparisonTitle("Song remaster"),
+            normalized_artist=normalizeMusicComparisonArtist("Artist"),
             album="Album",
             release_year=2025,
             track_number_album=3,
@@ -151,6 +169,7 @@ def test_save_updates_existing_song_when_file_path_already_exists() -> None:
     assert updated_song.id == first_song.id
     assert updated_song.is_available is True
     assert updated_song.title == "Song remaster"
+    assert updated_song.normalized_title == "song remaster"
     assert updated_song.release_year == 2025
 
 
@@ -167,6 +186,8 @@ def test_save_updates_song_availability_state() -> None:
             is_available=True,
             title="Song",
             artist="Artist",
+            normalized_title=normalizeMusicComparisonTitle("Song"),
+            normalized_artist=normalizeMusicComparisonArtist("Artist"),
             album="Album",
             release_year=2024,
             track_number_album=1,
@@ -183,6 +204,8 @@ def test_save_updates_song_availability_state() -> None:
             is_available=False,
             title="Song",
             artist="Artist",
+            normalized_title=normalizeMusicComparisonTitle("Song"),
+            normalized_artist=normalizeMusicComparisonArtist("Artist"),
             album="Album",
             release_year=2024,
             track_number_album=1,

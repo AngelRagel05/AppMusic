@@ -5,6 +5,10 @@ from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
 from app.application.use_cases.library.scanLocalFolderUseCase import ScanLocalFolderUseCase
 from app.domain.library.entities.localFolder import LocalFolder
 from app.domain.library.entities.localSong import LocalSong
+from app.domain.metadata.services import (
+    normalizeMusicComparisonArtist,
+    normalizeMusicComparisonTitle,
+)
 
 
 class LocalFolderRepositorySpy:
@@ -49,6 +53,8 @@ class LocalSongRepositorySpy:
                 is_available=local_song.is_available,
                 title=local_song.title,
                 artist=local_song.artist,
+                normalized_title=local_song.normalized_title,
+                normalized_artist=local_song.normalized_artist,
                 album=local_song.album,
                 release_year=local_song.release_year,
                 track_number_album=local_song.track_number_album,
@@ -140,6 +146,8 @@ def test_execute_creates_only_new_local_songs_and_returns_summary() -> None:
     assert song_repository.saved_songs[1].file_name == "new.mp3"
     assert song_repository.saved_songs[1].title == "New Song"
     assert song_repository.saved_songs[1].artist == "Miles Davis"
+    assert song_repository.saved_songs[1].normalized_title == "new song"
+    assert song_repository.saved_songs[1].normalized_artist == "miles davis"
     assert song_repository.saved_songs[1].album == "Kind of Blue"
     assert song_repository.saved_songs[1].release_year == 1959
     assert song_repository.saved_songs[1].track_number_album == 1
@@ -281,6 +289,8 @@ def test_execute_updates_metadata_for_existing_songs_without_creating_duplicates
     assert song_repository.saved_songs[0].id == 1
     assert song_repository.saved_songs[0].title == "Known Song"
     assert song_repository.saved_songs[0].artist == "John Coltrane"
+    assert song_repository.saved_songs[0].normalized_title == "known song"
+    assert song_repository.saved_songs[0].normalized_artist == "john coltrane"
     assert song_repository.saved_songs[0].album == "Blue Train"
     assert song_repository.saved_songs[0].release_year == 1957
     assert song_repository.saved_songs[0].track_number_album == 1
@@ -343,6 +353,8 @@ def test_execute_reconciles_moved_song_without_creating_duplicate() -> None:
         is_available=True,
         title="So What",
         artist="Miles Davis",
+        normalized_title=normalizeMusicComparisonTitle("So What"),
+        normalized_artist=normalizeMusicComparisonArtist("Miles Davis"),
         album="Kind of Blue",
         release_year=1959,
         track_number_album=1,
@@ -432,6 +444,8 @@ def test_execute_counts_existing_song_without_changes_as_not_updated() -> None:
         is_available=True,
         title="Known Song",
         artist="John Coltrane",
+        normalized_title=normalizeMusicComparisonTitle("Known Song"),
+        normalized_artist=normalizeMusicComparisonArtist("John Coltrane"),
         album="Blue Train",
         release_year=1957,
         track_number_album=1,

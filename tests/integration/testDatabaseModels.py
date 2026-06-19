@@ -97,6 +97,8 @@ def test_local_song_contains_availability_column() -> None:
 
     assert "is_available" in table.columns.keys()
     assert table.columns["is_available"].nullable is False
+    assert "normalized_title" in table.columns.keys()
+    assert "normalized_artist" in table.columns.keys()
 
 
 def test_youtube_playlist_item_has_snapshot_columns_and_constraints() -> None:

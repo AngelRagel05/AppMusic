@@ -41,6 +41,7 @@ Guarda:
 * `duration_seconds`
 * `is_available`
 * enlaces opcionales a descarga
+* y, desde Fase 2, campos comparables persistidos para matching
 
 ## Escaneo y reconciliacion
 
@@ -64,6 +65,21 @@ Reglas activas:
 * la normalizacion debe ser simetrica con la de playlist
 * el archivo MP3 sigue siendo la fuente real de metadata musical
 
+### Decision de Fase 2
+
+El lado local tambien debe persistir sus comparables.
+
+Campos objetivo:
+
+* `normalized_title`
+* `normalized_artist`
+
+Reglas:
+
+* `title` y `artist` siguen siendo metadata visible del archivo
+* `normalized_title` y `normalized_artist` pasan a ser la superficie persistida para matching
+* cualquier cambio de metadata local relevante debe recalcular tambien esos campos comparables
+
 ## Casos de uso implicados
 
 * definir carpeta local activa
@@ -80,4 +96,3 @@ No debe resolver dentro del matcher problemas que pertenecen al escaneo o a la e
 La referencia funcional del matching vive en:
 
 * [comparisonContext.md](./comparisonContext.md)
-

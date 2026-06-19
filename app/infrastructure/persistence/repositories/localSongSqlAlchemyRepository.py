@@ -60,6 +60,8 @@ class LocalSongSqlAlchemyRepository(LocalSongRepository):
                 is_available=local_song.is_available,
                 title=local_song.title,
                 artist=local_song.artist,
+                normalized_title=local_song.normalized_title,
+                normalized_artist=local_song.normalized_artist,
                 album=local_song.album,
                 release_year=local_song.release_year,
                 track_number_album=local_song.track_number_album,
@@ -74,6 +76,8 @@ class LocalSongSqlAlchemyRepository(LocalSongRepository):
             model.is_available = local_song.is_available
             model.title = local_song.title
             model.artist = local_song.artist
+            model.normalized_title = local_song.normalized_title
+            model.normalized_artist = local_song.normalized_artist
             model.album = local_song.album
             model.release_year = local_song.release_year
             model.track_number_album = local_song.track_number_album
@@ -93,6 +97,8 @@ class LocalSongSqlAlchemyRepository(LocalSongRepository):
             is_available=model.is_available,
             title=model.title,
             artist=model.artist,
+            normalized_title=model.normalized_title,
+            normalized_artist=model.normalized_artist,
             album=model.album,
             release_year=model.release_year,
             track_number_album=model.track_number_album,
