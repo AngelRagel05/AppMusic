@@ -24,7 +24,6 @@ from app.domain.playlists.services.playlistItemMatchingRules import (
     buildTextMatchEvidence,
     calculateAmbiguityPenalty,
     classifyMatchStatus,
-    isEarlyCutoffClearTitleMatch,
     scoreDuration,
     scoreEvidenceConsistency,
     scoreNormalizedText,
@@ -56,43 +55,19 @@ def matchPersistedPlaylistItemToLocalSongs(
     local_songs: Sequence[ComparableLocalSong],
     ruleset: PlaylistItemMatchingRuleset = DEFAULT_PLAYLIST_ITEM_MATCHING_RULESET,
 ) -> PersistedPlaylistItemMatchResult:
-    early_cutoff_evaluation = _tryResolveEarlyClearMatch(
-        youtube_playlist_item,
-        local_songs,
-        ruleset,
-    )
-    if early_cutoff_evaluation is not None:
-        final_status = classifyMatchStatus(evidence=early_cutoff_evaluation.evidence)
-        final_reason = buildMatchReason(
-            status=final_status,
-            evidence=early_cutoff_evaluation.evidence,
-            score_breakdown=early_cutoff_evaluation.score_breakdown,
-        )
+    if not local_songs:
         return PersistedPlaylistItemMatchResult(
-            local_song=early_cutoff_evaluation.local_song,
-            comparison_status=final_status,
-            score=early_cutoff_evaluation.score,
-            reason=final_reason,
-            matched_by=buildAutomaticMatchedBy(
-                status=final_status,
-                evidence=early_cutoff_evaluation.evidence,
-            ),
+            local_song=None,
+            comparison_status=ComparisonStatus.MISSING,
+            score=0.0,
+            reason="No hay canciones locales candidatas validadas por titulo y artista.",
+            matched_by=None,
         )
 
     candidate_evaluations = [
         _scoreCandidate(youtube_playlist_item, local_song, ruleset)
         for local_song in local_songs
     ]
-
-    if not candidate_evaluations:
-        return PersistedPlaylistItemMatchResult(
-            local_song=None,
-            comparison_status=ComparisonStatus.MISSING,
-            score=0.0,
-            reason="No hay canciones locales candidatas para comparar.",
-            matched_by=None,
-        )
-
     candidate_evaluations.sort(
         key=lambda evaluation: evaluation.sort_key,
         reverse=True,
@@ -125,39 +100,6 @@ def matchPersistedPlaylistItemToLocalSongs(
         reason=final_reason,
         matched_by=final_matched_by,
     )
-
-
-def _tryResolveEarlyClearMatch(
-    youtube_playlist_item: ComparableYoutubePlaylistItem,
-    local_songs: Sequence[ComparableLocalSong],
-    ruleset: PlaylistItemMatchingRuleset,
-) -> CandidateEvaluation | None:
-    clear_candidates: list[ComparableLocalSong] = []
-    for local_song in local_songs:
-        title_evidence = buildTextMatchEvidence(
-            youtube_playlist_item.comparable_title,
-            local_song.comparable_title,
-        )
-        artist_evidence = buildArtistMatchEvidence(
-            youtube_playlist_item.comparable_artist,
-            local_song.comparable_artist,
-        )
-        if artist_evidence is not ruleset.early_cutoff_thresholds.require_artist_evidence:
-            continue
-        if not isEarlyCutoffClearTitleMatch(
-            left_value=youtube_playlist_item.normalized_title,
-            right_value=local_song.comparable_title,
-            title_evidence=title_evidence,
-            thresholds=ruleset.early_cutoff_thresholds,
-        ):
-            continue
-        clear_candidates.append(local_song)
-        if len(clear_candidates) > 1:
-            return None
-
-    if len(clear_candidates) != 1:
-        return None
-    return _scoreCandidate(youtube_playlist_item, clear_candidates[0], ruleset)
 
 
 def _scoreCandidate(

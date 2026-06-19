@@ -185,18 +185,6 @@ def test_classify_match_status_returns_found_for_near_exact_title_and_strong_art
     assert status is ComparisonStatus.FOUND
 
 
-def test_classify_match_status_returns_possible_for_exact_title_without_artist_and_duration_over_1s() -> None:
-    status = classifyMatchStatus(
-        evidence=CandidateMatchEvidence(
-            title_match=TitleMatchEvidence.EXACT,
-            artist_match=ArtistMatchEvidence.NONE,
-            duration_match=buildDurationMatchEvidence(180.0, 182.0)[0],
-        )
-    )
-
-    assert status is ComparisonStatus.POSSIBLE_MATCH
-
-
 def test_classify_match_status_returns_possible_for_real_ambiguity() -> None:
     status = classifyMatchStatus(
         evidence=CandidateMatchEvidence(
@@ -234,35 +222,35 @@ def test_classify_match_status_returns_missing_for_exact_title_with_medium_artis
     assert status is ComparisonStatus.MISSING
 
 
-def test_classify_match_status_returns_missing_for_exact_title_without_artist_and_duration_under_1s() -> None:
+def test_classify_match_status_returns_missing_for_exact_title_without_artist() -> None:
     status = classifyMatchStatus(
         evidence=CandidateMatchEvidence(
             title_match=TitleMatchEvidence.EXACT,
             artist_match=ArtistMatchEvidence.NONE,
-            duration_match=buildDurationMatchEvidence(180.0, 180.6)[0],
+            duration_match=buildDurationMatchEvidence(180.0, 182.0)[0],
         )
     )
 
     assert status is ComparisonStatus.MISSING
 
 
-def test_build_match_reason_returns_specific_reason_for_exact_title_inconsistent_artist() -> None:
+def test_build_match_reason_returns_generic_possible_reason_without_ambiguity() -> None:
     reason = buildMatchReason(
         status=ComparisonStatus.POSSIBLE_MATCH,
         evidence=CandidateMatchEvidence(
             title_match=TitleMatchEvidence.EXACT,
-            artist_match=ArtistMatchEvidence.NONE,
+            artist_match=ArtistMatchEvidence.STRONG,
             duration_match=buildDurationMatchEvidence(180.0, 182.0)[0],
         ),
         score_breakdown=CandidateScoreBreakdown(
             title_score=60.0,
-            artist_score=0.0,
+            artist_score=30.0,
             duration_score=6.0,
             consistency_bonus=0.0,
         ),
     )
 
-    assert reason == "Titulo exacto pero artista inconsistente."
+    assert reason == "Coincidencia valida pero no se puede confirmar de forma automatica."
 
 
 def test_build_automatic_matched_by_returns_found_source_code() -> None:

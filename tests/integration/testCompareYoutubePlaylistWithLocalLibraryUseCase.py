@@ -240,6 +240,136 @@ def test_compare_youtube_playlist_with_local_library_use_case_uses_persisted_com
     assert result.items[0].local_song_id is not None
 
 
+def test_compare_youtube_playlist_with_local_library_use_case_marks_missing_when_title_exists_without_artist() -> None:
+    session = create_session()
+    local_folder_repository = LocalFolderSqlAlchemyRepository(session)
+    local_song_repository = LocalSongSqlAlchemyRepository(session)
+    playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
+    playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
+    youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
+    youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
+
+    active_folder = local_folder_repository.save_as_active(r"C:\Music\Active", "Active")
+    active_playlist = youtube_playlist_repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PL123",
+        "PL123",
+        "Favoritas",
+    )
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\intro-otro-artista.mp3",
+            file_name="intro-otro-artista.mp3",
+            is_available=True,
+            title="Intro",
+            artist="Eazyboi",
+            duration_seconds=180.0,
+        )
+    )
+    youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="intro-sfdk",
+                position=1,
+                raw_title="Intro",
+                raw_channel_name="SFDK",
+                normalized_title="intro",
+                normalized_artist="sfdk",
+                duration_seconds=180.0,
+            )
+        ],
+    )
+
+    result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        youtube_playlist_repository,
+        youtube_playlist_item_repository,
+        local_folder_repository,
+        local_song_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute()
+
+    assert result.summary.found_count == 0
+    assert result.summary.missing_count == 1
+    assert result.items[0].comparison_status is ComparisonStatus.MISSING
+    assert result.items[0].reason == "Existe titulo en local pero no artista valido."
+
+
+def test_compare_youtube_playlist_with_local_library_use_case_excludes_reserved_found_song_from_later_items() -> None:
+    session = create_session()
+    local_folder_repository = LocalFolderSqlAlchemyRepository(session)
+    local_song_repository = LocalSongSqlAlchemyRepository(session)
+    playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
+    playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
+    youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
+    youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
+
+    active_folder = local_folder_repository.save_as_active(r"C:\Music\Active", "Active")
+    active_playlist = youtube_playlist_repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PL123",
+        "PL123",
+        "Favoritas",
+    )
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\intro-sfdk.mp3",
+            file_name="intro-sfdk.mp3",
+            is_available=True,
+            title="Intro",
+            artist="SFDK",
+            duration_seconds=180.0,
+        )
+    )
+    youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="intro-sfdk-1",
+                position=1,
+                raw_title="Intro",
+                raw_channel_name="SFDK",
+                normalized_title="intro",
+                normalized_artist="sfdk",
+                duration_seconds=180.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="intro-sfdk-2",
+                position=2,
+                raw_title="Intro",
+                raw_channel_name="SFDK",
+                normalized_title="intro",
+                normalized_artist="sfdk",
+                duration_seconds=180.0,
+            ),
+        ],
+    )
+
+    result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        youtube_playlist_repository,
+        youtube_playlist_item_repository,
+        local_folder_repository,
+        local_song_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute()
+
+    assert [item.comparison_status for item in result.items] == [
+        ComparisonStatus.FOUND,
+        ComparisonStatus.MISSING,
+    ]
+    assert result.items[0].local_song_id is not None
+    assert result.items[1].local_song_id is None
+    assert result.items[1].reason == "La cancion local ya esta reservada por otro FOUND."
+
+
 def test_compare_youtube_playlist_with_local_library_use_case_persists_observability_for_incremental_recompute() -> None:
     session = create_session()
     local_folder_repository = LocalFolderSqlAlchemyRepository(session)

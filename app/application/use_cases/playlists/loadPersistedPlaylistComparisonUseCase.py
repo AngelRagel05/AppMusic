@@ -231,9 +231,6 @@ def _mapMatchedByToReason(
     if matched_by == AUTO_AMBIGUOUS:
         return "Ambiguedad entre dos candidatas plausibles."
     if matched_by == AUTO_NO_COMPETITIVE_CANDIDATE:
-        status = ComparisonStatus(match_status)
-        if status is ComparisonStatus.POSSIBLE_MATCH:
-            return "Titulo exacto pero artista inconsistente."
         return "No hay candidata suficientemente competitiva."
     if matched_by == MANUAL_USER_LINKED_LOCAL_SONG:
         return "Enlace manual con cancion local decidido por el usuario."

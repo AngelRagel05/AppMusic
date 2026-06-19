@@ -66,16 +66,6 @@ class MatchClassificationThresholds:
 
 
 @dataclass(frozen=True, slots=True)
-class EarlyCutoffThresholds:
-    minimum_title_similarity_ratio: float = 0.93
-    require_title_evidence: tuple[TitleMatchEvidence, ...] = (
-        TitleMatchEvidence.EXACT,
-        TitleMatchEvidence.NEAR_EXACT,
-    )
-    require_artist_evidence: ArtistMatchEvidence = ArtistMatchEvidence.STRONG
-
-
-@dataclass(frozen=True, slots=True)
 class PlaylistItemMatchingRuleset:
     title_weights: TextMatchWeights = TextMatchWeights(
         exact_score=60.0,
@@ -92,7 +82,6 @@ class PlaylistItemMatchingRuleset:
     duration_thresholds: DurationMatchThresholds = DurationMatchThresholds()
     consistency_weights: ConsistencyScoreWeights = ConsistencyScoreWeights()
     ambiguity_thresholds: AmbiguityPenaltyThresholds = AmbiguityPenaltyThresholds()
-    early_cutoff_thresholds: EarlyCutoffThresholds = EarlyCutoffThresholds()
     classification_thresholds: MatchClassificationThresholds = (
         MatchClassificationThresholds()
     )
@@ -332,28 +321,13 @@ def _buildFoundReason(evidence: CandidateMatchEvidence) -> str:
 def _buildPossibleReason(evidence: CandidateMatchEvidence) -> str:
     if evidence.ambiguity_count > 1:
         return "Ambiguedad entre dos candidatas plausibles."
-    if evidence.duration_match is DurationMatchEvidence.WEAK:
-        return "Titulo exacto pero artista inconsistente y duracion debil."
-    return "Titulo exacto pero artista inconsistente."
+    return "Coincidencia valida pero no se puede confirmar de forma automatica."
 
 
 def _buildMissingReason(
     evidence: CandidateMatchEvidence,
     score_breakdown: CandidateScoreBreakdown,
 ) -> str:
-    if evidence.title_match in (
-        TitleMatchEvidence.EXACT,
-        TitleMatchEvidence.NEAR_EXACT,
-        TitleMatchEvidence.CONTAINS,
-    ) and evidence.artist_match in (
-        ArtistMatchEvidence.NONE,
-        ArtistMatchEvidence.WEAK,
-        ArtistMatchEvidence.MEDIUM,
-    ):
-        if evidence.duration_match is DurationMatchEvidence.WEAK:
-            return "Duracion fuera de tolerancia fuerte."
-        return "Titulo competitivo pero artista inconsistente."
-
     if score_breakdown.base_score <= 0:
         return "No hay canciones locales candidatas para comparar."
 
@@ -367,9 +341,7 @@ def _isFoundMatch(evidence: CandidateMatchEvidence) -> bool:
 
 
 def _isPossibleMatch(evidence: CandidateMatchEvidence) -> bool:
-    if _hasRealAmbiguity(evidence):
-        return True
-    return _hasExactTitleWithoutArtistAndDurationOverOneSecond(evidence)
+    return _hasRealAmbiguity(evidence)
 
 
 def _hasRealAmbiguity(evidence: CandidateMatchEvidence) -> bool:
@@ -400,19 +372,6 @@ def _hasExactTitleStrongArtistAndReasonableDuration(
     )
 
 
-def _hasExactTitleWithoutArtistAndDurationOverOneSecond(
-    evidence: CandidateMatchEvidence,
-) -> bool:
-    return (
-        evidence.title_match is TitleMatchEvidence.EXACT
-        and evidence.artist_match is ArtistMatchEvidence.NONE
-        and evidence.duration_match in (
-            DurationMatchEvidence.MEDIUM,
-            DurationMatchEvidence.WEAK,
-        )
-    )
-
-
 def containsEitherWay(left: str, right: str) -> bool:
     if len(left) < 3 or len(right) < 3:
         return False
@@ -431,21 +390,6 @@ def tokenOverlapRatio(left: str, right: str) -> float:
 
 def normalizedSimilarityRatio(left: str, right: str) -> float:
     return SequenceMatcher(a=left, b=right).ratio()
-
-
-def isEarlyCutoffClearTitleMatch(
-    *,
-    left_value: str,
-    right_value: str,
-    title_evidence: TitleMatchEvidence,
-    thresholds: EarlyCutoffThresholds,
-) -> bool:
-    if title_evidence not in thresholds.require_title_evidence:
-        return False
-    return (
-        normalizedSimilarityRatio(left_value.strip(), right_value.strip())
-        >= thresholds.minimum_title_similarity_ratio
-    )
 
 
 def _normalizeCompactAlphanumericSpacing(value: str) -> str:

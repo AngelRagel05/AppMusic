@@ -16,6 +16,15 @@ El flujo activo y canónico es:
 6. clasificacion en `FOUND`, `POSSIBLE_MATCH` o `MISSING`
 7. persistencia de snapshot de comparacion
 
+Queda retirado del flujo activo cualquier esquema por lotes o amplitud progresiva.
+
+Ya no forman parte del comportamiento vigente:
+
+* seleccion por etapas `EXACT`, `VERY_SIMILAR`, `BROAD`
+* competicion de candidatas solo por similitud de titulo
+* entrada de candidatas con artista no validado al score final
+* posibilidad de llegar a `POSSIBLE_MATCH` por titulo y duracion sin validar antes el artista
+
 ## Modelo comparable rediseñado
 
 La Fase 2 elimina la asimetria funcional actual entre:
@@ -142,6 +151,14 @@ Solo sirve para:
 * evaluar duracion
 * confirmar consistencia
 * desempatar candidatas validas
+
+El matcher ya no decide el acceso al subconjunto.
+
+Su responsabilidad queda reducida a:
+
+* puntuar candidatas que ya han pasado `titulo -> artista -> reserva`
+* resolver si una unica candidata queda en `FOUND`
+* marcar `POSSIBLE_MATCH` cuando varias candidatas validas siguen siendo ambiguas
 
 ## Reserva de canciones locales
 
