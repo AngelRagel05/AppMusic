@@ -55,7 +55,6 @@ from app.shared.constants.comparison import ComparisonStatus
 @dataclass(frozen=True, slots=True)
 class IncrementalComparisonPlan:
     frozen_rows_by_item_id: dict[int, PlaylistComparisonResult]
-    youtube_items_to_recompare: list[object]
     reserved_local_song_ids: set[int]
 
 
@@ -151,7 +150,6 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         incremental_plan = self._buildIncrementalComparisonPlan(
             latest_results=latest_results,
             latest_persisted_comparison=latest_persisted_comparison,
-            youtube_playlist_items=youtube_playlist_items,
             youtube_playlist_item_by_id=youtube_playlist_item_by_id,
             local_song_by_id=local_song_by_id,
             current_ignored_terms_version=current_ignored_terms_version,
@@ -303,7 +301,9 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             ),
             total_compared=len(comparison_items),
         )
-        recomputed_item_count = len(incremental_plan.youtube_items_to_recompare)
+        recomputed_item_count = len(ordered_youtube_playlist_items) - len(
+            incremental_plan.frozen_rows_by_item_id
+        )
         observability = PlaylistComparisonObservabilityDto(
             phase_timings=PlaylistComparisonPhaseTimingsDto(
                 snapshot_load_seconds=snapshot_load_seconds,
@@ -340,7 +340,6 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         *,
         latest_results: list[PlaylistComparisonResult],
         latest_persisted_comparison,
-        youtube_playlist_items: list[object],
         youtube_playlist_item_by_id: dict[int, object],
         local_song_by_id: dict[int, object],
         current_ignored_terms_version: str,
@@ -349,7 +348,6 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         if force_full_recompute:
             return IncrementalComparisonPlan(
                 frozen_rows_by_item_id={},
-                youtube_items_to_recompare=list(youtube_playlist_items),
                 reserved_local_song_ids=set(),
             )
 
@@ -365,16 +363,8 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             for row in frozen_rows_by_item_id.values()
             if row.local_song_id is not None
         }
-        youtube_items_to_recompare = [
-            youtube_playlist_item
-            for youtube_playlist_item in youtube_playlist_items
-            if (youtube_playlist_item.id or 0) not in frozen_rows_by_item_id
-        ]
         return IncrementalComparisonPlan(
             frozen_rows_by_item_id=frozen_rows_by_item_id,
-            youtube_items_to_recompare=self._sortYoutubePlaylistItemsForComparison(
-                youtube_items_to_recompare
-            ),
             reserved_local_song_ids=reserved_local_song_ids,
         )
 

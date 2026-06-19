@@ -213,6 +213,7 @@ Reglas activas:
 * su `local_song_id` queda reservada
 * la recomparacion incremental trabaja sobre filas nuevas, `MISSING`, `POSSIBLE_MATCH` y `FOUND` invalidados
 * un `FOUND` valido no se reabre solo porque aparezca una candidata aparentemente mejor
+* cualquier cambio de `matching_rules_version` invalida la congelacion automatica anterior
 
 ## Razones legibles
 
@@ -235,9 +236,21 @@ Razones mínimas esperadas:
 * carga de playlist activa
 * carga de biblioteca local activa
 * preparacion de comparables
+* construccion del indice normalizado por titulo y artista
 * matching
+* reserva incremental de `FOUND`
 * persistencia del snapshot
 * devolucion de DTOs con resumen, items y observabilidad
+
+El flujo principal debe mantenerse unico y lineal:
+
+1. preparar comparables
+2. construir indice normalizado
+3. recorrer la playlist en orden
+4. reutilizar `FOUND` congelados validos si existen
+5. aplicar selector secuencial para el resto
+6. reservar solo nuevos `FOUND`
+7. persistir snapshot
 
 ### Pantalla de comparacion
 
