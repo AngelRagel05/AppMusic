@@ -366,6 +366,9 @@ def test_compare_youtube_playlist_with_local_library_use_case_excludes_reserved_
         ComparisonStatus.MISSING,
     ]
     assert result.items[0].local_song_id is not None
+    assert [item.local_song_id for item in result.items if item.local_song_id is not None] == [
+        result.items[0].local_song_id
+    ]
     assert result.items[1].local_song_id is None
     assert result.items[1].reason == "La cancion local ya esta reservada por otro FOUND."
 
@@ -641,6 +644,110 @@ def test_compare_youtube_playlist_with_local_library_use_case_invalidates_frozen
     assert result.observability is not None
     assert result.observability.volume_metrics.skipped_found_count == 0
     assert result.observability.volume_metrics.recomputed_item_count == 1
+
+
+def test_compare_youtube_playlist_with_local_library_use_case_keeps_frozen_found_reservation_for_later_rows() -> None:
+    session = create_session()
+    local_folder_repository = LocalFolderSqlAlchemyRepository(session)
+    local_song_repository = LocalSongSqlAlchemyRepository(session)
+    playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
+    playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
+    youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
+    youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
+
+    active_folder = local_folder_repository.save_as_active(r"C:\Music\Active", "Active")
+    active_playlist = youtube_playlist_repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PL123",
+        "PL123",
+        "Favoritas",
+    )
+    local_song_one = local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\intro-sfdk.mp3",
+            file_name="intro-sfdk.mp3",
+            is_available=True,
+            title="Intro",
+            artist="SFDK",
+            duration_seconds=180.0,
+        )
+    )
+    persisted_items = youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="frozen-found",
+                position=1,
+                raw_title="Intro",
+                raw_channel_name="SFDK",
+                normalized_title="intro",
+                normalized_artist="sfdk",
+                duration_seconds=180.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="later-duplicate",
+                position=2,
+                raw_title="Intro",
+                raw_channel_name="SFDK",
+                normalized_title="intro",
+                normalized_artist="sfdk",
+                duration_seconds=180.0,
+            ),
+        ],
+    )
+    previous_snapshot = playlist_comparison_repository.create(
+        active_playlist.id or 0,
+        active_folder.id or 0,
+        youtube_playlist_imported_at=datetime(2100, 1, 1, 10, 0, tzinfo=UTC),
+        local_library_scanned_at=datetime(2100, 1, 1, 10, 0, tzinfo=UTC),
+        ignored_terms_version="ignored_terms:untracked",
+        matching_rules_version=CompareYoutubePlaylistWithLocalLibraryUseCase.MATCHING_RULES_VERSION,
+    )
+    playlist_comparison_result_repository.save_for_comparison(
+        previous_snapshot.id or 0,
+        [
+            PlaylistComparisonResult(
+                playlist_comparison_id=previous_snapshot.id or 0,
+                youtube_playlist_item_id=persisted_items[0].id or 0,
+                local_song_id=local_song_one.id,
+                match_status=ComparisonStatus.FOUND.value,
+                score=100.0,
+                matched_by="auto:title_artist_duration",
+            ),
+            PlaylistComparisonResult(
+                playlist_comparison_id=previous_snapshot.id or 0,
+                youtube_playlist_item_id=persisted_items[1].id or 0,
+                local_song_id=None,
+                match_status=ComparisonStatus.MISSING.value,
+                score=0.0,
+                matched_by=None,
+            ),
+        ],
+    )
+    playlist_comparison_repository.commit()
+
+    result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        youtube_playlist_repository,
+        youtube_playlist_item_repository,
+        local_folder_repository,
+        local_song_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute()
+
+    assert [item.comparison_status for item in result.items] == [
+        ComparisonStatus.FOUND,
+        ComparisonStatus.MISSING,
+    ]
+    assert result.items[0].reason in (
+        "Coincidencia FOUND conservada desde snapshot manual valido.",
+        "Coincidencia FOUND conservada desde snapshot automatico valido.",
+    )
+    assert result.items[1].reason == "La cancion local ya esta reservada por otro FOUND."
 
 
 def test_compare_youtube_playlist_with_local_library_use_case_keeps_nadal015_memories_i_regression_in_sqlalchemy() -> None:

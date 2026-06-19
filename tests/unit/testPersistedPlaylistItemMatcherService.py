@@ -157,6 +157,29 @@ def test_match_persisted_playlist_item_to_local_songs_never_returns_found_withou
     assert result.reason == "No hay canciones locales candidatas validadas por titulo y artista."
 
 
+def test_match_persisted_playlist_item_to_local_songs_returns_missing_when_only_title_matches() -> None:
+    result = matchPersistedPlaylistItemToLocalSongs(
+        ComparableYoutubePlaylistItem(
+            id=24,
+            normalized_title="platos rotos",
+            normalized_artist="sfdk",
+            duration_seconds=176.0,
+        ),
+        [
+            ComparableLocalSong(
+                id=34,
+                title="platos rotos",
+                artist="otro artista",
+                duration_seconds=176.0,
+            ),
+        ],
+    )
+
+    assert result.local_song is None
+    assert result.comparison_status is ComparisonStatus.MISSING
+    assert result.reason == "No hay canciones locales candidatas validadas por titulo y artista."
+
+
 def test_match_persisted_playlist_item_to_local_songs_requires_duration_for_generic_title_found() -> None:
     result = matchPersistedPlaylistItemToLocalSongs(
         ComparableYoutubePlaylistItem(
@@ -171,6 +194,32 @@ def test_match_persisted_playlist_item_to_local_songs_requires_duration_for_gene
                 title="intro",
                 artist="sfdk",
                 duration_seconds=180.0,
+            ),
+        ],
+    )
+
+    assert result.local_song is None
+    assert result.comparison_status is ComparisonStatus.MISSING
+    assert (
+        result.reason
+        == "Titulo generico con artista valido, pero la duracion no permite confirmar FOUND."
+    )
+
+
+def test_match_persisted_playlist_item_to_local_songs_does_not_return_found_for_generic_title_with_weak_duration() -> None:
+    result = matchPersistedPlaylistItemToLocalSongs(
+        ComparableYoutubePlaylistItem(
+            id=46,
+            normalized_title="intro",
+            normalized_artist="sfdk",
+            duration_seconds=180.0,
+        ),
+        [
+            ComparableLocalSong(
+                id=57,
+                title="intro",
+                artist="sfdk",
+                duration_seconds=186.0,
             ),
         ],
     )

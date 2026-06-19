@@ -49,6 +49,42 @@ def test_sequential_local_song_candidate_selector_returns_title_and_artist_subse
     assert [song.id for song in selection.local_songs] == [1]
 
 
+def test_sequential_local_song_candidate_selector_uses_normalized_title_and_artist() -> None:
+    candidate_index = buildComparableLocalSongSequentialIndex(
+        [
+            ComparableLocalSong(
+                id=1,
+                title="Song One (Live at Home)",
+                artist="Artist One feat Guest",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            ),
+            ComparableLocalSong(
+                id=2,
+                title="Song One",
+                artist="Another Artist",
+                normalized_title="song one",
+                normalized_artist="another artist",
+                duration_seconds=181.0,
+            ),
+        ]
+    )
+
+    selection = selectSequentialLocalSongCandidates(
+        ComparableYoutubePlaylistItem(
+            id=10,
+            normalized_title="song one",
+            normalized_artist="artist one",
+            duration_seconds=180.0,
+        ),
+        candidate_index,
+    )
+
+    assert selection.comparison_status is None
+    assert [song.id for song in selection.local_songs] == [1]
+
+
 def test_sequential_local_song_candidate_selector_returns_missing_without_title_match() -> None:
     candidate_index = buildComparableLocalSongSequentialIndex(
         [
