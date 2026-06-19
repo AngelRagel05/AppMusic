@@ -10,6 +10,10 @@ Representa una ejecucion de comparacion entre una playlist de YouTube y una carp
 
 Actua como cabecera del proceso de comparacion.
 
+La semantica funcional vigente del matching asociado a este snapshot se documenta en:
+
+* [comparisonContext.md](../../architecture/comparisonContext.md)
+
 ## Columnas
 
 | Columna | Tipo conceptual | Requerido | Restricciones | Descripcion |

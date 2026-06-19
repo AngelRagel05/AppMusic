@@ -12,6 +12,10 @@ Es la tabla clave para detectar canciones encontradas o faltantes.
 
 Tambien actua como fuente final del ajuste manual hecho por el usuario sobre un snapshot ya persistido.
 
+La semantica funcional vigente de sus estados y razones se documenta en:
+
+* [comparisonContext.md](../../architecture/comparisonContext.md)
+
 ## Columnas
 
 | Columna | Tipo conceptual | Requerido | Restricciones | Descripcion |
@@ -96,12 +100,18 @@ erDiagram
   * automatico:
     * `auto:title_artist_duration`
     * `auto:ambiguous`
-    * `auto:no_competitive_candidate`
+    * `auto:no_title_match`
+    * `auto:title_without_artist_match`
+    * `auto:reserved_local_song_excluded`
   * manual:
     * `manual:user_linked_local_song`
     * `manual:user_marked_found`
     * `manual:user_marked_missing`
     * `manual:user_marked_possible`
+* Significado funcional vigente:
+  * `found` exige titulo y artista validados antes del score final
+  * `possible_match` queda reservado a ambigüedad real entre candidatas ya validadas
+  * `missing` cubre ausencia de titulo, ausencia de artista valido o ausencia de candidata util tras exclusiones
 * El `score` se conserva aunque el usuario corrija manualmente la fila.
 * Cuando `matched_by` empiece por `manual:`, el `score` deja de actuar como verdad del estado final y queda solo como referencia del matching automatico previo.
 * `matched_by` distingue explicitamente el origen de la fila:

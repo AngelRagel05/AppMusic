@@ -11,6 +11,10 @@ Se prioriza:
 * deteccion de canciones faltantes
 * soporte CRUD para terminos ignorados
 
+La semantica funcional vigente del matching y de los estados de comparacion se documenta en:
+
+* [../architecture/comparisonContext.md](../architecture/comparisonContext.md)
+
 ## Diagrama Mermaid
 
 ```mermaid
@@ -285,6 +289,12 @@ Restricciones:
 * deberia existir una sola fila por pareja `playlist_comparison_id + youtube_playlist_item_id`
 * si la fila fue corregida manualmente, `matched_by` debe usar prefijo `manual:`
 * flags como `is_locked_found` o `invalidated_reason` no se persisten aqui; son estado derivado del motor de comparacion y de la cabecera `playlist_comparison`
+
+Semantica funcional vigente:
+
+* `found` exige titulo y artista ya validados antes del score final
+* `possible_match` queda reservado a ambigüedad real entre candidatas ya validadas
+* `missing` cubre ausencia de titulo, ausencia de artista valido o falta de candidata util tras exclusiones
 
 Notas de retencion:
 

@@ -1,16 +1,34 @@
 # Arquitectura
 
+## Objetivo
+
+Reducir la documentacion fragmentada y dejar una sola estructura canónica por contextos funcionales.
+
 ## Documentacion canónica
 
-* [architectureOverview.md](./architectureOverview.md): vista general del sistema y de sus capas
-* [dependencyMap.md](./dependencyMap.md): reglas de dependencia permitidas y prohibidas
-* [domainModulesOverview.md](./domainModulesOverview.md): mapa actual y previsto de modulos del dominio
-* [presentationStructure.md](./presentationStructure.md): estructura vigente de `presentation/`
-* [testingStrategy.md](./testingStrategy.md): estrategia de testing por nivel
-* [externalIntegrations.md](./externalIntegrations.md): integraciones externas actuales y previstas
+La arquitectura del proyecto queda unificada en estos documentos:
 
-## ADRs e historico
+* [systemContext.md](./systemContext.md)
+* [youtubePlaylistContext.md](./youtubePlaylistContext.md)
+* [localLibraryContext.md](./localLibraryContext.md)
+* [comparisonContext.md](./comparisonContext.md)
+* [presentationContext.md](./presentationContext.md)
+* [runtimeAndQualityContext.md](./runtimeAndQualityContext.md)
 
-Las decisiones historicas y documentos de fase viven en [adr/](./adr/).
+## BBDD
 
-Si una ADR entra en conflicto con la documentacion canónica, prevalece la documentacion canónica.
+La documentacion estructural de persistencia sigue en:
+
+* [../bbdd/erModel.md](../bbdd/erModel.md)
+* [../bbdd/relationalModel.md](../bbdd/relationalModel.md)
+* `doc/bbdd/tables/`
+
+## UI
+
+La guia visual de escritorio sigue en:
+
+* [../ui/uiUxGuidelines.md](../ui/uiUxGuidelines.md)
+
+## Regla de lectura
+
+Si aparece un documento antiguo que contradice alguno de estos contextos canónicos, prevalecen los documentos de esta lista.
