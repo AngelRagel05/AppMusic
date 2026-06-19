@@ -59,9 +59,15 @@ class IncrementalComparisonPlan:
     reserved_local_song_ids: set[int]
 
 
+@dataclass(slots=True)
+class FoundReservationState:
+    reserved_local_song_ids: set[int]
+    initial_reserved_local_song_count: int
+
+
 class CompareYoutubePlaylistWithLocalLibraryUseCase:
     SNAPSHOT_RETENTION_LIMIT = 3
-    MATCHING_RULES_VERSION = "persisted_match_v6_sequential_title_artist_reserved"
+    MATCHING_RULES_VERSION = "persisted_match_v7_found_only_reservation_flow"
 
     def __init__(
         self,
@@ -99,6 +105,9 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         youtube_playlist_items = self._youtube_playlist_item_repository.list_by_playlist(
             active_youtube_playlist.id
         )
+        ordered_youtube_playlist_items = self._sortYoutubePlaylistItemsForComparison(
+            youtube_playlist_items
+        )
         persisted_local_songs = self._local_song_repository.list_by_folder(active_local_folder.id)
         latest_persisted_comparison = self._playlist_comparison_repository.find_latest_for_scope(
             active_youtube_playlist.id,
@@ -115,7 +124,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         current_youtube_playlist_imported_at = self._buildSnapshotTimestamp(youtube_playlist_items)
         current_local_library_scanned_at = self._buildSnapshotTimestamp(persisted_local_songs)
         current_youtube_playlist_state_fingerprint = self._buildYoutubePlaylistStateFingerprint(
-            youtube_playlist_items
+            ordered_youtube_playlist_items
         )
         current_local_library_state_fingerprint = self._buildLocalLibraryStateFingerprint(
             persisted_local_songs
@@ -148,7 +157,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             current_ignored_terms_version=current_ignored_terms_version,
             force_full_recompute=force_full_recompute,
         )
-        initially_reserved_local_song_count = len(incremental_plan.reserved_local_song_ids)
+        reservation_state = self._buildFoundReservationState(incremental_plan)
         pool_build_seconds = perf_counter() - pool_build_started_at
 
         indexing_started_at = perf_counter()
@@ -157,7 +166,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
 
         matching_started_at = perf_counter()
         total_candidates_considered = 0
-        for youtube_playlist_item in youtube_playlist_items:
+        for youtube_playlist_item in ordered_youtube_playlist_items:
             frozen_row = incremental_plan.frozen_rows_by_item_id.get(youtube_playlist_item.id or 0)
             if frozen_row is not None:
                 linked_local_song = (
@@ -186,15 +195,13 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                 )
                 match_result_by_item[frozen_row.youtube_playlist_item_id] = frozen_row.matched_by
                 continue
-
-        for youtube_playlist_item in incremental_plan.youtube_items_to_recompare:
             comparable_youtube_playlist_item = self._buildComparableYoutubePlaylistItem(
                 youtube_playlist_item
             )
             selection_result = selectSequentialLocalSongCandidates(
                 comparable_youtube_playlist_item,
                 candidate_index,
-                reserved_local_song_ids=incremental_plan.reserved_local_song_ids,
+                reserved_local_song_ids=reservation_state.reserved_local_song_ids,
             )
             total_candidates_considered += selection_result.candidates_considered
             match_result = self._buildMatchResultFromSelection(
@@ -212,7 +219,10 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                 and matched_local_song is not None
                 and matched_local_song.id is not None
             ):
-                incremental_plan.reserved_local_song_ids.add(matched_local_song.id)
+                self._reserveFoundLocalSong(
+                    reservation_state,
+                    matched_local_song.id,
+                )
             comparison_items.append(
                 PlaylistComparisonItemResultDto(
                     youtube_playlist_item_id=youtube_playlist_item.id or 0,
@@ -233,15 +243,6 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
                 )
             )
         matching_seconds = perf_counter() - matching_started_at
-
-        comparison_items_by_item_id = {
-            item.youtube_playlist_item_id: item for item in comparison_items
-        }
-        comparison_items = [
-            comparison_items_by_item_id[youtube_playlist_item.id or 0]
-            for youtube_playlist_item in youtube_playlist_items
-            if (youtube_playlist_item.id or 0) in comparison_items_by_item_id
-        ]
 
         persistence_started_at = perf_counter()
         persisted_comparison = self._playlist_comparison_repository.create(
@@ -314,7 +315,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             ),
             volume_metrics=PlaylistComparisonVolumeMetricsDto(
                 skipped_found_count=len(incremental_plan.frozen_rows_by_item_id),
-                reserved_local_song_count=initially_reserved_local_song_count,
+                reserved_local_song_count=reservation_state.initial_reserved_local_song_count,
                 recomputed_item_count=recomputed_item_count,
                 total_candidates_considered=total_candidates_considered,
                 average_candidates_per_recomputed_item=(
@@ -371,8 +372,39 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
         ]
         return IncrementalComparisonPlan(
             frozen_rows_by_item_id=frozen_rows_by_item_id,
-            youtube_items_to_recompare=youtube_items_to_recompare,
+            youtube_items_to_recompare=self._sortYoutubePlaylistItemsForComparison(
+                youtube_items_to_recompare
+            ),
             reserved_local_song_ids=reserved_local_song_ids,
+        )
+
+    def _buildFoundReservationState(
+        self,
+        incremental_plan: IncrementalComparisonPlan,
+    ) -> FoundReservationState:
+        reserved_local_song_ids = set(incremental_plan.reserved_local_song_ids)
+        return FoundReservationState(
+            reserved_local_song_ids=reserved_local_song_ids,
+            initial_reserved_local_song_count=len(reserved_local_song_ids),
+        )
+
+    def _reserveFoundLocalSong(
+        self,
+        reservation_state: FoundReservationState,
+        local_song_id: int,
+    ) -> None:
+        reservation_state.reserved_local_song_ids.add(local_song_id)
+
+    def _sortYoutubePlaylistItemsForComparison(
+        self,
+        youtube_playlist_items: list[object],
+    ) -> list[object]:
+        return sorted(
+            youtube_playlist_items,
+            key=lambda item: (
+                getattr(item, "position", 0),
+                getattr(item, "id", 0) or 0,
+            ),
         )
 
     def _buildMatchResultFromSelection(

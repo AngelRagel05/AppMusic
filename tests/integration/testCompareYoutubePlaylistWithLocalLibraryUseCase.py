@@ -370,6 +370,86 @@ def test_compare_youtube_playlist_with_local_library_use_case_excludes_reserved_
     assert result.items[1].reason == "La cancion local ya esta reservada por otro FOUND."
 
 
+def test_compare_youtube_playlist_with_local_library_use_case_does_not_reserve_possible_matches() -> None:
+    session = create_session()
+    local_folder_repository = LocalFolderSqlAlchemyRepository(session)
+    local_song_repository = LocalSongSqlAlchemyRepository(session)
+    playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
+    playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
+    youtube_playlist_repository = YoutubePlaylistSqlAlchemyRepository(session)
+    youtube_playlist_item_repository = YoutubePlaylistItemSqlAlchemyRepository(session)
+
+    active_folder = local_folder_repository.save_as_active(r"C:\Music\Active", "Active")
+    active_playlist = youtube_playlist_repository.save_as_active(
+        "https://www.youtube.com/playlist?list=PL123",
+        "PL123",
+        "Favoritas",
+    )
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\song-one-a.mp3",
+            file_name="song-one-a.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            duration_seconds=180.4,
+        )
+    )
+    local_song_repository.save(
+        LocalSong(
+            local_folder_id=active_folder.id,
+            file_path=r"C:\Music\Active\song-one-b.mp3",
+            file_name="song-one-b.mp3",
+            is_available=True,
+            title="Song One",
+            artist="Artist One",
+            duration_seconds=180.5,
+        )
+    )
+    youtube_playlist_item_repository.replace_for_playlist(
+        active_playlist.id or 0,
+        [
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="song-one-1",
+                position=1,
+                raw_title="Song One",
+                raw_channel_name="Artist One",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            ),
+            YoutubePlaylistItem(
+                id=None,
+                youtube_playlist_id=active_playlist.id or 0,
+                external_video_id="song-one-2",
+                position=2,
+                raw_title="Song One",
+                raw_channel_name="Artist One",
+                normalized_title="song one",
+                normalized_artist="artist one",
+                duration_seconds=180.0,
+            ),
+        ],
+    )
+
+    result = CompareYoutubePlaylistWithLocalLibraryUseCase(
+        youtube_playlist_repository,
+        youtube_playlist_item_repository,
+        local_folder_repository,
+        local_song_repository,
+        playlist_comparison_repository,
+        playlist_comparison_result_repository,
+    ).execute()
+
+    assert [item.comparison_status for item in result.items] == [
+        ComparisonStatus.POSSIBLE_MATCH,
+        ComparisonStatus.POSSIBLE_MATCH,
+    ]
+
+
 def test_compare_youtube_playlist_with_local_library_use_case_persists_observability_for_incremental_recompute() -> None:
     session = create_session()
     local_folder_repository = LocalFolderSqlAlchemyRepository(session)

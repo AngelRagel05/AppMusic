@@ -178,6 +178,8 @@ Reglas activas:
 * una `local_song` reservada no vuelve a competir en la misma comparacion
 * `POSSIBLE_MATCH` no reserva
 * `MISSING` no reserva
+* primero se siembran las reservas procedentes de `FOUND` congelados del snapshot valido
+* despues la comparacion avanza en orden de playlist y cada `FOUND` nuevo estrecha el pool para los items siguientes
 
 Esto reduce ruido y evita duplicar una misma cancion local en dos `FOUND`.
 
