@@ -312,7 +312,7 @@ def buildMatchReason(
 
 def _buildFoundReason(evidence: CandidateMatchEvidence) -> str:
     if evidence.title_match is TitleMatchEvidence.EXACT:
-        return "Titulo exacto con artista fuerte y duracion razonable."
+        return "Coincidencia confirmada por titulo y artista validos."
     if evidence.title_match is TitleMatchEvidence.NEAR_EXACT:
         return "Titulo casi exacto con artista fuerte."
     return "Coincidencia validada por titulo y artista fuertes."
@@ -320,7 +320,7 @@ def _buildFoundReason(evidence: CandidateMatchEvidence) -> str:
 
 def _buildPossibleReason(evidence: CandidateMatchEvidence) -> str:
     if evidence.ambiguity_count > 1:
-        return "Ambiguedad entre dos candidatas plausibles."
+        return "Varias candidatas del mismo titulo y artista."
     return "Coincidencia valida pero no se puede confirmar de forma automatica."
 
 

@@ -221,11 +221,10 @@ Reglas activas:
 Razones mínimas esperadas:
 
 * `No existe titulo en local.`
-* `Existe titulo en local pero no artista valido.`
+* `Existe titulo pero no artista.`
 * `La cancion local ya esta reservada por otro FOUND.`
-* `Varias candidatas comparten titulo y artista; no se puede resolver de forma automatica.`
-* `Titulo y artista validos, pero la duracion no permite confirmar FOUND.`
-* `Titulo generico con artista valido, pero la duracion no permite confirmar FOUND.`
+* `Varias candidatas del mismo titulo y artista.`
+* `Duracion dudosa entre candidatas validas.`
 * `Coincidencia confirmada por titulo y artista validos.`
 
 ## Aplicacion y UI

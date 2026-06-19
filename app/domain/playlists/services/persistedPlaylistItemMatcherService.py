@@ -256,7 +256,7 @@ def _buildPossibleMatchResult(
         local_song=candidate_evaluation.local_song,
         comparison_status=ComparisonStatus.POSSIBLE_MATCH,
         score=candidate_evaluation.score,
-        reason=reason or "Varias candidatas comparten titulo y artista; no se puede resolver de forma automatica.",
+        reason=reason or "Varias candidatas del mismo titulo y artista.",
         matched_by=buildAutomaticMatchedBy(
             status=ComparisonStatus.POSSIBLE_MATCH,
             evidence=evidence,
@@ -281,9 +281,7 @@ def _buildDurationInsufficientReason(
     *,
     is_generic_title: bool,
 ) -> str:
-    if is_generic_title:
-        return "Titulo generico con artista valido, pero la duracion no permite confirmar FOUND."
-    return "Titulo y artista validos, pero la duracion no permite confirmar FOUND."
+    return "Duracion dudosa entre candidatas validas."
 
 
 def _isGenericComparableTitle(title: str) -> bool:

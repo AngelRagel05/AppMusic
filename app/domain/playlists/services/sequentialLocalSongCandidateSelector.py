@@ -81,7 +81,7 @@ def selectSequentialLocalSongCandidates(
             local_songs=(),
             candidates_considered=0,
             comparison_status=ComparisonStatus.MISSING,
-            reason="Existe titulo en local pero no artista valido.",
+            reason="Existe titulo pero no artista.",
         )
 
     reserved_ids = reserved_local_song_ids or set()
