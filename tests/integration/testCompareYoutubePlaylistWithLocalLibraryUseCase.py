@@ -295,7 +295,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_marks_missing_when
     assert result.summary.found_count == 0
     assert result.summary.missing_count == 1
     assert result.items[0].comparison_status is ComparisonStatus.MISSING
-    assert result.items[0].reason == "Existe titulo en local pero no artista valido."
+    assert result.items[0].reason == "Existe titulo pero no artista."
 
 
 def test_compare_youtube_playlist_with_local_library_use_case_excludes_reserved_found_song_from_later_items() -> None:

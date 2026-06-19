@@ -63,10 +63,10 @@ def test_playlist_comparison_result_allows_legacy_matched_by_text() -> None:
         local_song_id=9,
         match_status=ComparisonStatus.FOUND.value,
         score=99.0,
-        matched_by="Titulo exacto con artista fuerte y duracion razonable.",
+        matched_by="Coincidencia confirmada por titulo y artista validos.",
     )
 
-    assert result.matched_by == "Titulo exacto con artista fuerte y duracion razonable."
+    assert result.matched_by == "Coincidencia confirmada por titulo y artista validos."
 
 
 def test_playlist_comparison_result_rejects_unknown_matched_by_prefix() -> None:

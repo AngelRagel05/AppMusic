@@ -1362,7 +1362,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_keeps_folele_prese
     assert result.last_compared_at is not None
     assert result.items[0].comparison_status is ComparisonStatus.FOUND
     assert result.items[0].local_song_id == 21
-    assert result.items[0].reason == "Titulo exacto con artista fuerte y duracion razonable."
+    assert result.items[0].reason == "Coincidencia confirmada por titulo y artista validos."
 
 
 def test_compare_youtube_playlist_with_local_library_use_case_uses_persisted_comparable_fields_without_ignored_terms() -> None:
@@ -3082,7 +3082,7 @@ def test_load_persisted_playlist_comparison_use_case_rehydrates_last_snapshot_fo
                 local_song_id=11,
                 match_status=ComparisonStatus.FOUND.value,
                 score=100.0,
-                matched_by="Titulo exacto con artista fuerte y duracion razonable.",
+                matched_by="Coincidencia confirmada por titulo y artista validos.",
             ),
             PlaylistComparisonResult(
                 playlist_comparison_id=comparison.id or 0,
@@ -3119,7 +3119,7 @@ def test_load_persisted_playlist_comparison_use_case_rehydrates_last_snapshot_fo
     assert comparison_result.items[0].score == 100.0
     assert (
         comparison_result.items[0].reason
-        == "Titulo exacto con artista fuerte y duracion razonable."
+        == "Coincidencia confirmada por titulo y artista validos."
     )
     assert comparison_result.items[1].comparison_status is ComparisonStatus.MISSING
     assert comparison_result.items[1].local_song_id is None

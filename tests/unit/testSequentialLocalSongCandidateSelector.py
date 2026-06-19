@@ -138,7 +138,7 @@ def test_sequential_local_song_candidate_selector_returns_missing_when_title_exi
     assert selection.local_songs == ()
     assert selection.candidates_considered == 0
     assert selection.comparison_status is ComparisonStatus.MISSING
-    assert selection.reason == "Existe titulo en local pero no artista valido."
+    assert selection.reason == "Existe titulo pero no artista."
 
 
 def test_sequential_local_song_candidate_selector_excludes_reserved_found_songs() -> None:

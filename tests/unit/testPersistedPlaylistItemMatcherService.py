@@ -105,10 +105,7 @@ def test_match_persisted_playlist_item_to_local_songs_returns_possible_for_same_
 
     assert result.local_song is not None
     assert result.comparison_status is ComparisonStatus.POSSIBLE_MATCH
-    assert (
-        result.reason
-        == "Varias candidatas comparten titulo y artista; no se puede resolver de forma automatica."
-    )
+    assert result.reason == "Varias candidatas del mismo titulo y artista."
 
 
 def test_match_persisted_playlist_item_to_local_songs_returns_found_for_nadal015_case() -> None:
@@ -200,10 +197,7 @@ def test_match_persisted_playlist_item_to_local_songs_requires_duration_for_gene
 
     assert result.local_song is None
     assert result.comparison_status is ComparisonStatus.MISSING
-    assert (
-        result.reason
-        == "Titulo generico con artista valido, pero la duracion no permite confirmar FOUND."
-    )
+    assert result.reason == "Duracion dudosa entre candidatas validas."
 
 
 def test_match_persisted_playlist_item_to_local_songs_does_not_return_found_for_generic_title_with_weak_duration() -> None:
@@ -226,7 +220,4 @@ def test_match_persisted_playlist_item_to_local_songs_does_not_return_found_for_
 
     assert result.local_song is None
     assert result.comparison_status is ComparisonStatus.MISSING
-    assert (
-        result.reason
-        == "Titulo generico con artista valido, pero la duracion no permite confirmar FOUND."
-    )
+    assert result.reason == "Duracion dudosa entre candidatas validas."

@@ -114,7 +114,7 @@ def test_filter_comparison_items_by_status_returns_automatic_items_and_legacy_ro
         _build_item(
             ComparisonStatus.MISSING,
             2,
-            matched_by="Titulo exacto con artista fuerte y duracion razonable.",
+            matched_by="Coincidencia confirmada por titulo y artista validos.",
         ),
         _build_item(ComparisonStatus.POSSIBLE_MATCH, 3, matched_by="manual:user_marked_possible"),
     ]

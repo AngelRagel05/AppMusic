@@ -158,7 +158,7 @@ def test_build_match_reason_returns_possible_match_reason_with_score_breakdown()
         ),
     )
 
-    assert reason == "Ambiguedad entre dos candidatas plausibles."
+    assert reason == "Varias candidatas del mismo titulo y artista."
 
 
 def test_classify_match_status_returns_missing_for_contains_title_even_with_strong_artist() -> None:
