@@ -264,6 +264,7 @@ Notas:
 * `local_library_state_fingerprint` identifica el estado persistido de `local_song` usado en esa ejecucion
 * la persistencia historica se retiene por scope `youtube_playlist_id + local_folder_id`
 * solo se conservan las `3` comparaciones mas recientes de cada scope
+* si `matching_rules_version` difiere de la vigente, los `FOUND` de ese snapshot no pueden congelarse automaticamente en nuevas comparaciones
 
 ### `playlist_comparison_result`
 

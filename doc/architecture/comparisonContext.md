@@ -213,6 +213,7 @@ Reglas activas:
 * su `local_song_id` queda reservada
 * la recomparacion incremental trabaja sobre filas nuevas, `MISSING`, `POSSIBLE_MATCH` y `FOUND` invalidados
 * un `FOUND` valido no se reabre solo porque aparezca una candidata aparentemente mejor
+* cualquier snapshot con `matching_rules_version` distinta a la vigente queda invalidado para congelacion automatica
 * cualquier cambio de `matching_rules_version` invalida la congelacion automatica anterior
 
 ## Razones legibles
@@ -269,3 +270,13 @@ La UI debe:
 Este documento sustituye como referencia viva la documentacion fragmentada de comparación.
 
 Si aparece un documento antiguo que contradice este flujo, prevalece este documento.
+
+## Persistencia y versionado
+
+En esta fase no cambian los campos comparables persistidos en `local_song` ni en `youtube_playlist_item`.
+
+Por tanto:
+
+* no hace falta migracion nueva de esquema
+* no hace falta backfill adicional sobre `normalized_title` y `normalized_artist`
+* la invalidacion explicita de snapshots antiguos se resuelve subiendo `matching_rules_version`

@@ -79,6 +79,7 @@ erDiagram
 * La cabecera tambien guarda las dependencias del matching para invalidar de forma incremental los `FOUND` previos.
 * Los fingerprints de estado no sustituyen la invalidacion por fila; sirven para describir con precision que snapshot local y YouTube se comparo.
 * Las filas se conservan para permitir un historico de comparaciones por combinacion de `youtube_playlist` y `local_folder`.
+* `matching_rules_version` forma parte del contrato de invalidez: un snapshot con version distinta de la vigente no puede reutilizar sus `FOUND` como congelados validos.
 * La retencion del historico se calcula por scope exacto:
   * `youtube_playlist_id`
   * `local_folder_id`

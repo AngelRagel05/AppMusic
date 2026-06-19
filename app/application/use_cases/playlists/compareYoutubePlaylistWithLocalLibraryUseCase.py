@@ -66,7 +66,7 @@ class FoundReservationState:
 
 class CompareYoutubePlaylistWithLocalLibraryUseCase:
     SNAPSHOT_RETENTION_LIMIT = 3
-    MATCHING_RULES_VERSION = "persisted_match_v7_found_only_reservation_flow"
+    MATCHING_RULES_VERSION = "persisted_match_v8_sequential_contract_invalidation"
 
     def __init__(
         self,
