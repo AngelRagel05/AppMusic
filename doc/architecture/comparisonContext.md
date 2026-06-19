@@ -136,7 +136,7 @@ No es una salida válida para artistas incorrectos.
 Se usa cuando:
 
 * no existe titulo en local
-* existe titulo pero no artista valido
+* existe titulo pero no artista comparable
 * tras exclusiones ya no queda candidata util
 * no hay base suficiente para una decision defendible
 
@@ -169,6 +169,8 @@ Su responsabilidad queda reducida a:
 * puntuar candidatas que ya han pasado `titulo -> artista -> reserva`
 * resolver si una unica candidata queda en `FOUND`
 * marcar `POSSIBLE_MATCH` cuando varias candidatas validas siguen siendo ambiguas
+
+No forma parte del flujo vigente ningun ruleset generico de score textual sobre pools amplios.
 
 ## Reserva de canciones locales
 
