@@ -9,26 +9,31 @@ from app.domain.playlists.services.persistedComparisonModels import (
     ComparableYoutubePlaylistItem,
 )
 from app.domain.playlists.services.playlistItemMatchingRules import (
-    AmbiguityPenaltyThresholds,
     ArtistMatchEvidence,
     CandidateMatchEvidence,
     CandidateScoreBreakdown,
-    DEFAULT_PLAYLIST_ITEM_MATCHING_RULESET,
     DurationMatchEvidence,
-    PlaylistItemMatchingRuleset,
     TitleMatchEvidence,
     buildArtistMatchEvidence,
     buildCandidateMatchEvidence,
     buildDurationMatchEvidence,
-    buildMatchReason,
-    buildTextMatchEvidence,
-    calculateAmbiguityPenalty,
-    classifyMatchStatus,
-    scoreDuration,
-    scoreEvidenceConsistency,
-    scoreNormalizedText,
 )
 from app.shared.constants.comparison import ComparisonStatus
+
+
+GENERIC_TITLE_TOKENS = frozenset(
+    {
+        "intro",
+        "outro",
+        "skit",
+        "interlude",
+        "interludio",
+        "interludios",
+        "intermedio",
+        "prelude",
+        "postlude",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,13 +52,13 @@ class CandidateEvaluation:
     score_breakdown: CandidateScoreBreakdown
     duration_distance: float
     evidence: CandidateMatchEvidence
-    sort_key: tuple[float, float, float, float, float, float, int]
+    can_confirm_found: bool
+    sort_key: tuple[int, float, float, int]
 
 
 def matchPersistedPlaylistItemToLocalSongs(
     youtube_playlist_item: ComparableYoutubePlaylistItem,
     local_songs: Sequence[ComparableLocalSong],
-    ruleset: PlaylistItemMatchingRuleset = DEFAULT_PLAYLIST_ITEM_MATCHING_RULESET,
 ) -> PersistedPlaylistItemMatchResult:
     if not local_songs:
         return PersistedPlaylistItemMatchResult(
@@ -64,50 +69,58 @@ def matchPersistedPlaylistItemToLocalSongs(
             matched_by=None,
         )
 
-    candidate_evaluations = [
-        _scoreCandidate(youtube_playlist_item, local_song, ruleset)
+    valid_candidate_evaluations = [
+        candidate_evaluation
         for local_song in local_songs
+        if (
+            candidate_evaluation := _evaluateValidatedCandidate(
+                youtube_playlist_item,
+                local_song,
+            )
+        )
+        is not None
     ]
-    candidate_evaluations.sort(
+    if not valid_candidate_evaluations:
+        return _buildMissingResult(
+            reason="No hay canciones locales candidatas validadas por titulo y artista.",
+        )
+
+    valid_candidate_evaluations.sort(
         key=lambda evaluation: evaluation.sort_key,
         reverse=True,
     )
-    best_evaluation = _resolveTopCandidateAmbiguity(candidate_evaluations, ruleset)
-    final_status = classifyMatchStatus(evidence=best_evaluation.evidence)
-    final_reason = buildMatchReason(
-        status=final_status,
-        evidence=best_evaluation.evidence,
-        score_breakdown=best_evaluation.score_breakdown,
-    )
-    final_matched_by = buildAutomaticMatchedBy(
-        status=final_status,
-        evidence=best_evaluation.evidence,
-    )
+    best_evaluation = valid_candidate_evaluations[0]
+    is_generic_title = _isGenericComparableTitle(youtube_playlist_item.comparable_title)
 
-    if final_status is ComparisonStatus.MISSING:
-        return PersistedPlaylistItemMatchResult(
-            local_song=None,
-            comparison_status=ComparisonStatus.MISSING,
-            score=0.0,
-            reason=final_reason,
-            matched_by=final_matched_by,
+    if len(valid_candidate_evaluations) == 1:
+        if best_evaluation.can_confirm_found:
+            return _buildFoundResult(best_evaluation)
+        return _buildMissingResult(
+            reason=_buildDurationInsufficientReason(is_generic_title=is_generic_title),
         )
 
-    return PersistedPlaylistItemMatchResult(
-        local_song=best_evaluation.local_song,
-        comparison_status=final_status,
-        score=best_evaluation.score,
-        reason=final_reason,
-        matched_by=final_matched_by,
+    second_best_evaluation = valid_candidate_evaluations[1]
+    if not _hasClearWinningCandidate(best_evaluation, second_best_evaluation):
+        return _buildPossibleMatchResult(
+            best_evaluation,
+            ambiguity_count=len(valid_candidate_evaluations),
+        )
+
+    if best_evaluation.can_confirm_found:
+        return _buildFoundResult(best_evaluation)
+
+    return _buildPossibleMatchResult(
+        best_evaluation,
+        ambiguity_count=len(valid_candidate_evaluations),
+        reason=_buildDurationInsufficientReason(is_generic_title=is_generic_title),
     )
 
 
-def _scoreCandidate(
+def _evaluateValidatedCandidate(
     youtube_playlist_item: ComparableYoutubePlaylistItem,
     local_song: ComparableLocalSong,
-    ruleset: PlaylistItemMatchingRuleset,
-) -> CandidateEvaluation:
-    title_evidence = buildTextMatchEvidence(
+) -> CandidateEvaluation | None:
+    title_evidence = _buildValidatedTitleEvidence(
         youtube_playlist_item.comparable_title,
         local_song.comparable_title,
     )
@@ -115,39 +128,27 @@ def _scoreCandidate(
         youtube_playlist_item.comparable_artist,
         local_song.comparable_artist,
     )
-    title_score = scoreNormalizedText(
-        youtube_playlist_item.comparable_title,
-        local_song.comparable_title,
-        ruleset.title_weights,
-    )
-    artist_score = scoreNormalizedText(
-        youtube_playlist_item.comparable_artist,
-        local_song.comparable_artist,
-        ruleset.artist_weights,
-    )
+    if title_evidence is TitleMatchEvidence.NONE:
+        return None
+    if artist_evidence is not ArtistMatchEvidence.STRONG:
+        return None
+
     duration_evidence, duration_distance = buildDurationMatchEvidence(
         youtube_playlist_item.duration_seconds,
         local_song.duration_seconds,
     )
-    duration_score, duration_distance = scoreDuration(
-        youtube_playlist_item.duration_seconds,
-        local_song.duration_seconds,
-        has_textual_signal=(title_score > 0.0 or artist_score > 0.0),
-        thresholds=ruleset.duration_thresholds,
+    score_breakdown = _buildScoreBreakdown(
+        duration_evidence=duration_evidence,
+        is_generic_title=_isGenericComparableTitle(youtube_playlist_item.comparable_title),
     )
     evidence = buildCandidateMatchEvidence(
         title_match=title_evidence,
         artist_match=artist_evidence,
         duration_match=duration_evidence,
     )
-    score_breakdown = CandidateScoreBreakdown(
-        title_score=title_score,
-        artist_score=artist_score,
-        duration_score=duration_score,
-        consistency_bonus=scoreEvidenceConsistency(
-            evidence,
-            ruleset.consistency_weights,
-        ),
+    can_confirm_found = _canConfirmFound(
+        duration_evidence=duration_evidence,
+        is_generic_title=_isGenericComparableTitle(youtube_playlist_item.comparable_title),
     )
     return CandidateEvaluation(
         local_song=local_song,
@@ -155,162 +156,141 @@ def _scoreCandidate(
         score_breakdown=score_breakdown,
         duration_distance=duration_distance,
         evidence=evidence,
-        sort_key=_buildRankingSortKey(
-            title_match=title_evidence,
-            artist_match=artist_evidence,
-            duration_match=duration_evidence,
-            score_breakdown=score_breakdown,
-            duration_distance=duration_distance,
-            local_song_id=local_song.id,
+        can_confirm_found=can_confirm_found,
+        sort_key=(
+            _durationEvidenceRank(duration_evidence),
+            score_breakdown.total_score,
+            -duration_distance,
+            -(local_song.id or 0),
         ),
     )
 
 
-def _resolveTopCandidateAmbiguity(
-    candidate_evaluations: Sequence[CandidateEvaluation],
-    ruleset: PlaylistItemMatchingRuleset,
-) -> CandidateEvaluation:
-    best_evaluation = candidate_evaluations[0]
-    if len(candidate_evaluations) == 1:
-        return best_evaluation
+def _buildValidatedTitleEvidence(
+    left_title: str,
+    right_title: str,
+) -> TitleMatchEvidence:
+    if left_title.strip() != right_title.strip():
+        return TitleMatchEvidence.NONE
+    return TitleMatchEvidence.EXACT
 
-    second_best_evaluation = candidate_evaluations[1]
-    if not _isPlausibleTopChallenger(
-        best_evaluation,
-        second_best_evaluation,
-        ruleset.ambiguity_thresholds,
-    ):
-        return best_evaluation
 
-    if _canSafelyResolveAgainstSecondBest(best_evaluation, second_best_evaluation):
-        return best_evaluation
-
-    ambiguity_penalty = calculateAmbiguityPenalty(
-        2,
-        ruleset.ambiguity_thresholds,
+def _buildScoreBreakdown(
+    *,
+    duration_evidence: DurationMatchEvidence,
+    is_generic_title: bool,
+) -> CandidateScoreBreakdown:
+    duration_score = {
+        DurationMatchEvidence.STRONG: 60.0,
+        DurationMatchEvidence.MEDIUM: 35.0,
+        DurationMatchEvidence.UNKNOWN: 10.0,
+        DurationMatchEvidence.WEAK: 0.0,
+    }[duration_evidence]
+    consistency_bonus = {
+        DurationMatchEvidence.STRONG: 30.0 if is_generic_title else 20.0,
+        DurationMatchEvidence.MEDIUM: 18.0 if is_generic_title else 12.0,
+        DurationMatchEvidence.UNKNOWN: 0.0,
+        DurationMatchEvidence.WEAK: 0.0,
+    }[duration_evidence]
+    return CandidateScoreBreakdown(
+        title_score=0.0,
+        artist_score=0.0,
+        duration_score=duration_score,
+        consistency_bonus=consistency_bonus,
     )
-    return _withResolvedAmbiguityContext(
-        best_evaluation,
-        ambiguity_count=2,
-        ambiguity_penalty=ambiguity_penalty,
-    )
 
 
-def _isPlausibleTopChallenger(
-    best_evaluation: CandidateEvaluation,
-    second_best_evaluation: CandidateEvaluation,
-    ambiguity_thresholds: AmbiguityPenaltyThresholds,
+def _canConfirmFound(
+    *,
+    duration_evidence: DurationMatchEvidence,
+    is_generic_title: bool,
 ) -> bool:
-    if second_best_evaluation.evidence.title_match is TitleMatchEvidence.NONE:
+    if duration_evidence is DurationMatchEvidence.WEAK:
         return False
-    return (
-        second_best_evaluation.score_breakdown.base_score
-        >= best_evaluation.score_breakdown.base_score
-        - ambiguity_thresholds.close_score_margin
-    )
+    if is_generic_title and duration_evidence is DurationMatchEvidence.UNKNOWN:
+        return False
+    return True
 
 
-def _canSafelyResolveAgainstSecondBest(
+def _hasClearWinningCandidate(
     best_evaluation: CandidateEvaluation,
     second_best_evaluation: CandidateEvaluation,
 ) -> bool:
-    title_gap = _titleEvidenceRank(best_evaluation.evidence.title_match) - _titleEvidenceRank(
-        second_best_evaluation.evidence.title_match
+    if _durationEvidenceRank(best_evaluation.evidence.duration_match) > _durationEvidenceRank(
+        second_best_evaluation.evidence.duration_match
+    ):
+        return True
+    if best_evaluation.duration_distance + 1.0 < second_best_evaluation.duration_distance:
+        return True
+    return best_evaluation.score >= second_best_evaluation.score + 15.0
+
+
+def _buildFoundResult(
+    candidate_evaluation: CandidateEvaluation,
+) -> PersistedPlaylistItemMatchResult:
+    return PersistedPlaylistItemMatchResult(
+        local_song=candidate_evaluation.local_song,
+        comparison_status=ComparisonStatus.FOUND,
+        score=candidate_evaluation.score,
+        reason="Coincidencia confirmada por titulo y artista validos.",
+        matched_by=buildAutomaticMatchedBy(
+            status=ComparisonStatus.FOUND,
+            evidence=candidate_evaluation.evidence,
+        ),
     )
-    if title_gap > 0:
-        return True
-
-    artist_gap = _artistEvidenceRank(
-        best_evaluation.evidence.artist_match
-    ) - _artistEvidenceRank(second_best_evaluation.evidence.artist_match)
-    if title_gap == 0 and artist_gap > 0:
-        return True
-
-    duration_gap = _durationEvidenceRank(
-        best_evaluation.evidence.duration_match
-    ) - _durationEvidenceRank(second_best_evaluation.evidence.duration_match)
-    if title_gap == 0 and artist_gap == 0 and duration_gap > 0:
-        return True
-
-    if title_gap == 0 and artist_gap == 0 and duration_gap == 0:
-        return best_evaluation.duration_distance + 0.5 < second_best_evaluation.duration_distance
-
-    return False
 
 
-def _withResolvedAmbiguityContext(
+def _buildPossibleMatchResult(
     candidate_evaluation: CandidateEvaluation,
     *,
     ambiguity_count: int,
-    ambiguity_penalty: float,
-) -> CandidateEvaluation:
-    contextualized_evidence = buildCandidateMatchEvidence(
+    reason: str | None = None,
+) -> PersistedPlaylistItemMatchResult:
+    evidence = buildCandidateMatchEvidence(
         title_match=candidate_evaluation.evidence.title_match,
         artist_match=candidate_evaluation.evidence.artist_match,
         duration_match=candidate_evaluation.evidence.duration_match,
         ambiguity_count=ambiguity_count,
     )
-    contextualized_breakdown = CandidateScoreBreakdown(
-        title_score=candidate_evaluation.score_breakdown.title_score,
-        artist_score=candidate_evaluation.score_breakdown.artist_score,
-        duration_score=candidate_evaluation.score_breakdown.duration_score,
-        consistency_bonus=candidate_evaluation.score_breakdown.consistency_bonus,
-        ambiguity_penalty=ambiguity_penalty,
-    )
-    return CandidateEvaluation(
+    return PersistedPlaylistItemMatchResult(
         local_song=candidate_evaluation.local_song,
-        score=contextualized_breakdown.total_score,
-        score_breakdown=contextualized_breakdown,
-        duration_distance=candidate_evaluation.duration_distance,
-        evidence=contextualized_evidence,
-        sort_key=_buildRankingSortKey(
-            title_match=contextualized_evidence.title_match,
-            artist_match=contextualized_evidence.artist_match,
-            duration_match=contextualized_evidence.duration_match,
-            score_breakdown=contextualized_breakdown,
-            duration_distance=candidate_evaluation.duration_distance,
-            local_song_id=candidate_evaluation.local_song.id,
+        comparison_status=ComparisonStatus.POSSIBLE_MATCH,
+        score=candidate_evaluation.score,
+        reason=reason or "Varias candidatas comparten titulo y artista; no se puede resolver de forma automatica.",
+        matched_by=buildAutomaticMatchedBy(
+            status=ComparisonStatus.POSSIBLE_MATCH,
+            evidence=evidence,
         ),
     )
 
 
-def _buildRankingSortKey(
+def _buildMissingResult(
     *,
-    title_match: TitleMatchEvidence,
-    artist_match: ArtistMatchEvidence,
-    duration_match: DurationMatchEvidence,
-    score_breakdown: CandidateScoreBreakdown,
-    duration_distance: float,
-    local_song_id: int | None,
-) -> tuple[float, float, float, float, float, float, int]:
-    return (
-        _titleEvidenceRank(title_match),
-        _artistEvidenceRank(artist_match),
-        _durationEvidenceRank(duration_match),
-        score_breakdown.base_score,
-        -score_breakdown.ambiguity_penalty,
-        -duration_distance,
-        -(local_song_id or 0),
+    reason: str,
+) -> PersistedPlaylistItemMatchResult:
+    return PersistedPlaylistItemMatchResult(
+        local_song=None,
+        comparison_status=ComparisonStatus.MISSING,
+        score=0.0,
+        reason=reason,
+        matched_by=None,
     )
 
 
-def _titleEvidenceRank(evidence: TitleMatchEvidence) -> int:
-    return {
-        TitleMatchEvidence.EXACT: 4,
-        TitleMatchEvidence.NEAR_EXACT: 3,
-        TitleMatchEvidence.CONTAINS: 2,
-        TitleMatchEvidence.WEAK: 1,
-        TitleMatchEvidence.NONE: 0,
-    }[evidence]
+def _buildDurationInsufficientReason(
+    *,
+    is_generic_title: bool,
+) -> str:
+    if is_generic_title:
+        return "Titulo generico con artista valido, pero la duracion no permite confirmar FOUND."
+    return "Titulo y artista validos, pero la duracion no permite confirmar FOUND."
 
 
-def _artistEvidenceRank(evidence: ArtistMatchEvidence) -> int:
-    return {
-        ArtistMatchEvidence.STRONG: 3,
-        ArtistMatchEvidence.MEDIUM: 2,
-        ArtistMatchEvidence.WEAK: 1,
-        ArtistMatchEvidence.NONE: 0,
-    }[evidence]
+def _isGenericComparableTitle(title: str) -> bool:
+    title_tokens = tuple(token for token in title.strip().split(" ") if token)
+    if not title_tokens:
+        return False
+    return all(token in GENERIC_TITLE_TOKENS for token in title_tokens)
 
 
 def _durationEvidenceRank(evidence: DurationMatchEvidence) -> int:

@@ -119,6 +119,7 @@ Se usa cuando:
 Regla dura:
 
 * no puede existir `FOUND` con artista no validado
+* en titulos genericos como `intro`, `outro`, `skit`, `interludio` y similares no basta el titulo; la duracion debe ayudar a confirmar
 
 ### `POSSIBLE_MATCH`
 
@@ -126,6 +127,7 @@ Se usa solo cuando:
 
 * titulo y artista ya validaron una o mas candidatas
 * el score final no puede romper la ambigüedad de forma segura
+* o la mejor candidata validada no alcanza confirmacion automatica pero sigue siendo la opcion mas plausible entre varias equivalentes
 
 No es una salida válida para artistas incorrectos.
 
@@ -151,6 +153,14 @@ Solo sirve para:
 * evaluar duracion
 * confirmar consistencia
 * desempatar candidatas validas
+
+En el matcher vigente el score ya no valora ruido textual de pools amplios.
+
+Solo puntua:
+
+* duracion
+* consistencia de una candidata ya validada
+* desempate entre varias candidatas con el mismo titulo y artista
 
 El matcher ya no decide el acceso al subconjunto.
 
@@ -211,6 +221,7 @@ Razones mínimas esperadas:
 * `La cancion local ya esta reservada por otro FOUND.`
 * `Varias candidatas comparten titulo y artista; no se puede resolver de forma automatica.`
 * `Titulo y artista validos, pero la duracion no permite confirmar FOUND.`
+* `Titulo generico con artista valido, pero la duracion no permite confirmar FOUND.`
 * `Coincidencia confirmada por titulo y artista validos.`
 
 ## Aplicacion y UI

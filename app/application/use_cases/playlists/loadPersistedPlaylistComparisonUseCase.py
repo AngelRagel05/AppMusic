@@ -227,9 +227,9 @@ def _mapMatchedByToReason(
     match_status: str,
 ) -> str | None:
     if matched_by == AUTO_TITLE_ARTIST_DURATION:
-        return "Titulo exacto con artista fuerte y duracion razonable."
+        return "Coincidencia confirmada por titulo y artista validos."
     if matched_by == AUTO_AMBIGUOUS:
-        return "Ambiguedad entre dos candidatas plausibles."
+        return "Varias candidatas comparten titulo y artista; no se puede resolver de forma automatica."
     if matched_by == AUTO_NO_COMPETITIVE_CANDIDATE:
         return "No hay candidata suficientemente competitiva."
     if matched_by == MANUAL_USER_LINKED_LOCAL_SONG:
