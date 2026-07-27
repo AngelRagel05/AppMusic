@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.domain.playlists.entities.playlistComparisonResult import PlaylistComparisonResult
 from app.shared.constants.comparison import ComparisonStatus
 

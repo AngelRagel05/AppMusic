@@ -16,6 +16,7 @@ from app.infrastructure.persistence.database import (
     get_session,
 )
 from app.infrastructure.persistence.repositories import (
+    DownloadSqlAlchemyRepository,
     IgnoredTermSqlAlchemyRepository,
     LocalFolderSqlAlchemyRepository,
     LocalSongSqlAlchemyRepository,
@@ -30,6 +31,7 @@ __all__ = [
     "Base",
     "DatabaseBootstrapper",
     "Download",
+    "DownloadSqlAlchemyRepository",
     "IgnoredTerm",
     "IgnoredTermSqlAlchemyRepository",
     "LocalFolder",
@@ -37,9 +39,9 @@ __all__ = [
     "LocalSong",
     "LocalSongSqlAlchemyRepository",
     "PlaylistComparison",
+    "PlaylistComparisonResult",
     "PlaylistComparisonResultSqlAlchemyRepository",
     "PlaylistComparisonSqlAlchemyRepository",
-    "PlaylistComparisonResult",
     "SessionLocal",
     "SqlAlchemyRepository",
     "YoutubePlaylist",

@@ -83,7 +83,7 @@ class LocalSongSqlAlchemyRepository(LocalSongRepository):
             model.track_number_album = local_song.track_number_album
             model.duration_seconds = local_song.duration_seconds
 
-        self._session.commit()
+        self._session.flush()
         self._session.refresh(model)
         return self._to_entity(model)
 

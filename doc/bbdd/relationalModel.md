@@ -100,10 +100,14 @@ erDiagram
 
     download {
         int id PK
-        int youtube_playlist_item_id FK
+        int youtube_playlist_item_id FK "NULL"
         int local_folder_id FK
+        string task_id UK
         string source_url
+        string source_title
+        string source_artist
         string status
+        float progress_percent
         string target_file_path
         string error_message
         datetime started_at
@@ -315,10 +319,14 @@ Representa un intento de descarga iniciado desde un item de playlist de YouTube.
 
 Columnas clave:
 
-* `youtube_playlist_item_id`
+* `youtube_playlist_item_id` nullable
 * `local_folder_id`
+* `task_id`
 * `source_url`
+* `source_title`
+* `source_artist`
 * `status`
+* `progress_percent`
 * `target_file_path`
 * `error_message`
 * `started_at`
@@ -326,14 +334,17 @@ Columnas clave:
 
 Notas:
 
-* la descarga nace desde `youtube_playlist_item`
+* una descarga puede nacer desde `youtube_playlist_item` o desde una URL pegada por el usuario
 * el destino final es una `local_folder`
 * puede acabar generando una `local_song`
+* `task_id` enlaza el intento persistido con la tarea local en memoria que lo ejecuta
+* `progress_percent` se mantiene entre `0` y `100`
 * `status` debe usar este catalogo inicial:
   * `pending`
   * `in_progress`
   * `completed`
   * `failed`
+  * `cancelled`
 * la lista de errores posibles debe vivir en codigo, no en la base de datos
 * `error_message` guarda el detalle concreto del fallo ocurrido
 
@@ -384,7 +395,10 @@ Si falta en local:
 
 ### Descarga
 
-La descarga se inicia desde `youtube_playlist_item` porque ahi vive la referencia al item esperado de YouTube.
+La descarga se puede iniciar desde un `youtube_playlist_item` o desde una URL de
+YouTube introducida manualmente. En el segundo caso `youtube_playlist_item_id` es
+`NULL`. La aplicacion nunca acepta una ruta de destino arbitraria: el destino se
+resuelve a partir de una `local_folder` registrada.
 
 Si termina correctamente, puede quedar enlazada con `local_song`.
 
@@ -404,6 +418,7 @@ Estas reglas son estructurales y deben reforzarse con el esquema relacional:
   * `youtube_playlist_item (youtube_playlist_id, external_video_id)`
   * `playlist_comparison_result (playlist_comparison_id, youtube_playlist_item_id)`
   * `ignored_term (term, scope, language)`
+  * `download.task_id`
 * nulabilidad segun el modelo definido
 * checks simples cuando se implementen:
   * `track_number_album >= 0`
@@ -428,6 +443,7 @@ Estas reglas dependen del flujo del sistema o son mas portables si se resuelven 
 * validacion cruzada entre `match_status`, `local_song_id` y `matched_by`
 * catalogo de errores posibles de `download`
 * control de transiciones de `download.status`
+* validacion del rango `0..100` de `download.progress_percent`
 * control del flujo completo de descarga y posterior insercion en `local_song`
 
 ## Criterio general

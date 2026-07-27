@@ -2,102 +2,62 @@
 
 ## Objetivo
 
-Unificar la documentacion sobre estructura de `presentation`, shell, features, MVC ligero y reglas visuales de escritorio.
+La presentacion de SoundShelf es una SPA React servida por Vite durante el
+desarrollo. No existe una capa Tkinter ni un runtime de escritorio empaquetado.
 
-## Estructura canónica
+## Estructura
 
 ```txt
-app/presentation/
+frontend/src/
+├─ app/
 ├─ features/
-│  └─ <feature>/
-│     ├─ controller/
-│     └─ ui/
-├─ windows/
-├─ dialogs/
-├─ widgets/
-├─ viewmodels/
-│  └─ <feature>/
+│  ├─ comparison/
+│  ├─ metadata/
+│  └─ downloads/
+├─ shared/
+│  ├─ api/
+│  ├─ components/
+│  ├─ hooks/
+│  └─ styles/
 └─ styles/
 ```
 
-## Responsabilidades
+La navegacion global usa React Router. TanStack Query gestiona datos remotos,
+invalidaciones y polling. Las llamadas HTTP se centralizan en
+`shared/api/apiClient.js`.
 
-### `windows`
+## Shell global
 
-Contiene:
+La sidebar izquierda enlaza las tres herramientas y persiste su estado
+contraido en `localStorage`. En pantallas estrechas se convierte en drawer con
+cierre por `Escape`, bloqueo de foco y backdrop.
 
-* `MainWindow`
-* shell global
-* sidebar
-* composicion general
+No existe barra de reproduccion ni controles multimedia.
 
-### `features`
+## Estado y feedback
 
-Cada feature agrupa su UI propia y sus controladores.
+Las operaciones largas devuelven una tarea y la SPA consulta `/api/tasks`
+periodicamente. Cada modulo muestra progreso, cancelacion, errores y reintentos
+sin bloquear la navegacion.
 
-Features principales:
+Los modulos se enlazan mediante identificadores persistidos. Comparacion abre
+`/downloads?comparisonId=<id>` y Descargas vuelve a consultar el snapshot para
+mostrar y seleccionar los items faltantes; no comparte objetos mediante estado
+global de React.
 
-* overview
-* localLibrary
-* youtubePlaylists
-* comparison
-* ignoredTerms
+Los errores de API usan el contrato:
 
-### `dialogs`
+```json
+{
+  "error": {
+    "code": "business_rule_violation",
+    "message": "Descripcion legible",
+    "details": null
+  }
+}
+```
 
-Ventanas auxiliares y modales.
+## Estilos
 
-### `widgets`
-
-Componentes visuales compartidos.
-
-### `viewmodels`
-
-Estado y coordinacion ligera de presentacion por feature.
-
-### `styles`
-
-Paleta, factories visuales y helpers comunes.
-
-## MVC ligero
-
-### View
-
-* crea widgets
-* define layout
-* renderiza estado
-
-### Controller
-
-* conecta eventos
-* decide flujo de interaccion
-* llama a viewmodels
-
-### ViewModel
-
-* mantiene estado de presentacion
-* llama a use cases
-* no implementa logica de negocio pesada
-
-## Reglas de UI
-
-* la UI debe sentirse como app de escritorio
-* usar Tkinter y preferentemente CustomTkinter
-* no introducir paradigmas web
-* centralizar tema y estilos
-* mantener densidad visual y claridad funcional
-* no ejecutar trabajo pesado en el hilo principal
-
-La guia visual detallada se mantiene en:
-
-* [../ui/uiUxGuidelines.md](../ui/uiUxGuidelines.md)
-
-## Pantalla de comparacion
-
-La feature de comparación debe:
-
-* trabajar con snapshot persistido
-* renderizar estados `FOUND`, `POSSIBLE_MATCH` y `MISSING`
-* mostrar razones legibles
-* permitir acciones de refresh, recomparacion y override manual
-
+Se usan CSS Modules, tokens CSS compartidos y componentes propios. No se usan
+frameworks visuales, Tailwind ni Bootstrap.

@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
 from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
 from app.application.use_cases.library.scanLocalFolderUseCase import ScanLocalFolderUseCase
 from app.infrastructure.persistence import (
@@ -10,6 +7,8 @@ from app.infrastructure.persistence import (
     LocalSongSqlAlchemyRepository,
 )
 from app.infrastructure.persistence.database.base import Base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 
 class LocalMusicScannerSpy:

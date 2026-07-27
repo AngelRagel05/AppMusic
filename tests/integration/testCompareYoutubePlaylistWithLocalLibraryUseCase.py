@@ -2,23 +2,19 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
+from app.application.dto.updatePlaylistComparisonResultInputDto import (
+    UpdatePlaylistComparisonResultInputDto,
+)
 from app.application.use_cases import (
     CompareYoutubePlaylistWithLocalLibraryUseCase,
     ListPersistedPlaylistComparisonHistoryUseCase,
     LoadPersistedPlaylistComparisonUseCase,
     UpdatePlaylistComparisonResultUseCase,
 )
-from app.application.dto.updatePlaylistComparisonResultInputDto import (
-    UpdatePlaylistComparisonResultInputDto,
-)
 from app.domain.library.entities.localSong import LocalSong
 from app.domain.playlists.entities.playlistComparisonResult import PlaylistComparisonResult
 from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistItem
 from app.domain.playlists.services import (
-    AUTO_NO_COMPETITIVE_CANDIDATE,
     MANUAL_USER_LINKED_LOCAL_SONG,
 )
 from app.infrastructure.persistence import (
@@ -29,23 +25,81 @@ from app.infrastructure.persistence import (
     YoutubePlaylistItemSqlAlchemyRepository,
     YoutubePlaylistSqlAlchemyRepository,
 )
-from app.presentation.features.comparison.comparisonResultFilter import (
-    AUTOMATIC_COMPARISON_FILTER,
-    MANUAL_COMPARISON_FILTER,
-    filterComparisonItemsByStatus,
-)
 from app.infrastructure.persistence.database.base import Base
 from app.infrastructure.persistence.database.models import (
+    LocalFolder as LocalFolderModel,
+)
+from app.infrastructure.persistence.database.models import (
     PlaylistComparison as PlaylistComparisonModel,
+)
+from app.infrastructure.persistence.database.models import (
     PlaylistComparisonResult as PlaylistComparisonResultModel,
 )
+from app.infrastructure.persistence.database.models import (
+    YoutubePlaylist as YoutubePlaylistModel,
+)
+from app.infrastructure.persistence.database.models import (
+    YoutubePlaylistItem as YoutubePlaylistItemModel,
+)
 from app.shared.constants.comparison import ComparisonStatus
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 
 def create_session() -> Session:
     engine = create_engine("sqlite:///:memory:", future=True)
     Base.metadata.create_all(engine)
     return Session(bind=engine)
+
+
+def seedComparisonScopeParents(session: Session) -> None:
+    session.add_all(
+        [
+            LocalFolderModel(
+                id=7,
+                path=r"C:\Music\Scope7",
+                display_name="Scope 7",
+                is_active=False,
+            ),
+            LocalFolderModel(
+                id=8,
+                path=r"C:\Music\Scope8",
+                display_name="Scope 8",
+                is_active=False,
+            ),
+            YoutubePlaylistModel(
+                id=9,
+                playlist_url="https://www.youtube.com/playlist?list=PL9",
+                external_playlist_id="PL9",
+                title="Playlist 9",
+                is_active=False,
+            ),
+            YoutubePlaylistModel(
+                id=10,
+                playlist_url="https://www.youtube.com/playlist?list=PL10",
+                external_playlist_id="PL10",
+                title="Playlist 10",
+                is_active=False,
+            ),
+        ]
+    )
+    item_ids = [1, 10, 20, 30, 40, 50, 60]
+    session.add_all(
+        [
+            YoutubePlaylistItemModel(
+                id=item_id,
+                youtube_playlist_id=9,
+                external_video_id=f"video-{item_id}",
+                position=position,
+                raw_title=f"Song {item_id}",
+                raw_channel_name="Artist",
+                normalized_title=f"song {item_id}",
+                normalized_artist="artist",
+            )
+            for position, item_id in enumerate(item_ids, start=1)
+        ]
+    )
+    session.commit()
 
 
 def test_compare_youtube_playlist_with_local_library_use_case_matches_real_repositories() -> None:
@@ -1717,14 +1771,16 @@ def test_load_persisted_playlist_comparison_use_case_supports_manual_and_automat
 
     assert persisted_snapshot is not None
     _, comparison_result = persisted_snapshot
-    manual_items = filterComparisonItemsByStatus(
-        comparison_result.items,
-        MANUAL_COMPARISON_FILTER,
-    )
-    automatic_items = filterComparisonItemsByStatus(
-        comparison_result.items,
-        AUTOMATIC_COMPARISON_FILTER,
-    )
+    manual_items = [
+        item
+        for item in comparison_result.items
+        if (item.matched_by or "").startswith("manual:")
+    ]
+    automatic_items = [
+        item
+        for item in comparison_result.items
+        if (item.matched_by or "").startswith("auto:")
+    ]
 
     assert [item.youtube_playlist_item_id for item in manual_items] == [
         persisted_items[1].id or 0
@@ -1833,6 +1889,7 @@ def test_list_persisted_playlist_comparison_history_use_case_returns_latest_runs
 
 def test_playlist_comparison_repositories_support_retention_operations_by_scope() -> None:
     session = create_session()
+    seedComparisonScopeParents(session)
     playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
     playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
 
@@ -1879,6 +1936,7 @@ def test_playlist_comparison_repositories_support_retention_operations_by_scope(
 
 def test_playlist_comparison_repository_roundtrips_snapshot_metadata() -> None:
     session = create_session()
+    seedComparisonScopeParents(session)
     repository = PlaylistComparisonSqlAlchemyRepository(session)
 
     created_comparison = repository.create(
@@ -1950,14 +2008,26 @@ def test_compare_youtube_playlist_with_local_library_use_case_retains_only_three
             )
         ],
     )
+    session.add(
+        LocalFolderModel(
+            id=99,
+            path=r"C:\Music\OtherScope",
+            display_name="Other scope",
+            is_active=False,
+        )
+    )
+    session.commit()
 
     other_scope = playlist_comparison_repository.create(active_playlist.id or 0, 99)
+    imported_item = youtube_playlist_item_repository.list_by_playlist(
+        active_playlist.id or 0
+    )[0]
     playlist_comparison_result_repository.save_for_comparison(
         other_scope.id or 0,
         [
             PlaylistComparisonResult(
                 playlist_comparison_id=other_scope.id or 0,
-                youtube_playlist_item_id=999,
+                youtube_playlist_item_id=imported_item.id or 0,
                 local_song_id=None,
                 match_status=ComparisonStatus.MISSING.value,
                 score=0.0,
@@ -2047,6 +2117,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_retains_only_three
 
 def test_playlist_comparison_retention_only_purges_exact_scope_in_sqlalchemy() -> None:
     session = create_session()
+    seedComparisonScopeParents(session)
     playlist_comparison_repository = PlaylistComparisonSqlAlchemyRepository(session)
     playlist_comparison_result_repository = PlaylistComparisonResultSqlAlchemyRepository(session)
 

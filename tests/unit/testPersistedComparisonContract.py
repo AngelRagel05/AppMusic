@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import app.domain.metadata.services.musicComparisonNormalizationService as musicComparisonNormalizationService
+import app.domain.playlists.services.youtubePlaylistItemNormalizationService as youtubePlaylistItemNormalizationService
 from app.application.dto.importedYoutubePlaylistItemDto import ImportedYoutubePlaylistItemDto
 from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
 from app.application.use_cases.library.scanLocalFolderUseCase import ScanLocalFolderUseCase
@@ -20,8 +22,6 @@ from app.domain.playlists.services import (
     resolveComparisonRefreshAction,
     shouldInvalidatePersistedFoundMatch,
 )
-import app.domain.playlists.services.youtubePlaylistItemNormalizationService as youtubePlaylistItemNormalizationService
-import app.domain.metadata.services.musicComparisonNormalizationService as musicComparisonNormalizationService
 
 
 class ActiveLocalFolderRepositoryStub:

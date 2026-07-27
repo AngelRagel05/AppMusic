@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from mutagen import MutagenError
-
 from app.infrastructure.metadata.mutagenLocalSongMetadataReader import (
     MutagenLocalSongMetadataReader,
 )
+from mutagen import MutagenError
 
 
 def test_readMetadata_returns_extracted_values(monkeypatch) -> None:

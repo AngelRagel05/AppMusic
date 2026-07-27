@@ -1,27 +1,58 @@
 from __future__ import annotations
 
-import os
 import re
-from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path, PureWindowsPath
 
-from dotenv import load_dotenv
-
-load_dotenv()
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
-@dataclass(frozen=True, slots=True)
-class Settings:
-    app_name: str
-    app_env: str
-    database_url: str
-    log_level: str
-    music_folder: str | None
-    download_folder: str | None
-    ffmpeg_path: str
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=PROJECT_ROOT / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    app_name: str = "SoundShelf"
+    app_env: str = "development"
+    database_url: str = "sqlite:///music_app.db"
+    log_level: str = "INFO"
+    music_folder: str | None = None
+    download_folder: str | None = None
+    ffmpeg_path: str = "ffmpeg"
+    yt_dlp_timeout_seconds: float = Field(default=30.0, ge=1.0, le=300.0)
+    temporary_folder: str = ".soundshelfTmp"
+    api_host: str = "127.0.0.1"
+    api_port: int = Field(default=8000, ge=1, le=65535)
+    cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
+    task_worker_count: int = Field(default=3, ge=1, le=8)
+    task_poll_interval_ms: int = Field(default=1000, ge=250, le=10000)
+    max_page_size: int = Field(default=100, ge=10, le=500)
+    comparison_history_limit: int = Field(default=3, ge=1, le=20)
+
+    @field_validator("database_url")
+    @classmethod
+    def resolveConfiguredDatabaseUrl(cls, value: str) -> str:
+        return resolveDatabaseUrl(value)
+
+    @property
+    def corsOriginList(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.cors_origins.split(",")
+            if origin.strip()
+        ]
+
+    @property
+    def temporaryFolderPath(self) -> Path:
+        configured_path = Path(self.temporary_folder)
+        if not configured_path.is_absolute():
+            configured_path = PROJECT_ROOT / configured_path
+        return configured_path.resolve(strict=False)
 
 
 def resolveDatabaseUrl(database_url: str) -> str:
@@ -50,14 +81,4 @@ def _isAbsoluteSqlitePath(sqlite_path: str) -> bool:
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings(
-        app_name=os.getenv("APP_NAME", "Music App"),
-        app_env=os.getenv("APP_ENV", "development"),
-        database_url=resolveDatabaseUrl(
-            os.getenv("DATABASE_URL", "sqlite:///music_app.db")
-        ),
-        log_level=os.getenv("LOG_LEVEL", "INFO"),
-        music_folder=os.getenv("MUSIC_FOLDER") or None,
-        download_folder=os.getenv("DOWNLOAD_FOLDER") or None,
-        ffmpeg_path=os.getenv("FFMPEG_PATH", "ffmpeg"),
-    )
+    return Settings()

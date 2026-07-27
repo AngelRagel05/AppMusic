@@ -6,12 +6,11 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 APP_ROOT = PROJECT_ROOT / "app"
 
-FORBIDDEN_WIDGET_IMPORT_PREFIXES = (
+FORBIDDEN_DOMAIN_IMPORT_PREFIXES = (
+    "fastapi",
     "sqlalchemy",
-    "pygame",
     "yt_dlp",
     "mutagen",
-    "ffmpeg",
 )
 
 
@@ -39,13 +38,13 @@ def _imported_modules(path: Path) -> list[str]:
     return imported_modules
 
 
-def test_presentation_does_not_depend_on_infrastructure() -> None:
+def test_application_does_not_depend_on_api_or_infrastructure() -> None:
     violations: list[str] = []
 
-    for path in _python_files(APP_ROOT / "presentation"):
+    for path in _python_files(APP_ROOT / "application"):
         module_name = _module_name(path)
         for imported_module in _imported_modules(path):
-            if imported_module.startswith("app.infrastructure"):
+            if imported_module.startswith(("app.api", "app.infrastructure")):
                 violations.append(f"{module_name} -> {imported_module}")
 
     assert violations == []
@@ -63,13 +62,13 @@ def test_domain_does_not_depend_on_infrastructure() -> None:
     assert violations == []
 
 
-def test_widgets_do_not_depend_on_external_integration_packages() -> None:
+def test_domain_does_not_depend_on_external_integration_packages() -> None:
     violations: list[str] = []
 
-    for path in _python_files(APP_ROOT / "presentation" / "widgets"):
+    for path in _python_files(APP_ROOT / "domain"):
         module_name = _module_name(path)
         for imported_module in _imported_modules(path):
-            if imported_module.startswith(FORBIDDEN_WIDGET_IMPORT_PREFIXES):
+            if imported_module.startswith(FORBIDDEN_DOMAIN_IMPORT_PREFIXES):
                 violations.append(f"{module_name} -> {imported_module}")
 
     assert violations == []

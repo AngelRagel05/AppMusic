@@ -27,24 +27,44 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Instalar dependencias
+      - name: Configurar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Instalar dependencias Python
         run: |
           python -m pip install --upgrade pip
-          pip install ruff pytest
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          python -m pip install -e ".[dev]"
 
-      - name: Verificar front
+      - name: Instalar dependencias Node
         run: |
-          python scripts/verifyFront.py
+          npm ci
+          npm --prefix frontend ci
+
+      - name: Validar migraciones Alembic
+        env:
+          DATABASE_URL: sqlite:///./ci.db
+        run: python -m alembic upgrade head
+
+      - name: Ejecutar Ruff
+        run: python -m ruff check app tests
 
       - name: Comprobar que el proyecto compila
-        run: |
-          python -m compileall app
+        run: python -m compileall -q app
 
-      - name: Ejecutar tests si existen
-        run: |
-          if find tests -name "test*.py" | grep -q .; then
-            pytest
-          else
-            echo "No hay tests detectados con el patron test*.py"
-          fi
+      - name: Ejecutar tests backend
+        run: python -m pytest
+
+      - name: Ejecutar lint frontend
+        run: npm --prefix frontend run lint
+
+      - name: Ejecutar tests frontend
+        run: npm --prefix frontend run test
+
+      - name: Construir frontend
+        run: npm run build

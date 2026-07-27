@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
 from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistItem
 from app.infrastructure.persistence import (
     YoutubePlaylistItemSqlAlchemyRepository,
@@ -14,6 +11,8 @@ from app.infrastructure.persistence.database.base import Base
 from app.infrastructure.persistence.database.models import (
     YoutubePlaylistItem as YoutubePlaylistItemModel,
 )
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 
 def create_session() -> Session:

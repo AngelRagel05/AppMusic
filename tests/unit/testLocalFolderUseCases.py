@@ -3,12 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from app.application.dto.activateLocalFolderInputDto import ActivateLocalFolderInputDto
-from app.application.dto.deleteLocalFolderInputDto import DeleteLocalFolderInputDto
 from app.application.dto.defineMainLocalFolderInputDto import (
     DefineMainLocalFolderInputDto,
 )
+from app.application.dto.deleteLocalFolderInputDto import DeleteLocalFolderInputDto
 from app.application.dto.updateLocalFolderInputDto import UpdateLocalFolderInputDto
 from app.application.use_cases import (
     ActivateLocalFolderUseCase,

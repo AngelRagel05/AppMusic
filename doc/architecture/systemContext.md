@@ -2,163 +2,106 @@
 
 ## Objetivo
 
-Este documento unifica la arquitectura base del proyecto y sustituye la documentacion dispersa sobre capas, dependencias, modulos de dominio e integraciones.
+SoundShelf es una aplicacion web local. React ofrece la interfaz y FastAPI
+expone un contrato HTTP bajo `/api`; ambos procesos se enlazan exclusivamente
+en `127.0.0.1`.
 
-## Arquitectura base
+El producto contiene tres herramientas:
 
-El proyecto sigue una arquitectura limpia ligera con estas capas:
+1. comparacion de playlist y biblioteca local
+2. edicion individual de metadata MP3
+3. descarga e indexacion de audio
+
+No existe un contexto de reproduccion, streaming o control de audio.
+
+## Arquitectura
+
+```txt
+frontend/React
+      |
+      | HTTP JSON + polling
+      v
+app/api/FastAPI
+      |
+      v
+app/application/use_cases
+      |
+      v
+app/domain <--- app/infrastructure
+```
 
 ```txt
 app/
-├─ bootstrap/
-├─ presentation/
+├─ api/
 ├─ application/
 ├─ domain/
 ├─ infrastructure/
+│  ├─ downloads/
+│  ├─ filesystem/
+│  ├─ metadata/
+│  ├─ persistence/
+│  └─ tasks/
 ├─ shared/
-├─ workers/
-└─ config/
+├─ config/
+└─ main.py
 ```
 
-Flujo principal:
+### API
 
-```txt
-UI -> Controller/ViewModel -> UseCase -> Domain -> Repository/Infrastructure
-```
+`app/api/` contiene la aplicacion FastAPI, routers, schemas Pydantic,
+dependencias de sesion y el formato estable de errores. Los endpoints no
+aceptan rutas de descarga arbitrarias y solo operan sobre bibliotecas
+registradas.
 
-## Responsabilidades por capa
+### Application
 
-### `presentation`
+Contiene DTOs y use cases con una accion principal `execute(...)`. Coordina
+dominio e interfaces sin depender de FastAPI, SQLAlchemy, Mutagen o yt-dlp.
 
-Responsable de:
+### Domain
 
-* ventanas
-* widgets
-* dialogs
-* controllers
-* viewmodels
-* estilos y helpers visuales
+Contiene entidades, contratos de repositorio y reglas puras de biblioteca,
+playlists, comparacion, filtros y descargas.
 
-No debe contener logica de negocio pesada ni acceso directo a infraestructura.
+### Infrastructure
 
-### `application`
+Implementa persistencia SQLAlchemy, lectura y escritura Mutagen, filesystem,
+yt-dlp, FFmpeg y ejecucion local de tareas.
 
-Responsable de:
+### Frontend
 
-* use cases
-* DTOs
-* validadores de entrada
+`frontend/src/` contiene una unica SPA con React Router, TanStack Query y CSS
+Modules. Sus rutas publicas son:
 
-Orquesta acciones del sistema sin conocer detalles de UI ni implementaciones concretas.
+* `/comparison`
+* `/metadata`
+* `/downloads`
 
-### `domain`
+`/` redirige al ultimo modulo visitado o a `/comparison`.
 
-Responsable de:
+## Persistencia
 
-* entidades
-* servicios de dominio
-* contratos de repositorio
-* reglas puras de negocio
+SQLite guarda indice, relaciones, snapshots e intentos de descarga. Los MP3
+siguen siendo la fuente real de metadata. Alembic es la unica autoridad del
+esquema.
 
-No depende de frameworks ni adaptadores externos.
+Las claves foraneas de SQLite se habilitan en cada conexion. Las operaciones
+complejas controlan `commit` y `rollback` desde el caso de uso o la frontera de
+aplicacion.
 
-### `infrastructure`
+## Integraciones
 
-Responsable de:
+* SQLAlchemy y Alembic para persistencia
+* Mutagen para leer y escribir tags MP3
+* yt-dlp para importar playlists y descargar audio
+* FFmpeg, invocado por yt-dlp, para generar MP3
 
-* persistencia
-* filesystem
-* metadata
-* integraciones externas
-* adaptadores tecnicos
+Todas quedan aisladas dentro de `infrastructure`.
 
-Implementa contratos definidos en capas superiores.
-
-### `shared`
-
-Responsable de:
-
-* constantes comunes
-* excepciones compartidas
-* utilidades transversales
-
-No debe convertirse en una capa comodin para mezclar responsabilidades.
-
-### `bootstrap`
-
-Responsable de:
-
-* composition root
-* construccion y cableado de dependencias
-
-### `workers`
-
-Responsable de:
-
-* tareas pesadas en segundo plano
-* coordinacion no bloqueante de procesos largos
-
-## Modulos de dominio
-
-### `library`
-
-Agrupa:
-
-* `LocalFolder`
-* `LocalSong`
-* contratos de repositorio de biblioteca local
-
-### `playlists`
-
-Agrupa:
-
-* `YoutubePlaylist`
-* `YoutubePlaylistItem`
-* contratos y servicios de comparacion
-
-### `filters`
-
-Agrupa:
-
-* `IgnoredTerm`
-* reglas de terminos ignorados
-
-### Modulos previstos
-
-* `downloads`
-* `metadata`
-* `playback`
-
-## Reglas de dependencia
-
-Reglas activas:
-
-* `presentation` depende de `application`
-* `application` depende de `domain`
-* `domain` no depende de `presentation` ni de `infrastructure`
-* `infrastructure` implementa contratos de `domain`
-* `bootstrap` puede conocer todas las capas para componerlas
-* `workers` coordinan use cases y adaptadores sin romper el limite de capas
-
-## Integraciones externas
-
-Integraciones activas o previstas:
-
-* SQLite mediante SQLAlchemy
-* filesystem local
-* Mutagen para metadata de MP3
-* `yt-dlp` para importacion/descarga de YouTube
-* `ffmpeg` para operaciones de audio cuando aplique
-
-Todas deben quedar aisladas en `infrastructure`.
-
-## Contextos documentales derivados
-
-La documentacion funcional y tecnica detallada del sistema queda agrupada en:
+## Contratos relacionados
 
 * [youtubePlaylistContext.md](./youtubePlaylistContext.md)
 * [localLibraryContext.md](./localLibraryContext.md)
 * [comparisonContext.md](./comparisonContext.md)
 * [presentationContext.md](./presentationContext.md)
 * [runtimeAndQualityContext.md](./runtimeAndQualityContext.md)
-

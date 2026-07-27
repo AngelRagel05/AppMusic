@@ -3,34 +3,32 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "music-app"
-version = "0.1.0"
-description = "Desktop app for local music management built with Python, Tkinter and SQLAlchemy."
+name = "soundshelf"
+version = "1.0.0"
+description = "Local web application for comparing, editing and downloading music."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "Angel J Ragel" }]
 dependencies = [
-    "customtkinter>=5.2,<6.0",
     "SQLAlchemy>=2.0,<3.0",
     "alembic>=1.14,<2.0",
+    "fastapi>=0.116,<1.0",
+    "uvicorn[standard]>=0.35,<1.0",
+    "pydantic-settings>=2.10,<3.0",
     "yt-dlp>=2025.1.0",
-    "ffmpeg-python>=0.2.0",
     "mutagen>=1.47.0",
-    "Pillow>=11.0.0",
     "httpx>=0.28.0",
-    "python-dotenv>=1.0.1",
     "loguru>=0.7.2",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pyinstaller>=6.11.0",
     "ruff>=0.8.0",
     "pytest>=8.3.0",
 ]
 
 [project.scripts]
-music-app = "app.main:main"
+soundshelf-api = "app.main:main"
 
 [tool.setuptools]
 package-dir = {"" = "."}
@@ -54,10 +52,21 @@ select = [
     "N",
     "RUF",
 ]
+ignore = [
+    # El proyecto usa camelCase de forma explicita en modulos, funciones y variables.
+    "N",
+    # Los nombres descriptivos de tests y algunos contratos exceden 100 caracteres.
+    "E501",
+    # Depends(...) es el patron declarado por FastAPI para dependencias.
+    "B008",
+    # Se conservan enums string compatibles con Python 3.12 y dobles de test.
+    "UP042",
+    "RUF012",
+    "RUF001",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
 python_files = ["test*.py"]
 addopts = "-q --basetemp=.pytestTmp"
-cache_dir = ".pytestCache"

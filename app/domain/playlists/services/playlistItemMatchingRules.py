@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from enum import Enum
-import re
 
 
 class TitleMatchEvidence(str, Enum):

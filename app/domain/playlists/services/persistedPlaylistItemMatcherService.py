@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from app.domain.playlists.services.artistComparisonValidationService import (
     classifyComparableArtistMatchForSelection,
@@ -21,7 +21,6 @@ from app.domain.playlists.services.playlistItemMatchingRules import (
     buildDurationMatchEvidence,
 )
 from app.shared.constants.comparison import ComparisonStatus
-
 
 GENERIC_TITLE_TOKENS = frozenset(
     {
@@ -75,7 +74,7 @@ def matchPersistedPlaylistItemToLocalSongs(
         candidate_evaluation
         for local_song in local_songs
         if (
-            candidate_evaluation := _evaluateValidatedCandidate(
+            candidate_evaluation := _scoreCandidate(
                 youtube_playlist_item,
                 local_song,
             )
@@ -166,6 +165,14 @@ def _evaluateValidatedCandidate(
             -(local_song.id or 0),
         ),
     )
+
+
+def _scoreCandidate(
+    youtube_playlist_item: ComparableYoutubePlaylistItem,
+    local_song: ComparableLocalSong,
+) -> CandidateEvaluation | None:
+    """Compatibility seam used to observe candidate scoring in tests."""
+    return _evaluateValidatedCandidate(youtube_playlist_item, local_song)
 
 
 def _buildValidatedTitleEvidence(

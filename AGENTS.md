@@ -64,15 +64,19 @@ Estructura base:
 ```txt
 app/
 ├─ main.py
-├─ bootstrap/
-├─ presentation/
+├─ api/
 ├─ application/
 ├─ domain/
 ├─ infrastructure/
 ├─ shared/
-├─ workers/
-├─ config/
-└─ utils/
+└─ config/
+
+frontend/
+└─ src/
+   ├─ app/
+   ├─ features/
+   ├─ shared/
+   └─ styles/
 
 tests/
 migrations/
@@ -85,7 +89,7 @@ Cada vez que se añada algo nuevo, preguntarse:
 
 ```txt
 ¿Es UI?
-→ presentation
+→ frontend/src
 
 ¿Es una accion del usuario o del sistema?
 → application/use_cases
@@ -97,22 +101,31 @@ Cada vez que se añada algo nuevo, preguntarse:
 → infrastructure
 
 ¿Puede bloquear la interfaz?
-→ workers
+→ infrastructure/tasks mediante LocalTaskManager
+
+¿Es transporte HTTP, validacion de request o serializacion?
+→ api
 ```
 
 ---
 
 ## Responsabilidades por capa
 
-### presentation
+### `frontend`
 
-Contiene interfaz, widgets, ventanas, tablas, formularios y viewmodels.
+Contiene la SPA React, rutas, paginas, formularios y componentes visuales.
 
 No debe:
 
 * Acceder directamente a base de datos
 * Ejecutar herramientas externas
 * Contener logica de negocio pesada
+
+### `api`
+
+Contiene la aplicacion FastAPI, routers, schemas HTTP, dependencias y manejo
+estable de errores. Los endpoints coordinan use cases y adaptadores, pero no
+deben acumular reglas de negocio.
 
 ### application
 
@@ -140,11 +153,13 @@ Contiene utilidades transversales, excepciones compartidas y constantes comunes.
 
 No debe convertirse en una capa comodin para mezclar negocio, UI e infraestructura.
 
-### workers
+### Tareas locales
 
-Contiene tareas en segundo plano para evitar bloquear la UI.
+`infrastructure/tasks` contiene la ejecucion local en segundo plano para evitar
+bloquear la API y la SPA.
 
-Los workers emiten senales o resultados. No actualizan widgets directamente desde hilos secundarios.
+Cada tarea pesada crea y cierra su propia sesion SQLAlchemy. El frontend observa
+estado y progreso mediante polling; no se usan WebSockets ni SSE.
 
 ---
 
@@ -291,21 +306,20 @@ boton
 
 ### UI y UX
 
-La interfaz debe sentirse como una aplicacion de escritorio profesional, no como una web empaquetada.
+La interfaz debe sentirse como una herramienta local profesional y productiva.
 
 Reglas operativas:
 
-* Usar Tkinter y preferentemente CustomTkinter para los widgets visibles de produccion
-* Centralizar tema, colores y helpers visuales en una capa compartida de presentacion
-* Evitar estilos dispersos dentro de ventanas o widgets salvo excepciones justificadas
+* Usar React con Vite y JavaScript
+* Usar React Router para navegacion y TanStack Query para estado servidor
+* Usar CSS Modules y centralizar tokens visuales compartidos
+* No introducir librerias de componentes, Tailwind o Bootstrap
 * Mantener una estetica oscura, limpia y orientada a productividad
 * Reutilizar componentes visuales antes de crear otros nuevos
-* No introducir HTML/CSS web ni paradigmas de React, Tailwind o Bootstrap
 * Respetar espaciados consistentes y una jerarquia tipografica clara
-* Mantener sidebar, paneles, tablas y barras persistentes con estructura entendible para usuario final
-* Todo componente visual dentro de `app/presentation/features/<feature>/ui/`, `app/presentation/windows/` o `app/presentation/widgets/` debe vivir en su propia carpeta con su modulo principal y, si hace falta, helpers locales estrictamente visuales
-* Cuando varios componentes formen parte de una misma pantalla o feature, deben agruparse dentro de una carpeta padre con nombre de feature, no reutilizar el nombre de uno de sus hijos
-* Los helpers no visuales no deben vivir dentro de las carpetas de `ui/`; deben ir fuera de UI dentro de `presentation` segun su responsabilidad
+* Mantener sidebar global, paneles y tablas con estructura entendible
+* Mantener accesibilidad de teclado, foco visible, labels y contraste
+* No introducir reproductor, streaming, controles de audio ni playback
 
 La guia completa de UI/UX debe mantenerse en `doc/ui/uiUxGuidelines.md`.
 

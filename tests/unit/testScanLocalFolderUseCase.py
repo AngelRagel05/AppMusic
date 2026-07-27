@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
+from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.use_cases.library.scanLocalFolderUseCase import ScanLocalFolderUseCase
 from app.domain.library.entities.localFolder import LocalFolder
 from app.domain.library.entities.localSong import LocalSong

@@ -25,7 +25,7 @@ La documentacion estructural de persistencia sigue en:
 
 ## UI
 
-La guia visual de escritorio sigue en:
+La guia visual de la interfaz web local sigue en:
 
 * [../ui/uiUxGuidelines.md](../ui/uiUxGuidelines.md)
 

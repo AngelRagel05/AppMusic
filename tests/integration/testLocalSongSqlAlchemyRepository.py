@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
 from app.domain.library.entities.localSong import LocalSong
 from app.domain.metadata.services import (
     normalizeMusicComparisonArtist,
     normalizeMusicComparisonTitle,
 )
-from app.infrastructure.persistence import LocalFolderSqlAlchemyRepository, LocalSongSqlAlchemyRepository
+from app.infrastructure.persistence import (
+    LocalFolderSqlAlchemyRepository,
+    LocalSongSqlAlchemyRepository,
+)
 from app.infrastructure.persistence.database.base import Base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 
 def create_session() -> Session:

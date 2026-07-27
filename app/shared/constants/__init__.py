@@ -9,8 +9,8 @@ from app.shared.constants.youtube import (
 
 __all__ = [
     "CANONICAL_YOUTUBE_PLAYLIST_URL",
-    "ComparisonStatus",
     "LANGUAGE_OPTIONS",
     "SCOPE_OPTIONS",
     "VALID_YOUTUBE_HOSTS",
+    "ComparisonStatus",
 ]

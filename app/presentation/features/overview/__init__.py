@@ -1,1 +1,0 @@
-"""Overview presentation feature."""

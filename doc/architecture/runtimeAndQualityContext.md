@@ -1,86 +1,63 @@
 # Contexto de Runtime y Calidad
 
-## Objetivo
+## Runtime local
 
-Unificar la documentacion sobre bootstrap, workers, seguridad de hilos, validacion rapida y testing.
+`npm run app` ejecuta Vite y Uvicorn en paralelo. El script de API aplica
+primero `alembic upgrade head`; el proceso FastAPI valida el esquema y siembra
+terminos ignorados, pero no modifica la estructura.
 
-## Bootstrap
+La API escucha en `127.0.0.1`. CORS permite exclusivamente los origenes locales
+configurados.
 
-El composition root vive en `bootstrap/` y es responsable de:
+## Tareas y concurrencia
 
-* crear adaptadores
-* instanciar use cases
-* construir viewmodels
-* cablear controllers y ventanas
+`LocalTaskManager` usa un `ThreadPoolExecutor` acotado. Los estados son:
 
-## Workers y concurrencia
+* `queued`
+* `running`
+* `cancelling`
+* `completed`
+* `failed`
+* `cancelled`
 
-Las operaciones pesadas deben ejecutarse fuera del hilo principal.
+Escaneo, importacion, comparacion y descarga se ejecutan fuera del ciclo HTTP.
+Cada operacion abre su propia sesion SQLAlchemy y la cierra al terminar. La
+cancelacion es cooperativa: `cancelling` solo pasa a `cancelled` cuando la
+operacion confirma que se ha detenido.
 
-Casos tipicos:
+## Integridad de metadata
 
-* escaneo de biblioteca local
-* recomparacion de playlist
-* operaciones externas de descarga o metadata
+La edicion sigue siempre este orden:
 
-Reglas:
-
-* los workers no actualizan widgets directamente
-* emiten resultados hacia la capa de presentacion
-* la persistencia compartida entre hilos debe ser segura
+```txt
+validar archivo dentro de biblioteca registrada
+→ escribir tags con Mutagen
+→ releer el MP3
+→ actualizar SQLite con los valores confirmados
+```
 
 ## Testing
-
-Estructura:
 
 ```txt
 tests/
 ├─ unit/
-├─ integration/
-└─ e2e/
+└─ integration/
+
+frontend/src/**/*.test.js(x)
 ```
 
-### `unit`
+La verificacion completa usa:
 
-Cubren:
+```powershell
+npm run lint
+npm run test
+npm run build
+```
 
-* validadores
-* helpers
-* servicios de dominio
-* use cases con dobles simples
-* viewmodels y controllers con spies
+Backend cubre dominio, use cases, repositorios, migracion/arranque, tareas y
+API. Frontend cubre navegacion y cliente HTTP con Vitest y Testing Library.
 
-### `integration`
+## CI
 
-Cubren:
-
-* SQLAlchemy
-* bootstrap de base de datos
-* repositorios concretos
-* regresiones funcionales de comparacion
-
-### `e2e`
-
-Reservado para:
-
-* arranque automatizado
-* flujos multi-capa
-
-## Verificacion rapida
-
-El proyecto dispone de:
-
-* `python scripts/verifyFront.py`
-* `.\runFrontChecks.ps1` en Windows
-
-## Regresiones de comparacion
-
-Las regresiones del matching deben respetar el flujo definido en:
-
-* [comparisonContext.md](./comparisonContext.md)
-
-## Otras politicas documentales vivas
-
-* [../pythonBytecodePolicy.md](../pythonBytecodePolicy.md)
-* [../listCrudActions.md](../listCrudActions.md)
-
+CI instala Python y Node, ejecuta Alembic sobre una base temporal, Ruff,
+pytest, lint frontend, Vitest y el build de produccion.

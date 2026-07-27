@@ -22,7 +22,7 @@ La activacion deja de vivir en un boton lateral y pasa a ejecutarse con doble cl
 ## Motivo
 
 * evita ocupar un panel lateral permanente para acciones de fila
-* mantiene una UI de escritorio mas clara y cercana a un patron de lista contextual
+* mantiene una interfaz local clara y cercana a un patron de lista contextual
 * permite ocultar informacion secundaria como la URL completa en la lista de playlists
 
 ## Reglas aplicadas

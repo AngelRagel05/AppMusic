@@ -3,8 +3,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from yt_dlp.utils import DownloadError
-
 from app.application.dto.importedYoutubePlaylistItemDto import ImportedYoutubePlaylistItemDto
 from app.application.use_cases.playlists import (
     YoutubePlaylistImportExtractorError,
@@ -12,6 +10,7 @@ from app.application.use_cases.playlists import (
     YoutubePlaylistNotAccessibleError,
 )
 from app.infrastructure.downloads.youtube import YtDlpYoutubePlaylistItemsImporter
+from yt_dlp.utils import DownloadError
 
 
 class YoutubeDLStub:

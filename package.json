@@ -1,0 +1,20 @@
+{
+  "name": "soundshelf",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "app": "concurrently -k -n api,web -c blue,magenta \"npm:app:api\" \"npm:app:web\"",
+    "app:api": "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000",
+    "app:web": "npm --prefix frontend run dev",
+    "setup": "python -m pip install -e .[dev] && npm install && npm --prefix frontend install",
+    "migrate": "python -m alembic upgrade head",
+    "build": "npm --prefix frontend run build",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "python -m pytest",
+    "test:frontend": "npm --prefix frontend run test",
+    "lint": "python -m ruff check app tests && npm --prefix frontend run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

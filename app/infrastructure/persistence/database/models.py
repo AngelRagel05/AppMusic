@@ -107,24 +107,35 @@ class YoutubePlaylistItem(TimestampMixin, Base):
 class Download(TimestampMixin, Base):
     __tablename__ = "download"
     __table_args__ = (
+        CheckConstraint(
+            "progress_percent >= 0 AND progress_percent <= 100",
+            name="ck_download_progress_percent_range",
+        ),
+        UniqueConstraint("task_id", name="uq_download_task_id"),
         Index("ix_download_youtube_playlist_item_id", "youtube_playlist_item_id"),
         Index("ix_download_local_folder_id", "local_folder_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    youtube_playlist_item_id: Mapped[int] = mapped_column(
+    youtube_playlist_item_id: Mapped[int | None] = mapped_column(
         ForeignKey("youtube_playlist_item.id"),
-        nullable=False,
+        nullable=True,
     )
     local_folder_id: Mapped[int] = mapped_column(ForeignKey("local_folder.id"), nullable=False)
+    task_id: Mapped[str] = mapped_column(String(64), nullable=False)
     source_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    source_title: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    source_artist: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
+    progress_percent: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     target_file_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     error_message: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    youtube_playlist_item: Mapped[YoutubePlaylistItem] = relationship(back_populates="downloads")
+    youtube_playlist_item: Mapped[YoutubePlaylistItem | None] = relationship(
+        back_populates="downloads"
+    )
     local_folder: Mapped[LocalFolder] = relationship(back_populates="downloads")
     local_song: Mapped[LocalSong | None] = relationship(back_populates="download", uselist=False)
 

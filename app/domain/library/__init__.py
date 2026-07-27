@@ -5,8 +5,8 @@ from app.domain.library.services import normalizeLocalSongFilePath
 
 __all__ = [
     "LocalFolder",
-    "LocalSong",
     "LocalFolderRepository",
+    "LocalSong",
     "LocalSongRepository",
     "normalizeLocalSongFilePath",
 ]

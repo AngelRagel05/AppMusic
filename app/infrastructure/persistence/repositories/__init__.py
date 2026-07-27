@@ -1,5 +1,8 @@
 """Repository implementations."""
 
+from app.infrastructure.persistence.repositories.downloadSqlAlchemyRepository import (
+    DownloadSqlAlchemyRepository,
+)
 from app.infrastructure.persistence.repositories.ignoredTermSqlAlchemyRepository import (
     IgnoredTermSqlAlchemyRepository,
 )
@@ -26,6 +29,7 @@ from app.infrastructure.persistence.repositories.youtubePlaylistSqlAlchemyReposi
 )
 
 __all__ = [
+    "DownloadSqlAlchemyRepository",
     "IgnoredTermSqlAlchemyRepository",
     "LocalFolderSqlAlchemyRepository",
     "LocalSongSqlAlchemyRepository",

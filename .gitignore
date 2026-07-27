@@ -153,6 +153,8 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
 .envrc
 .venv
 env/
@@ -221,4 +223,51 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Editors and operating systems
 .vscode/
+.idea/
+.vs/
+*.code-workspace
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Node / npm / Vite
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+.vite/
+.eslintcache
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Keep dependency lockfiles versioned
+!package-lock.json
+!frontend/package-lock.json
+
+# SoundShelf local state
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+.soundshelfTmp/
+/downloads/
+
+# yt-dlp, FFmpeg and generic temporary files
+*.part
+*.ytdl
+*.temp
+*.tmp
+*.bak
+*.orig
+*~

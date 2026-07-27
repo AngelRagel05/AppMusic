@@ -51,6 +51,7 @@ class LoadPersistedPlaylistComparisonUseCase:
 
     def execute(
         self,
+        playlist_comparison_id: int | None = None,
     ) -> tuple[list[LocalSongDto], PlaylistComparisonResultDto] | None:
         active_youtube_playlist = self._youtube_playlist_repository.get_active()
         active_local_folder = self._local_folder_repository.get_active()
@@ -62,12 +63,25 @@ class LoadPersistedPlaylistComparisonUseCase:
         ):
             return None
 
-        persisted_comparison = self._playlist_comparison_repository.find_latest_for_scope(
-            active_youtube_playlist.id,
-            active_local_folder.id,
+        persisted_comparison = (
+            self._playlist_comparison_repository.find_by_id(
+                playlist_comparison_id
+            )
+            if playlist_comparison_id is not None
+            else self._playlist_comparison_repository.find_latest_for_scope(
+                active_youtube_playlist.id,
+                active_local_folder.id,
+            )
         )
         if persisted_comparison is None or persisted_comparison.id is None:
             return None
+        if (
+            persisted_comparison.youtube_playlist_id != active_youtube_playlist.id
+            or persisted_comparison.local_folder_id != active_local_folder.id
+        ):
+            raise ValueError(
+                "La comparacion no pertenece al contexto activo."
+            )
 
         local_songs = [
             LocalSongDto(

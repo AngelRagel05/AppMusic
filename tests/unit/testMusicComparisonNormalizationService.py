@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.domain.metadata.services import (
     COMPARISON_IGNORED_TERMS,
     NormalizedMusicComparisonMetadata,

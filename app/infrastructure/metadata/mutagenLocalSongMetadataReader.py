@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import PureWindowsPath
 import re
+from pathlib import PureWindowsPath
 
 from mutagen import File as MutagenFile
 from mutagen import MutagenError

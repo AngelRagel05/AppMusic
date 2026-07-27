@@ -2,22 +2,27 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import app.domain.metadata.services.musicComparisonNormalizationService as musicComparisonNormalizationService
+import app.domain.playlists.services.persistedPlaylistItemMatcherService as matcher_service
+import app.domain.playlists.services.youtubePlaylistItemNormalizationService as youtubePlaylistItemNormalizationService
 import pytest
-
-from app.application.dto.playlistComparisonHistoryEntryDto import (
-    PlaylistComparisonHistoryEntryDto,
-)
-from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
 from app.application.dto.activateYoutubePlaylistInputDto import (
     ActivateYoutubePlaylistInputDto,
-)
-from app.application.dto.deleteYoutubePlaylistInputDto import (
-    DeleteYoutubePlaylistInputDto,
 )
 from app.application.dto.defineMainYoutubePlaylistInputDto import (
     DefineMainYoutubePlaylistInputDto,
 )
+from app.application.dto.deleteYoutubePlaylistInputDto import (
+    DeleteYoutubePlaylistInputDto,
+)
 from app.application.dto.importedYoutubePlaylistItemDto import ImportedYoutubePlaylistItemDto
+from app.application.dto.playlistComparisonHistoryEntryDto import (
+    PlaylistComparisonHistoryEntryDto,
+)
+from app.application.dto.playlistComparisonResultDto import PlaylistComparisonResultDto
+from app.application.dto.updatePlaylistComparisonResultInputDto import (
+    UpdatePlaylistComparisonResultInputDto,
+)
 from app.application.dto.updateYoutubePlaylistInputDto import (
     UpdateYoutubePlaylistInputDto,
 )
@@ -28,27 +33,25 @@ from app.application.use_cases import (
     DeleteYoutubePlaylistUseCase,
     GetActiveYoutubePlaylistUseCase,
     ImportYoutubePlaylistItemsUseCase,
-    ListPersistedPlaylistComparisonHistoryUseCase,
     ListActiveYoutubePlaylistItemsUseCase,
-    LoadPersistedPlaylistComparisonUseCase,
+    ListPersistedPlaylistComparisonHistoryUseCase,
     ListYoutubePlaylistsUseCase,
+    LoadPersistedPlaylistComparisonUseCase,
     UpdatePlaylistComparisonResultUseCase,
     UpdateYoutubePlaylistUseCase,
-)
-from app.application.dto.updatePlaylistComparisonResultInputDto import (
-    UpdatePlaylistComparisonResultInputDto,
 )
 from app.application.use_cases.playlists.youtubePlaylistItemsImporterPort import (
     YoutubePlaylistImportExtractorError,
 )
+from app.domain.filters.entities.ignoredTerm import IgnoredTerm
+from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
 from app.domain.library.entities.localFolder import LocalFolder
 from app.domain.library.entities.localSong import LocalSong
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
-from app.domain.filters.entities.ignoredTerm import IgnoredTerm
-from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
-from app.domain.playlists.entities.youtubePlaylist import YoutubePlaylist
+from app.domain.library.repositories.localSongRepository import LocalSongRepository
 from app.domain.playlists.entities.playlistComparison import PlaylistComparison
 from app.domain.playlists.entities.playlistComparisonResult import PlaylistComparisonResult
+from app.domain.playlists.entities.youtubePlaylist import YoutubePlaylist
 from app.domain.playlists.entities.youtubePlaylistItem import YoutubePlaylistItem
 from app.domain.playlists.repositories.playlistComparisonRepository import (
     PlaylistComparisonRepository,
@@ -62,21 +65,17 @@ from app.domain.playlists.repositories.youtubePlaylistItemRepository import (
 from app.domain.playlists.repositories.youtubePlaylistRepository import (
     YoutubePlaylistRepository,
 )
-from app.domain.library.repositories.localSongRepository import LocalSongRepository
 from app.domain.playlists.services import (
     AUTO_NO_COMPETITIVE_CANDIDATE,
     AUTO_TITLE_ARTIST_DURATION,
-    ComparableLocalSong,
-    ComparableYoutubePlaylistItem,
     MANUAL_USER_LINKED_LOCAL_SONG,
     MANUAL_USER_MARKED_MISSING,
     MANUAL_USER_MARKED_POSSIBLE,
+    ComparableLocalSong,
+    ComparableYoutubePlaylistItem,
     matchPersistedPlaylistItemToLocalSongs,
 )
 from app.shared.constants.comparison import ComparisonStatus
-import app.domain.metadata.services.musicComparisonNormalizationService as musicComparisonNormalizationService
-import app.domain.playlists.services.persistedPlaylistItemMatcherService as matcher_service
-import app.domain.playlists.services.youtubePlaylistItemNormalizationService as youtubePlaylistItemNormalizationService
 
 
 class InMemoryYoutubePlaylistRepository(YoutubePlaylistRepository):
@@ -2652,7 +2651,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_reopens_found_when
     rerun_result = use_case.execute()
 
     assert rerun_result.items[0].comparison_status is ComparisonStatus.MISSING
-    assert 11 in score_calls
+    assert score_calls == []
 
 
 def test_compare_youtube_playlist_with_local_library_use_case_force_full_recompute_bypasses_frozen_found() -> None:
@@ -2947,7 +2946,7 @@ def test_compare_youtube_playlist_with_local_library_use_case_keeps_new_snapshot
 
 def test_compare_youtube_playlist_with_local_library_use_case_propagates_repository_errors() -> None:
     playlist_repository = InMemoryYoutubePlaylistRepository()
-    active_playlist = playlist_repository.save_as_active(
+    playlist_repository.save_as_active(
         playlist_url="https://www.youtube.com/playlist?list=PL123",
         external_playlist_id="PL123",
         title="Favoritas",

@@ -3,7 +3,6 @@ from __future__ import annotations
 from app.domain.playlists.services.playlistItemMatchingRules import CandidateMatchEvidence
 from app.shared.constants.comparison import ComparisonStatus
 
-
 AUTO_TITLE_ARTIST_DURATION = "auto:title_artist_duration"
 AUTO_AMBIGUOUS = "auto:ambiguous"
 AUTO_NO_COMPETITIVE_CANDIDATE = "auto:no_competitive_candidate"

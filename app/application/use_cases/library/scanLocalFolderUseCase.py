@@ -8,12 +8,13 @@ from app.application.dto.localSongMetadataDto import LocalSongMetadataDto
 from app.application.dto.scanLocalFolderProgressDto import ScanLocalFolderProgressDto
 from app.application.dto.scanLocalFolderResultDto import ScanLocalFolderResultDto
 from app.domain.library.entities.localSong import LocalSong
+from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
+from app.domain.library.repositories.localSongRepository import LocalSongRepository
 from app.domain.metadata.services import (
     normalizeMusicComparisonArtist,
     normalizeMusicComparisonTitle,
 )
-from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
-from app.domain.library.repositories.localSongRepository import LocalSongRepository
+from app.shared.exceptions import OperationCancelledError
 
 
 class LocalMusicScannerPort(Protocol):
@@ -42,7 +43,9 @@ class ScanLocalFolderUseCase:
     def execute(
         self,
         on_progress: Callable[[ScanLocalFolderProgressDto], None] | None = None,
+        is_cancelled: Callable[[], bool] | None = None,
     ) -> ScanLocalFolderResultDto:
+        self._raiseIfCancelled(is_cancelled)
         activeLocalFolder = self._local_folder_repository.get_active()
         if activeLocalFolder is None or activeLocalFolder.id is None:
             raise ValueError("No hay una biblioteca local activa para escanear.")
@@ -83,6 +86,7 @@ class ScanLocalFolderUseCase:
         self._emitProgress(on_progress, processedSongCount, totalSongCount)
 
         for filePath in discoveredFilePaths:
+            self._raiseIfCancelled(is_cancelled)
             existingSong = persistedSongsByPath.get(filePath)
             metadata = self._local_song_metadata_reader.readMetadata(filePath)
             if existingSong is not None:
@@ -134,6 +138,7 @@ class ScanLocalFolderUseCase:
             self._emitProgress(on_progress, processedSongCount, totalSongCount)
 
         for missingSong in missingCandidateSongsById.values():
+            self._raiseIfCancelled(is_cancelled)
             if not missingSong.is_available:
                 continue
 
@@ -167,6 +172,13 @@ class ScanLocalFolderUseCase:
             missing_song_count=missingSongCount,
             moved_song_count=movedSongCount,
         )
+
+    def _raiseIfCancelled(
+        self,
+        is_cancelled: Callable[[], bool] | None,
+    ) -> None:
+        if is_cancelled is not None and is_cancelled():
+            raise OperationCancelledError("El escaneo fue cancelado por el usuario.")
 
     def _emitProgress(
         self,

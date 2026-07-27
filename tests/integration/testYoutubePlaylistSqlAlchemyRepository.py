@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
 from app.infrastructure.persistence import YoutubePlaylistSqlAlchemyRepository
 from app.infrastructure.persistence.database.base import Base
 from app.infrastructure.persistence.database.models import (
     YoutubePlaylist as YoutubePlaylistModel,
 )
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 
 def create_session() -> Session:

@@ -1,60 +1,71 @@
-## AppMusic
+# SoundShelf
 
-Base minima para construir una aplicacion de escritorio de musica en Python con `Tkinter` y `CustomTkinter` y dejarla preparada para empaquetarse como `.exe` al final con `PyInstaller`.
+Aplicacion web local para tres flujos concretos:
 
-### Estado actual
+* comparar una playlist de YouTube con una biblioteca de MP3
+* editar y verificar metadata embebida en archivos MP3
+* descargar audio de YouTube, convertirlo a MP3 e indexarlo
 
-- Estructura inicial alineada con `AGENTS.md`
-- Arranque de aplicacion con `CustomTkinter`
-- Configuracion central con `.env`
-- Logging base con `loguru`
-- Base pensada como aplicacion de escritorio, no como libreria
-- Sin funcionalidades de dominio implementadas todavia
+No incluye reproduccion, streaming ni controles de audio.
 
-### Estructura
+## Requisitos
+
+* Python 3.12 o superior
+* Node.js 22 o superior
+* FFmpeg disponible en `PATH` o configurado mediante `FFMPEG_PATH`
+
+## Preparacion
+
+```powershell
+Copy-Item .env.example .env
+npm run setup
+npm run migrate
+```
+
+`npm run migrate` es la unica via autorizada para crear o actualizar el
+esquema. La aplicacion no ejecuta `create_all` ni `ALTER TABLE` al arrancar.
+
+## Ejecucion
+
+```powershell
+npm run app
+```
+
+El comando inicia simultaneamente:
+
+* FastAPI en `http://127.0.0.1:8000`
+* Vite en `http://127.0.0.1:5173`
+
+La documentacion OpenAPI queda en `http://127.0.0.1:8000/api/docs`.
+
+## Calidad
+
+```powershell
+npm run build
+npm run test
+npm run lint
+```
+
+## Estructura
 
 ```txt
 app/
-tests/
-migrations/
+├─ api/               # FastAPI, routers y schemas HTTP
+├─ application/       # use cases y DTOs
+├─ domain/            # entidades, contratos y reglas puras
+├─ infrastructure/    # SQLite, filesystem, Mutagen, yt-dlp y tareas
+├─ shared/
+├─ config/
+└─ main.py
+
+frontend/
+└─ src/
+   ├─ app/
+   ├─ features/
+   ├─ shared/
+   └─ styles/
 ```
 
-### Ejecutar
-
-```powershell
-.\.venv\Scripts\python.exe -m app.main
-```
-
-### Comprobar front
-
-Comando portable:
-
-```powershell
-python scripts/verifyFront.py
-```
-
-Atajo en Windows:
-
-```powershell
-.\runFrontChecks.ps1
-```
-
-Este chequeo ejecuta:
-
-* `compileall` sobre `presentation`, workers y bootstrap de presentacion
-* `ruff` solo con errores graves (`E9`, `F63`, `F7`, `F82`)
-* `pytest` sobre controllers, viewmodels, workers de UI y helpers visuales
-
-### Build a EXE
-
-Todavia no estamos generando el `.exe`, pero la base ya esta preparada para hacerlo con `PyInstaller` cuando toque.
-
-Comando previsto:
-
-```powershell
-.\.venv\Scripts\pyinstaller.exe AppMusic.spec
-```
-
-### Siguiente paso
-
-Definir la primera funcionalidad real y construirla desde la base.
+La base SQLite y las rutas configuradas se resuelven desde la raiz del
+proyecto. La API solo acepta bibliotecas registradas como destinos; nunca
+expone acceso general al filesystem.

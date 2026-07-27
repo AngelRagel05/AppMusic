@@ -4,6 +4,9 @@ from app.application.dto.updatePlaylistComparisonResultInputDto import (
     UpdatePlaylistComparisonResultInputDto,
 )
 from app.domain.library.repositories.localSongRepository import LocalSongRepository
+from app.domain.playlists.entities.playlistComparisonResult import (
+    PlaylistComparisonResult,
+)
 from app.domain.playlists.repositories.playlistComparisonRepository import (
     PlaylistComparisonRepository,
 )

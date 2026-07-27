@@ -1,1 +1,0 @@
-"""Local library presentation feature."""

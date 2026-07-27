@@ -35,6 +35,8 @@ flowchart LR
     coincide_con{coincide_con}
     contiene_cancion{contiene}
     proviene_de{proviene_de}
+    origina_descarga{origina}
+    destina_descarga{destina}
 
     youtube_playlist ---|" (1,n) "| contiene
     contiene ---|" (1,1) "| youtube_playlist_item
@@ -56,6 +58,12 @@ flowchart LR
 
     local_song ---|" (0,1) "| proviene_de
     proviene_de ---|" (0,1) "| download
+
+    youtube_playlist_item ---|" (0,n) "| origina_descarga
+    origina_descarga ---|" (0,1) "| download
+
+    local_folder ---|" (0,n) "| destina_descarga
+    destina_descarga ---|" (1,1) "| download
 ```
 
 `ignored_term` queda aislada en esta fase porque actua como soporte configurable del proceso de normalizacion y matching.
@@ -121,6 +129,20 @@ Una cancion local puede venir de una descarga o no.
 
 Una descarga puede producir una cancion local o fallar.
 
+### `youtube_playlist_item` origina `download`
+
+* `youtube_playlist_item (0,n) <-> download (0,1)`
+
+Un item importado puede originar varios intentos de descarga. La descarga puede no
+tener item asociado cuando nace de una URL introducida manualmente.
+
+### `local_folder` es el destino de `download`
+
+* `local_folder (0,n) <-> download (1,1)`
+
+Una carpeta registrada puede recibir varias descargas y cada descarga resuelve su
+destino a partir de una única carpeta registrada.
+
 ### `ignored_term`
 
 `ignored_term` se considera una entidad aislada en esta fase conceptual.
@@ -173,3 +195,4 @@ En el modelo relacional deberia contemplar como minimo:
 * `playlist_comparison_result` representa el detalle por item evaluado dentro de esa comparacion
 * los terminos ignorados deben poder gestionarse desde la app mediante CRUD, por eso se modelan como entidad propia
 * el caso de uso principal es mostrar las canciones de la playlist que faltan en local para acelerar la descarga posterior
+* una descarga nunca acepta una ruta arbitraria del cliente; la ruta final se resuelve dentro de su `local_folder`

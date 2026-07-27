@@ -2,384 +2,82 @@
 
 ## Objetivo
 
-La aplicacion es un reproductor y gestor musical de escritorio desarrollado con Python, Tkinter y CustomTkinter.
+SoundShelf debe sentirse como una herramienta local profesional, oscura y
+orientada a productividad. La interfaz presenta tres modulos claramente
+separados: Comparacion, Metadata y Descargas.
 
-La interfaz debe ser moderna, limpia, oscura, profesional y centrada en la productividad.
+No debe incorporar reproductor, streaming, portada en reproduccion, volumen,
+timeline ni controles de audio.
 
-Debe inspirarse en aplicaciones como Spotify Desktop, Plexamp, Discord Desktop y Tidal, evitando disenos recargados o excesivamente llamativos.
+## Tecnologias
 
----
+* React y Vite
+* JavaScript
+* React Router
+* TanStack Query
+* CSS Modules
 
-## Tecnologias de UI
+No usar Tailwind, Bootstrap ni librerias de componentes.
 
-* Framework de interfaz: Tkinter con CustomTkinter
-* Sistema de estilos: tema centralizado con helpers y factories de `CustomTkinter`
-* No utilizar HTML/CSS web
-* No utilizar conceptos propios de React, Tailwind o Bootstrap
-* Toda la interfaz debe construirse utilizando `CTkFrame`, `CTkLabel`, `CTkButton`, `CTkEntry`, `CTkOptionMenu` y widgets equivalentes cuando sea posible
+## Shell
 
----
+La sidebar global permanece visible en escritorio, puede contraerse y guarda su
+estado en `localStorage`. En movil funciona como drawer accesible.
 
-## Sistema de estilos
-
-Los estilos base compartidos deben centralizarse en la capa visual vigente:
-
-```txt
-app/presentation/styles/
-```
-
-Los widgets deben reutilizar helpers visuales comunes y mantener la paleta compartida.
-
-La estructura minima esperada es:
+Rutas:
 
 ```txt
-app/presentation/styles/
-├─ themePalette.py
-├─ widgetFactory.py
-├─ windowStyler.py
-└─ signalSupport.py
+/comparison
+/metadata
+/downloads
 ```
 
-No se deben dispersar colores, fuentes o reglas de estado fuera de la capa de soporte visual salvo casos excepcionales muy justificados.
-Evitar `tk.Label`, `tk.Button`, `tk.Frame` y widgets nativos equivalentes en vistas finales salvo necesidad tecnica concreta.
+## Lenguaje visual
 
----
+* fondo oscuro neutro
+* superficies elevadas discretas
+* verde agua como acento operativo
+* rojo solo para error o destruccion
+* tipografia de sistema con jerarquia clara
+* bordes y sombras contenidos
+* animaciones entre 120 y 200 ms
 
-## Paleta de colores
+Los tokens globales viven en `frontend/src/styles/global.css`. Los estilos de
+cada componente viven en su propio `.module.css` o en el modulo compartido de
+UI.
 
-La paleta exacta podra cambiar en el futuro, pero debe respetarse la siguiente filosofia.
+## Componentes
 
-### Fondo principal
+Reutilizar paneles, botones, badges, tablas, estados vacios, barras de progreso
+y formularios antes de crear variantes.
 
-```txt
-#121212
-```
+Las tablas deben:
 
-### Paneles laterales y secundarios
+* conservar cabeceras y alineacion legibles
+* mostrar informacion secundaria con menor contraste
+* ofrecer estados vacios explicativos
+* permitir navegacion y acciones sin depender solo del color
 
-```txt
-#1B1B1B
-```
+## Formularios
 
-### Superficies elevadas
+Cada campo debe tener label. Las acciones primarias describen el efecto real:
+por ejemplo `Escribir y verificar tags`, no solo `Guardar`.
 
-```txt
-#242424
-```
+La edicion de metadata es individual. No se ofrece edicion masiva hasta que
+exista un flujo de confirmacion y rollback adecuado.
 
-### Texto principal
+## Operaciones largas
 
-```txt
-#FFFFFF
-```
-
-### Texto secundario
-
-```txt
-#D0D0D0
-```
-
-### Texto deshabilitado
-
-```txt
-#8A8A8A
-```
-
-### Color principal de marca
-
-Rojo oscuro elegante:
-
-```txt
-#D64545
-```
-
-### Color de acento
-
-Azul grisaceo:
-
-```txt
-#5B8DEF
-```
-
----
-
-## Distribucion de color
-
-La interfaz debe respetar aproximadamente:
-
-* 80% colores neutros
-* 15% color principal
-* 5% color de acento
-
-El color rojo debe destacar acciones importantes.
-
-El azul debe reservarse para estados informativos, indicadores o elementos de apoyo.
-
----
-
-## Espaciado
-
-Utilizar unicamente multiplos de 8:
-
-```txt
-8px
-16px
-24px
-32px
-48px
-```
-
-Evitar medidas arbitrarias.
-
----
-
-## Bordes
-
-Todos los componentes deben mantener consistencia:
-
-```txt
-Border radius:
-8px - 12px
-```
-
-No utilizar esquinas completamente cuadradas salvo en tablas o divisores.
-
----
-
-## Tipografia
-
-Tipografia recomendada:
-
-```txt
-Inter
-```
-
-Jerarquia visual:
-
-```txt
-Titulo principal: 24px
-Titulo seccion: 20px
-Subtitulo: 16px
-Texto normal: 14px
-Texto auxiliar: 12px
-```
-
----
-
-## Sidebar
-
-La navegacion principal debe permanecer visible.
-
-Ancho recomendado:
-
-```txt
-220px - 260px
-```
-
-Secciones sugeridas:
-
-```txt
-Inicio
-Biblioteca
-Favoritos
-Playlists
-Descargas
-Configuracion
-```
-
-La sidebar debe sentirse como una columna de navegacion nativa de escritorio:
-
-* fija
-* limpia
-* con pocas acciones visibles
-* sin badges innecesarios ni decoracion excesiva
-
----
-
-## Navegacion principal
-
-La app debe comportarse como una aplicacion musical de escritorio con navegacion real:
-
-```txt
-Sidebar fija izquierda
-+ pagina fullscreen a la derecha
-```
-
-La vista derecha debe resolverse con paginas separadas dentro de un contenedor de navegacion controlado por frames.
-
-Ejemplo esperado:
-
-* `ResumenPage`
-* `BibliotecaLocalPage`
-* `PlaylistYouTubePage`
-* `FiltrosPage`
-
-No deben convivir todas las features principales apiladas en la misma pantalla.
-
-## Paginas de contenido
-
-Cada pagina debe seguir este patron:
-
-* header compacto con titulo, contexto activo y acciones principales
-* un bloque principal claro, sin cadenas de cards anidadas
-* contenido centrado en musica, playlists, filtros o sincronizacion segun la vista
-* feedback contextual dentro de su propia pagina
-
-Cuando haya pocos elementos, priorizar:
-
-* listas visuales
-* filas tipo card
-* estados vacios bien resueltos
-
-Evitar por defecto:
-
-* tablas grandes para colecciones pequenas
-* cards dentro de cards sin una razon clara
-* formularios largos cuando solo hay uno o dos campos
-
-La estetica debe inspirarse mas en Spotify, Apple Music, Plex o Notion que en un dashboard corporativo.
-
----
-
-## Reproductor
-
-Debe existir una barra de reproduccion persistente en la parte inferior.
-
-Estructura:
-
-```txt
-Portada
-Titulo
-Artista
-
-Anterior
-Play/Pause
-Siguiente
-
-Barra de progreso
-
-Control de volumen
-```
-
-Altura aproximada:
-
-```txt
-80px - 90px
-```
-
----
-
-## Tablas de canciones
-
-Las tablas deben priorizar la legibilidad.
-
-Columnas recomendadas:
-
-```txt
-Portada
-Titulo
-Artista
-Album
-Duracion
-Fecha de anadido
-```
-
-Evitar sobrecargar las filas con informacion innecesaria.
-
----
-
-## Botones
-
-### Boton primario
-
-Usar para:
-
-* Descargar
-* Guardar
-* Crear playlist
-* Confirmar
-
-Debe utilizar el color principal de marca.
-
-### Boton secundario
-
-Usar para:
-
-* Editar
-* Buscar
-* Actualizar
-* Navegar
-
-Debe utilizar colores neutros.
-
-### Boton destructivo
-
-Usar unicamente para:
-
-* Eliminar
-* Borrar
-* Restablecer
-
-Debe diferenciarse claramente del resto.
-
----
-
-## Animaciones
-
-Las animaciones deben ser minimas.
-
-Duracion estandar:
-
-```txt
-200ms
-```
-
-Objetivos:
-
-* Hover
-* Focus
-* Apertura de paneles
-
-Evitar animaciones complejas o excesivas.
-
----
-
-## Componentes reutilizables
-
-Antes de crear un nuevo componente:
-
-1. Buscar uno existente.
-2. Extender el componente existente si es posible.
-3. Crear uno nuevo unicamente cuando sea necesario.
-
-La consistencia visual tiene prioridad sobre la personalizacion.
-
----
-
-## Identificadores visuales
-
-Cuando haga falta diferenciar widgets reutilizables, encapsular esa decision en componentes o helpers de estilo en vez de depender de jerarquias fragiles.
-
----
+La SPA debe permanecer navegable. Mostrar estado, porcentaje, mensaje,
+cancelacion y fallo. `cancelling` no se representa como cancelado hasta recibir
+confirmacion del backend.
 
 ## Accesibilidad
 
-* Mantener contraste alto
-* El texto siempre debe ser legible
-* Los estados `hover` y `selected` deben ser claramente visibles
-* No depender exclusivamente del color para transmitir informacion
-
----
-
-## Reglas para IA y futuros desarrolladores
-
-* Mantener siempre una estetica oscura y profesional
-* Priorizar funcionalidad sobre decoracion
-* Mantener consistencia visual en todas las ventanas
-* Reutilizar componentes existentes
-* Centralizar estilos y helpers visuales en la capa compartida de CustomTkinter
-* No introducir frameworks web
-* No introducir CSS web
-* No mezclar paradigmas de React con Tkinter ni mezclar widgets nativos y CTk sin necesidad real
-* Todo nuevo componente debe respetar estas directrices
-* La experiencia de usuario debe sentirse como una aplicacion de escritorio profesional, no como una pagina web empaquetada
+* foco visible
+* contraste suficiente
+* labels y nombres accesibles
+* sidebar movil cerrable con `Escape`
+* foco atrapado dentro del drawer abierto
+* estados expresados con texto ademas de color
+* controles nativos de formulario cuando aporten mejor semantica

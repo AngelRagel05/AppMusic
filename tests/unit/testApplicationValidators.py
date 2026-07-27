@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.application.validators.filters.ignoredTermValidators import (
     normalizeIgnoredTermData,
     validateIgnoredTermId,

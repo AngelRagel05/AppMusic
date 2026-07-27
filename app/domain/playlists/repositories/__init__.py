@@ -4,16 +4,16 @@ from app.domain.playlists.repositories.playlistComparisonRepository import (
 from app.domain.playlists.repositories.playlistComparisonResultRepository import (
     PlaylistComparisonResultRepository,
 )
-from app.domain.playlists.repositories.youtubePlaylistRepository import (
-    YoutubePlaylistRepository,
-)
 from app.domain.playlists.repositories.youtubePlaylistItemRepository import (
     YoutubePlaylistItemRepository,
+)
+from app.domain.playlists.repositories.youtubePlaylistRepository import (
+    YoutubePlaylistRepository,
 )
 
 __all__ = [
     "PlaylistComparisonRepository",
     "PlaylistComparisonResultRepository",
-    "YoutubePlaylistRepository",
     "YoutubePlaylistItemRepository",
+    "YoutubePlaylistRepository",
 ]

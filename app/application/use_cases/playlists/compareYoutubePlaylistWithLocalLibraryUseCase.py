@@ -19,36 +19,41 @@ from app.application.dto.playlistComparisonSummaryDto import PlaylistComparisonS
 from app.application.dto.playlistComparisonVolumeMetricsDto import (
     PlaylistComparisonVolumeMetricsDto,
 )
+from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
 from app.domain.library.repositories.localFolderRepository import LocalFolderRepository
 from app.domain.library.repositories.localSongRepository import LocalSongRepository
-from app.domain.filters.repositories.ignoredTermRepository import IgnoredTermRepository
-from app.domain.playlists.entities.playlistComparisonResult import (
-    PlaylistComparisonResult,
-)
-from app.domain.playlists.services import (
-    ComparableLocalSong,
-    ComparableYoutubePlaylistItem,
-    MANUAL_USER_LINKED_LOCAL_SONG,
-    MANUAL_USER_MARKED_FOUND,
-    buildComparableLocalSongSequentialIndex,
-    matchPersistedPlaylistItemToLocalSongs,
-    PersistedPlaylistItemMatchResult,
-    SequentialCandidateSelectionResult,
-    selectSequentialLocalSongCandidates,
-    shouldInvalidatePersistedFoundMatch,
-)
 from app.domain.metadata.services import (
     normalizeMusicComparisonArtist,
     normalizeMusicComparisonArtistParts,
     normalizeMusicComparisonTitle,
 )
-from app.domain.playlists.repositories.playlistComparisonRepository import PlaylistComparisonRepository
-from app.domain.playlists.repositories.playlistComparisonResultRepository import PlaylistComparisonResultRepository
+from app.domain.playlists.entities.playlistComparisonResult import (
+    PlaylistComparisonResult,
+)
+from app.domain.playlists.repositories.playlistComparisonRepository import (
+    PlaylistComparisonRepository,
+)
+from app.domain.playlists.repositories.playlistComparisonResultRepository import (
+    PlaylistComparisonResultRepository,
+)
 from app.domain.playlists.repositories.youtubePlaylistItemRepository import (
     YoutubePlaylistItemRepository,
 )
 from app.domain.playlists.repositories.youtubePlaylistRepository import (
     YoutubePlaylistRepository,
+)
+from app.domain.playlists.services import (
+    AUTO_NO_COMPETITIVE_CANDIDATE,
+    MANUAL_USER_LINKED_LOCAL_SONG,
+    MANUAL_USER_MARKED_FOUND,
+    ComparableLocalSong,
+    ComparableYoutubePlaylistItem,
+    PersistedPlaylistItemMatchResult,
+    SequentialCandidateSelectionResult,
+    buildComparableLocalSongSequentialIndex,
+    matchPersistedPlaylistItemToLocalSongs,
+    selectSequentialLocalSongCandidates,
+    shouldInvalidatePersistedFoundMatch,
 )
 from app.shared.constants.comparison import ComparisonStatus
 
@@ -413,7 +418,7 @@ class CompareYoutubePlaylistWithLocalLibraryUseCase:
             comparison_status=selection_result.comparison_status,
             score=0.0,
             reason=selection_result.reason or "No hay candidata valida.",
-            matched_by=None,
+            matched_by=AUTO_NO_COMPETITIVE_CANDIDATE,
         )
 
     def _buildFrozenFoundRowsByItemId(
