@@ -9,6 +9,10 @@ const test = require("node:test");
 
 const { acquireSingleInstance } = require("../applicationLifecycle");
 const {
+  getApplicationIdentity,
+  PRODUCTION_CHANNEL,
+} = require("../applicationIdentity");
+const {
   buildBackendEnvironment,
   createBackendSpawnConfiguration,
   resolveRuntimePaths,
@@ -22,6 +26,7 @@ test("production paths keep persistent data outside application resources", () =
     appPath: "C:\\Program Files\\SoundShelf\\resources\\app.asar",
     resourcesPath: "C:\\Program Files\\SoundShelf\\resources",
     userDataPath: "C:\\Users\\Test\\AppData\\Roaming\\SoundShelf",
+    identity: getApplicationIdentity(PRODUCTION_CHANNEL),
     platform: "win32",
     environment: {},
   });
@@ -36,6 +41,8 @@ test("production paths keep persistent data outside application resources", () =
     ),
   );
   assert.match(paths.backendExecutable, /SoundShelfBackend\.exe$/);
+  assert.equal(environment.APP_NAME, "SoundShelf");
+  assert.equal(environment.SOUNDSHELF_CHANNEL, PRODUCTION_CHANNEL);
   assert.equal(environment.SOUNDSHELF_PORT, "43125");
   assert.equal(environment.SOUNDSHELF_DATA_DIR, paths.dataDirectory);
   assert.equal(environment.SOUNDSHELF_FRONTEND_DIR, paths.frontendDirectory);
@@ -49,6 +56,7 @@ test("development launches the Python module without configuring static React", 
     appPath: "C:\\workspace\\SoundShelf",
     resourcesPath: "C:\\workspace\\SoundShelf\\node_modules\\electron",
     userDataPath: "C:\\Users\\Test\\AppData\\Roaming\\SoundShelf",
+    identity: getApplicationIdentity(PRODUCTION_CHANNEL),
     platform: "win32",
     environment: { PYTHON_EXECUTABLE: "py" },
   });
@@ -100,8 +108,10 @@ test("window security options keep Node and privileged APIs isolated", () => {
     enableDevTools: false,
     iconPath: "icon.png",
     preloadPath: "preload.js",
+    title: "SoundShelf Beta",
   });
 
+  assert.equal(options.title, "SoundShelf Beta");
   assert.equal(options.frame, true);
   assert.equal(options.webPreferences.contextIsolation, true);
   assert.equal(options.webPreferences.nodeIntegration, false);

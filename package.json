@@ -16,8 +16,10 @@
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "python -m PyInstaller --noconfirm --clean --distpath .desktopBuild/backend --workpath .desktopBuild/pyinstaller desktop/soundShelfBackend.spec",
     "verify:backend": "node desktop/scripts/verifyBackendBundle.js",
-    "build:desktop": "npm run build:frontend && npm run build:backend && electron-builder --win --dir",
-    "dist": "npm run build:frontend && npm run build:backend && electron-builder --win nsis",
+    "build:desktop": "node desktop/scripts/buildDistribution.js production --dir",
+    "build:desktop:beta": "node desktop/scripts/buildDistribution.js beta --dir",
+    "dist": "node desktop/scripts/buildDistribution.js production",
+    "dist:beta": "node desktop/scripts/buildDistribution.js beta",
     "test": "npm run test:backend && npm run test:frontend && npm run test:desktop",
     "test:backend": "python -m pytest",
     "test:frontend": "npm --prefix frontend run test",
@@ -29,75 +31,5 @@
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3",
     "ffmpeg-static": "^5.3.0"
-  },
-  "build": {
-    "appId": "com.soundshelf.desktop",
-    "productName": "SoundShelf",
-    "asar": true,
-    "compression": "normal",
-    "publish": null,
-    "directories": {
-      "output": "release",
-      "buildResources": "desktop/assets"
-    },
-    "files": [
-      "desktop/**/*.js",
-      "!desktop/tests/**",
-      "!desktop/scripts/**",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "frontend/dist",
-        "to": "frontend",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": ".desktopBuild/backend/SoundShelfBackend",
-        "to": "backend",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "node_modules/ffmpeg-static",
-        "to": "ffmpeg",
-        "filter": [
-          "ffmpeg.exe",
-          "ffmpeg.exe.LICENSE",
-          "ffmpeg.exe.README",
-          "LICENSE"
-        ]
-      },
-      {
-        "from": "desktop/assets/soundShelfIcon.png",
-        "to": "icon/soundShelfIcon.png"
-      }
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "desktop/assets/soundShelfIcon.png",
-      "executableName": "SoundShelf",
-      "artifactName": "SoundShelf Setup.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": "always",
-      "createStartMenuShortcut": true,
-      "shortcutName": "SoundShelf",
-      "uninstallDisplayName": "SoundShelf"
-    }
   }
 }

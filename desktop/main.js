@@ -4,6 +4,10 @@ const path = require("node:path");
 
 const { acquireSingleInstance } = require("./applicationLifecycle");
 const {
+  resolveApplicationIdentity,
+  resolveDefaultUserDataPath,
+} = require("./applicationIdentity");
+const {
   BackendProcess,
   waitForHttpEndpoint,
 } = require("./backendProcess");
@@ -52,7 +56,7 @@ function configureNavigation(window, allowedOrigin, shell) {
   );
 }
 
-function createDesktopRuntime(electron) {
+function createDesktopRuntime(electron, identity) {
   const {
     app,
     BrowserWindow,
@@ -72,7 +76,7 @@ function createDesktopRuntime(electron) {
       return;
     }
     isShuttingDown = true;
-    logger?.info("Iniciando cierre completo de SoundShelf.");
+    logger?.info(`Iniciando cierre completo de ${identity.productName}.`);
     if (stateSaveTimer) {
       clearTimeout(stateSaveTimer);
     }
@@ -84,7 +88,7 @@ function createDesktopRuntime(electron) {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.destroy();
     }
-    logger?.info(`SoundShelf finaliza con codigo ${exitCode}.`);
+    logger?.info(`${identity.productName} finaliza con codigo ${exitCode}.`);
     app.exit(exitCode);
   }
 
@@ -96,15 +100,17 @@ function createDesktopRuntime(electron) {
         : path.resolve(__dirname, ".."),
       resourcesPath: process.resourcesPath,
       userDataPath: app.getPath("userData"),
+      identity,
     });
     ensureRuntimeDirectories(paths);
     logger = new DesktopLogger(paths.electronLogPath);
     logger.info(
-      `Iniciando SoundShelf ${app.isPackaged ? "empaquetado" : "en desarrollo"}.`,
+      `Iniciando ${identity.productName} ${
+        app.isPackaged ? "empaquetado" : "en desarrollo"
+      }.`,
     );
     validateRuntimeResources(paths);
 
-    app.setAppUserModelId("com.soundshelf.desktop");
     Menu.setApplicationMenu(null);
     backendProcess = new BackendProcess({
       paths,
@@ -115,8 +121,8 @@ function createDesktopRuntime(electron) {
         }
         logger.error("FastAPI se ha cerrado mientras la aplicacion seguia activa.", error);
         dialog.showErrorBox(
-          "SoundShelf se ha detenido",
-          "El servicio local de SoundShelf se cerró inesperadamente. " +
+          `${identity.productName} se ha detenido`,
+          `El servicio local de ${identity.productName} se cerró inesperadamente. ` +
             `Consulta ${paths.electronLogPath} para ver los detalles.`,
         );
         void shutdown(1);
@@ -140,6 +146,7 @@ function createDesktopRuntime(electron) {
         enableDevTools: !app.isPackaged,
         iconPath: paths.iconPath,
         preloadPath: path.join(__dirname, "preload.js"),
+        title: identity.windowTitle,
       }),
     );
     if (!savedBounds) {
@@ -175,7 +182,9 @@ function createDesktopRuntime(electron) {
     });
     mainWindow.once("ready-to-show", () => {
       mainWindow.show();
-      logger.info("La ventana principal de SoundShelf esta visible.");
+      logger.info(
+        `La ventana principal de ${identity.productName} esta visible.`,
+      );
     });
     if (!app.isPackaged) {
       mainWindow.webContents.on("before-input-event", (event, input) => {
@@ -210,9 +219,12 @@ function createDesktopRuntime(electron) {
   function handleFatalError(error) {
     const normalizedError =
       error instanceof Error ? error : new Error(String(error));
-    logger?.error("SoundShelf no ha podido iniciar.", normalizedError);
+    logger?.error(
+      `${identity.productName} no ha podido iniciar.`,
+      normalizedError,
+    );
     dialog.showErrorBox(
-      "No se pudo iniciar SoundShelf",
+      `No se pudo iniciar ${identity.productName}`,
       `${normalizedError.message}\n\nConsulta el log de Electron para más detalles.`,
     );
     void shutdown(1);
@@ -229,12 +241,24 @@ function createDesktopRuntime(electron) {
 function bootstrap() {
   const electron = require("electron");
   const { app } = electron;
-  app.setName("SoundShelf");
-  if (process.env.SOUNDSHELF_DATA_DIR) {
+  const identity = resolveApplicationIdentity({
+    isPackaged: app.isPackaged,
+    appPath: app.getAppPath(),
+    environment: process.env,
+  });
+  app.setName(identity.productName);
+  app.setAppUserModelId(identity.appId);
+  const defaultUserDataPath = resolveDefaultUserDataPath(
+    app.getPath("appData"),
+    identity,
+  );
+  if (!app.isPackaged && process.env.SOUNDSHELF_DATA_DIR) {
     app.setPath(
       "userData",
       path.resolve(process.env.SOUNDSHELF_DATA_DIR),
     );
+  } else {
+    app.setPath("userData", defaultUserDataPath);
   }
   let runtime = null;
   if (!acquireSingleInstance(app, () => runtime?.getWindow())) {
@@ -259,7 +283,7 @@ function bootstrap() {
   });
 
   app.whenReady().then(() => {
-    runtime = createDesktopRuntime(electron);
+    runtime = createDesktopRuntime(electron, identity);
     return runtime.start();
   }).catch((error) => {
     if (runtime) {
@@ -267,7 +291,7 @@ function bootstrap() {
       return;
     }
     electron.dialog.showErrorBox(
-      "No se pudo iniciar SoundShelf",
+      `No se pudo iniciar ${identity.productName}`,
       error instanceof Error ? error.message : String(error),
     );
     app.exit(1);

@@ -7,9 +7,10 @@ function createWindowOptions({
   enableDevTools,
   iconPath,
   preloadPath,
+  title,
 }) {
   return {
-    title: "SoundShelf",
+    title,
     show: false,
     width: bounds?.width || 1440,
     height: bounds?.height || 900,

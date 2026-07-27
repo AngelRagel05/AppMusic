@@ -102,12 +102,26 @@ jobs:
           npm ci
           npm --prefix frontend ci
 
-      - name: Construir instalador Windows
+      - name: Construir instalador estable
+        if: github.ref_name == 'main'
         run: npm run dist
 
-      - name: Publicar instalador como artefacto
+      - name: Construir instalador Beta
+        if: github.ref_name != 'main'
+        run: npm run dist:beta
+
+      - name: Publicar instalador estable
+        if: github.ref_name == 'main'
         uses: actions/upload-artifact@v4
         with:
           name: SoundShelf-Windows
           path: release/SoundShelf Setup.exe
+          if-no-files-found: error
+
+      - name: Publicar instalador Beta
+        if: github.ref_name != 'main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SoundShelf-Beta-Windows
+          path: release/beta/SoundShelf Beta Setup.exe
           if-no-files-found: error

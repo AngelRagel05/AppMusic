@@ -11,16 +11,22 @@ No incluye reproduccion, streaming ni controles de audio.
 La interfaz sigue siendo React y la API sigue siendo FastAPI. Electron solo
 gestiona la ventana nativa, el arranque y el cierre del servicio local.
 
-## Uso de la aplicacion instalada
+## Uso de las aplicaciones instaladas
 
-El instalador se genera en:
+SoundShelf dispone de dos canales instalables de forma simultanea:
 
 ```txt
-release/SoundShelf Setup.exe
+Produccion
+├─ instalacion: %LOCALAPPDATA%/Programs/SoundShelf
+└─ datos:       %APPDATA%/SoundShelf
+
+Beta
+├─ instalacion: %LOCALAPPDATA%/Programs/SoundShelf Beta
+└─ datos:       %APPDATA%/SoundShelf Beta
 ```
 
-La aplicacion instalada no requiere Python, Node.js, Vite ni FFmpeg del
-sistema. Guarda los datos persistentes en:
+Ninguno requiere Python, Node.js, Vite ni FFmpeg del sistema. La version
+estable guarda sus datos persistentes en:
 
 ```txt
 %APPDATA%/SoundShelf/
@@ -33,7 +39,9 @@ sistema. Guarda los datos persistentes en:
 
 Una actualizacion de los binarios no sobrescribe este directorio. Antes de
 iniciar la API, el backend aplica de forma controlada las migraciones Alembic
-pendientes.
+pendientes. SoundShelf Beta usa la misma estructura dentro de su propio
+directorio y no comparte SQLite, configuracion, logs ni temporales con la
+version estable.
 
 ## Requisitos de desarrollo
 
@@ -72,17 +80,32 @@ Electron y FastAPI quedan visibles en la terminal. Para depurar solo la API:
 npm run app:api
 ```
 
-## Build de Windows
+## Builds de Windows
 
 ```powershell
-npm run build:desktop
 npm run dist
+npm run dist:beta
 ```
 
-`build:desktop` produce `release/win-unpacked`. `dist` produce además el
-instalador NSIS `release/SoundShelf Setup.exe`.
+`npm run dist` solo se permite desde `main` y produce:
 
-El build incluye:
+```txt
+release/
+├─ SoundShelf Setup.exe
+└─ win-unpacked/SoundShelf.exe
+```
+
+`npm run dist:beta` se permite desde cualquier rama distinta de `main` y
+produce:
+
+```txt
+release/beta/
+├─ SoundShelf Beta Setup.exe
+└─ win-unpacked/SoundShelf Beta.exe
+```
+
+Las variantes sin instalador siguen las mismas restricciones mediante
+`npm run build:desktop` y `npm run build:desktop:beta`. Cada build incluye:
 
 * React compilado
 * FastAPI y sus dependencias empaquetados con PyInstaller

@@ -8,6 +8,7 @@ function resolveRuntimePaths({
   appPath,
   resourcesPath,
   userDataPath,
+  identity,
   platform = process.platform,
   environment = process.env,
 }) {
@@ -40,6 +41,9 @@ function resolveRuntimePaths({
 
   return {
     isPackaged,
+    channel: identity.channel,
+    productName: identity.productName,
+    appId: identity.appId,
     projectDirectory,
     dataDirectory,
     logsDirectory,
@@ -56,8 +60,13 @@ function resolveRuntimePaths({
     windowStatePath: path.join(dataDirectory, "windowState.json"),
     ffmpegPath,
     iconPath: isPackaged
-      ? path.join(resourcesPath, "icon", "soundShelfIcon.png")
-      : path.join(appPath, "desktop", "assets", "soundShelfIcon.png"),
+      ? path.join(resourcesPath, "icon", "applicationIcon.png")
+      : path.join(
+          appPath,
+          "desktop",
+          "assets",
+          identity.iconFileName,
+        ),
   };
 }
 
@@ -73,7 +82,7 @@ function ensureRuntimeDirectories(paths) {
 
 function validateRuntimeResources(paths) {
   const requiredFiles = [
-    [paths.iconPath, "el icono de SoundShelf"],
+    [paths.iconPath, `el icono de ${paths.productName}`],
     [paths.ffmpegPath, "el ejecutable FFmpeg incluido"],
   ];
   if (paths.isPackaged) {
@@ -88,7 +97,7 @@ function validateRuntimeResources(paths) {
     .map(([filePath, description]) => `${description}: ${filePath}`);
   if (missingResources.length > 0) {
     throw new Error(
-      `Faltan recursos necesarios para iniciar SoundShelf:\n${missingResources.join("\n")}`,
+      `Faltan recursos necesarios para iniciar ${paths.productName}:\n${missingResources.join("\n")}`,
     );
   }
 }
@@ -104,10 +113,12 @@ function buildBackendEnvironment(
 ) {
   const environment = {
     ...inheritedEnvironment,
+    APP_NAME: paths.productName,
     APP_ENV: paths.isPackaged ? "production" : "development",
     API_HOST: "127.0.0.1",
     API_PORT: String(port),
     SOUNDSHELF_PORT: String(port),
+    SOUNDSHELF_CHANNEL: paths.channel,
     SOUNDSHELF_DATA_DIR: paths.dataDirectory,
     DATABASE_URL: databaseUrlFromPath(paths.databasePath),
     LOG_FILE: paths.backendLogPath,
