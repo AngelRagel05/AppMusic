@@ -6,14 +6,14 @@ from app.config.settings import PROJECT_ROOT, Settings, resolveDatabaseUrl
 
 
 def test_resolve_database_url_returns_absolute_sqlite_path_from_project_root() -> None:
-    resolved_url = resolveDatabaseUrl("sqlite:///music_app.db")
+    resolved_url = resolveDatabaseUrl("sqlite:///soundshelf.db")
 
-    expected_path = (PROJECT_ROOT / "music_app.db").resolve().as_posix()
+    expected_path = (PROJECT_ROOT / "soundshelf.db").resolve().as_posix()
     assert resolved_url == f"sqlite:///{expected_path}"
 
 
 def test_resolve_database_url_keeps_absolute_sqlite_path_unchanged() -> None:
-    absolute_path = Path("C:/tmp/music_app.db")
+    absolute_path = Path("C:/tmp/soundshelf.db")
 
     resolved_url = resolveDatabaseUrl(f"sqlite:///{absolute_path.as_posix()}")
 

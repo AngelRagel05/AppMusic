@@ -62,9 +62,31 @@ test("development launches the Python module without configuring static React", 
   });
   const launch = createBackendSpawnConfiguration(paths, 43_126);
 
+  assert.equal(
+    paths.databasePath,
+    path.resolve("C:\\workspace\\SoundShelf", "soundshelf.db"),
+  );
   assert.equal(launch.command, "py");
   assert.deepEqual(launch.arguments, ["-m", "app.desktopMain"]);
   assert.equal(launch.options.env.SOUNDSHELF_FRONTEND_DIR, undefined);
+});
+
+test("development data override keeps SQLite inside the requested directory", () => {
+  const dataDirectory = "C:\\tmp\\soundshelf-development";
+  const paths = resolveRuntimePaths({
+    isPackaged: false,
+    appPath: "C:\\workspace\\SoundShelf",
+    resourcesPath: "C:\\workspace\\SoundShelf\\node_modules\\electron",
+    userDataPath: dataDirectory,
+    identity: getApplicationIdentity(PRODUCTION_CHANNEL),
+    platform: "win32",
+    environment: { SOUNDSHELF_DATA_DIR: dataDirectory },
+  });
+
+  assert.equal(
+    paths.databasePath,
+    path.resolve(dataDirectory, "soundshelf.db"),
+  );
 });
 
 test("single instance lock quits duplicates and focuses the original window", () => {

@@ -63,8 +63,8 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-music_app.db
-music_app.db-*
+soundshelf.db
+soundshelf.db-*
 
 # Flask stuff:
 instance/

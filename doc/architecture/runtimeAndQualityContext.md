@@ -13,9 +13,12 @@ Electron
 ```
 
 Electron no contiene reglas de negocio ni accede a SQLite. En desarrollo,
-`npm run app` ejecuta Vite y Electron; Electron reserva un puerto local,
-aplica las migraciones pendientes y arranca FastAPI. La ventana solo se crea
-cuando `/api/health` responde correctamente.
+`npm run app` usa un launcher Node propio que arranca Vite y Electron sin
+`concurrently`; Electron reserva un puerto local, aplica las migraciones
+pendientes y arranca FastAPI. La ventana solo se crea cuando `/api/health`
+responde correctamente. Por defecto, tanto este flujo como `npm run app:api`
+usan `soundshelf.db` en la raiz del proyecto. Un `SOUNDSHELF_DATA_DIR`
+explicito permite aislar la base para pruebas.
 
 En produccion FastAPI sirve el build estatico de React incluido en la
 instalacion. No se ejecutan Vite ni Python del sistema. La API escucha
@@ -66,9 +69,11 @@ Las actualizaciones del programa no sobrescriben la base SQLite ni los logs.
 Solo se permite una instancia por canal. Las rutas `userData`, los ejecutables
 y los AppUserModelID distintos permiten ejecutar una instancia estable y otra
 Beta al mismo tiempo. Al cerrar una ventana, su Electron solicita primero un
-apagado cooperativo a su FastAPI. El `LocalTaskManager` marca las tareas
-activas como canceladas y, si el backend o sus procesos hijos no terminan
-dentro del plazo, Electron cierra su arbol de procesos de Windows.
+apagado cooperativo a su FastAPI. En desarrollo, el launcher espera el cierre
+normal de Electron, termina explicitamente Vite y devuelve codigo `0`. El
+`LocalTaskManager` marca las tareas activas como canceladas y, si el backend,
+Vite o sus procesos hijos no terminan dentro del plazo, se cierra su arbol de
+procesos de Windows.
 
 ## Tareas y concurrencia
 

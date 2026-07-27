@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     app_name: str = "SoundShelf"
     app_env: str = "development"
-    database_url: str = "sqlite:///music_app.db"
+    database_url: str = "sqlite:///soundshelf.db"
     log_level: str = "INFO"
     log_file: str | None = None
     data_directory: str | None = Field(

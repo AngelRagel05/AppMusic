@@ -59,7 +59,10 @@ npm run migrate
 `npm run migrate` permite actualizar manualmente el esquema durante el
 desarrollo. El launcher de escritorio ejecuta `alembic upgrade head` antes de
 cada arranque. La aplicacion no usa `create_all` ni ejecuta `ALTER TABLE`
-fuera de las migraciones.
+fuera de las migraciones. Tanto `npm run app` como `npm run app:api` usan por
+defecto la base existente `soundshelf.db` de la raiz del proyecto. Las
+aplicaciones instaladas continúan usando su SQLite independiente dentro de su
+directorio `%APPDATA%`.
 
 ## Ejecucion en desarrollo
 
@@ -73,7 +76,10 @@ El comando inicia:
 * Electron con DevTools disponibles
 * FastAPI, lanzado por Electron en un puerto local libre
 
-Electron espera a `/api/health` antes de mostrar la ventana. Los logs de Vite,
+Un launcher Node propio arranca Vite y Electron sin pasar por `concurrently`.
+Electron espera a `/api/health` antes de mostrar la ventana. Al cerrar la
+ventana, Electron apaga FastAPI y el launcher cierra el arbol de procesos de
+Vite en Windows, devolviendo codigo `0` en un cierre normal. Los logs de Vite,
 Electron y FastAPI quedan visibles en la terminal. Para depurar solo la API:
 
 ```powershell

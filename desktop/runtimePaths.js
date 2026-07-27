@@ -15,6 +15,10 @@ function resolveRuntimePaths({
   const executableExtension = platform === "win32" ? ".exe" : "";
   const projectDirectory = isPackaged ? resourcesPath : appPath;
   const dataDirectory = path.resolve(userDataPath);
+  const databaseDirectory =
+    isPackaged || environment.SOUNDSHELF_DATA_DIR
+      ? dataDirectory
+      : path.resolve(appPath);
   const logsDirectory = path.join(dataDirectory, "logs");
   const temporaryDirectory = path.join(dataDirectory, "temp");
   const frontendDirectory = isPackaged
@@ -54,7 +58,7 @@ function resolveRuntimePaths({
     pythonExecutable:
       environment.PYTHON_EXECUTABLE ||
       (platform === "win32" ? "python" : "python3"),
-    databasePath: path.join(dataDirectory, "soundshelf.db"),
+    databasePath: path.join(databaseDirectory, "soundshelf.db"),
     backendLogPath: path.join(logsDirectory, "backend.log"),
     electronLogPath: path.join(logsDirectory, "electron.log"),
     windowStatePath: path.join(dataDirectory, "windowState.json"),

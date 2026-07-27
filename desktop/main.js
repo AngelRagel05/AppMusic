@@ -71,6 +71,32 @@ function createDesktopRuntime(electron, identity) {
   let isShuttingDown = false;
   let stateSaveTimer = null;
 
+  function showMainWindow(reason) {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return;
+    }
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+    if (typeof mainWindow.setSkipTaskbar === "function") {
+      mainWindow.setSkipTaskbar(false);
+    }
+    mainWindow.show();
+    mainWindow.focus();
+    if (typeof app.focus === "function") {
+      app.focus({ steal: true });
+    }
+    if (typeof mainWindow.moveTop === "function") {
+      mainWindow.moveTop();
+    }
+    logger?.info(
+      `Ventana principal de ${identity.productName} mostrada ` +
+        `(${reason}). visible=${mainWindow.isVisible()} ` +
+        `focused=${mainWindow.isFocused()} ` +
+        `bounds=${JSON.stringify(mainWindow.getBounds())}.`,
+    );
+  }
+
   async function shutdown(exitCode = 0) {
     if (isShuttingDown) {
       return;
@@ -181,10 +207,7 @@ function createDesktopRuntime(electron, identity) {
       }
     });
     mainWindow.once("ready-to-show", () => {
-      mainWindow.show();
-      logger.info(
-        `La ventana principal de ${identity.productName} esta visible.`,
-      );
+      showMainWindow("ready-to-show");
     });
     if (!app.isPackaged) {
       mainWindow.webContents.on("before-input-event", (event, input) => {
@@ -198,6 +221,7 @@ function createDesktopRuntime(electron, identity) {
       });
     }
     await mainWindow.loadURL(frontendUrl.toString());
+    showMainWindow("loadURL");
     logger.info(`Frontend cargado desde ${frontendBaseUrl}.`);
 
     const smokeTestMilliseconds = Number(

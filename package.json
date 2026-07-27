@@ -6,7 +6,7 @@
   "private": true,
   "main": "desktop/main.js",
   "scripts": {
-    "app": "concurrently -k -s first -n web,desktop -c magenta,blue \"npm:app:web\" \"npm:app:desktop\"",
+    "app": "node desktop/scripts/runDevelopmentApp.js",
     "app:desktop": "electron desktop/main.js",
     "app:api": "python -m app.desktopMain",
     "app:web": "npm --prefix frontend run dev",
@@ -27,7 +27,6 @@
     "lint": "python -m ruff check app tests && npm --prefix frontend run lint"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1",
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3",
     "ffmpeg-static": "^5.3.0"
