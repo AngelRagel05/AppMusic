@@ -3,7 +3,9 @@
 ## Objetivo
 
 La presentacion de SoundShelf es una SPA React servida por Vite durante el
-desarrollo. No existe una capa Tkinter ni un runtime de escritorio empaquetado.
+desarrollo y por FastAPI desde su build estatico en produccion. Electron aporta
+la ventana nativa, el arranque y el cierre de procesos; no sustituye ni duplica
+la presentacion React. No existe una capa Tkinter.
 
 ## Estructura
 
@@ -25,6 +27,15 @@ frontend/src/
 La navegacion global usa React Router. TanStack Query gestiona datos remotos,
 invalidaciones y polling. Las llamadas HTTP se centralizan en
 `shared/api/apiClient.js`.
+
+El cliente HTTP obtiene `apiBaseUrl` de la URL inicial proporcionada por
+Electron. El valor solo se acepta si usa HTTP y apunta al loopback local. Sin
+ese parametro se conserva la ruta relativa `/api`, util para ejecutar la SPA
+directamente con Vite.
+
+La ventana de escritorio mantiene marco nativo, recuerda tamaño y posicion y
+no expone Node.js al renderer. La navegacion fuera del origen local se bloquea;
+los enlaces HTTP externos se abren con el navegador del sistema.
 
 ## Shell global
 

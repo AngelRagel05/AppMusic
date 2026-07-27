@@ -91,3 +91,50 @@ def test_validation_errors_use_structured_error_contract() -> None:
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_production_frontend_serves_assets_and_spa_routes(tmp_path) -> None:
+    frontend_directory = tmp_path / "frontend"
+    assets_directory = frontend_directory / "assets"
+    assets_directory.mkdir(parents=True)
+    (frontend_directory / "index.html").write_text(
+        "<html><body>SoundShelf desktop</body></html>",
+        encoding="utf-8",
+    )
+    (assets_directory / "app.js").write_text(
+        "window.soundShelf = true;",
+        encoding="utf-8",
+    )
+
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        future=True,
+    )
+    session_factory = sessionmaker(
+        bind=engine,
+        class_=Session,
+        autoflush=False,
+        expire_on_commit=False,
+    )
+    application = createApi(
+        settings=Settings(
+            database_url="sqlite://",
+            frontend_directory=str(frontend_directory),
+        ),
+        database_engine=engine,
+        session_factory=session_factory,
+        bootstrap_database=False,
+    )
+
+    with TestClient(application) as client:
+        index_response = client.get("/")
+        route_response = client.get("/comparison")
+        asset_response = client.get("/assets/app.js")
+        missing_api_response = client.get("/api/not-found")
+
+    assert index_response.status_code == 200
+    assert route_response.text == index_response.text
+    assert asset_response.text == "window.soundShelf = true;"
+    assert missing_api_response.status_code == 404

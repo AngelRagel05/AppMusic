@@ -8,6 +8,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.errors import registerErrorHandlers
+from app.api.frontendFiles import registerFrontendFiles
 from app.api.routers import apiRouter
 from app.config.settings import Settings, get_settings
 from app.infrastructure.persistence.database import DatabaseBootstrapper
@@ -58,4 +59,9 @@ def createApi(
     )
     registerErrorHandlers(application)
     application.include_router(apiRouter, prefix="/api")
+    if resolved_settings.frontendDirectoryPath is not None:
+        registerFrontendFiles(
+            application,
+            resolved_settings.frontendDirectoryPath,
+        )
     return application

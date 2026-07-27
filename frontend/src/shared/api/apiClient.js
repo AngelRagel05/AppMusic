@@ -3,6 +3,33 @@ const defaultHeaders = {
   "Content-Type": "application/json",
 };
 
+export function resolveApiBaseUrl(locationValue = window.location) {
+  const configuredUrl = new URLSearchParams(locationValue.search).get(
+    "apiBaseUrl",
+  );
+  if (!configuredUrl) {
+    return "";
+  }
+
+  try {
+    const parsedUrl = new URL(configuredUrl);
+    const isSafeLoopback =
+      parsedUrl.protocol === "http:" &&
+      parsedUrl.hostname === "127.0.0.1" &&
+      !parsedUrl.username &&
+      !parsedUrl.password;
+    return isSafeLoopback ? parsedUrl.origin : "";
+  } catch {
+    return "";
+  }
+}
+
+export function buildApiUrl(path, locationValue = window.location) {
+  return `${resolveApiBaseUrl(locationValue)}/api${path}`;
+}
+
+const runtimeApiBaseUrl = resolveApiBaseUrl();
+
 export class ApiClientError extends Error {
   constructor(message, status, code, details) {
     super(message);
@@ -14,7 +41,7 @@ export class ApiClientError extends Error {
 }
 
 async function request(path, options = {}) {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${runtimeApiBaseUrl}/api${path}`, {
     ...options,
     headers: {
       ...defaultHeaders,

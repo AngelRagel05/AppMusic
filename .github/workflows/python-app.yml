@@ -66,5 +66,48 @@ jobs:
       - name: Ejecutar tests frontend
         run: npm --prefix frontend run test
 
+      - name: Ejecutar tests del launcher Electron
+        run: npm run test:desktop
+
       - name: Construir frontend
         run: npm run build
+
+  package-windows:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configurar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          npm ci
+          npm --prefix frontend ci
+
+      - name: Construir instalador Windows
+        run: npm run dist
+
+      - name: Publicar instalador como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: SoundShelf-Windows
+          path: release/SoundShelf Setup.exe
+          if-no-files-found: error

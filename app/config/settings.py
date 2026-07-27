@@ -4,7 +4,7 @@ import re
 from functools import lru_cache
 from pathlib import Path, PureWindowsPath
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -15,19 +15,40 @@ class Settings(BaseSettings):
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        populate_by_name=True,
     )
 
     app_name: str = "SoundShelf"
     app_env: str = "development"
     database_url: str = "sqlite:///music_app.db"
     log_level: str = "INFO"
+    log_file: str | None = None
+    data_directory: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "SOUNDSHELF_DATA_DIR",
+            "DATA_DIRECTORY",
+        ),
+    )
+    frontend_directory: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "SOUNDSHELF_FRONTEND_DIR",
+            "FRONTEND_DIRECTORY",
+        ),
+    )
     music_folder: str | None = None
     download_folder: str | None = None
     ffmpeg_path: str = "ffmpeg"
     yt_dlp_timeout_seconds: float = Field(default=30.0, ge=1.0, le=300.0)
     temporary_folder: str = ".soundshelfTmp"
     api_host: str = "127.0.0.1"
-    api_port: int = Field(default=8000, ge=1, le=65535)
+    api_port: int = Field(
+        default=8000,
+        ge=1,
+        le=65535,
+        validation_alias=AliasChoices("SOUNDSHELF_PORT", "API_PORT"),
+    )
     cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
     task_worker_count: int = Field(default=3, ge=1, le=8)
     task_poll_interval_ms: int = Field(default=1000, ge=250, le=10000)
@@ -48,10 +69,35 @@ class Settings(BaseSettings):
         ]
 
     @property
+    def dataDirectoryPath(self) -> Path:
+        configured_path = Path(self.data_directory or PROJECT_ROOT)
+        if not configured_path.is_absolute():
+            configured_path = PROJECT_ROOT / configured_path
+        return configured_path.resolve(strict=False)
+
+    @property
+    def frontendDirectoryPath(self) -> Path | None:
+        if not self.frontend_directory:
+            return None
+        configured_path = Path(self.frontend_directory)
+        if not configured_path.is_absolute():
+            configured_path = PROJECT_ROOT / configured_path
+        return configured_path.resolve(strict=False)
+
+    @property
+    def logFilePath(self) -> Path | None:
+        if not self.log_file:
+            return None
+        configured_path = Path(self.log_file)
+        if not configured_path.is_absolute():
+            configured_path = self.dataDirectoryPath / configured_path
+        return configured_path.resolve(strict=False)
+
+    @property
     def temporaryFolderPath(self) -> Path:
         configured_path = Path(self.temporary_folder)
         if not configured_path.is_absolute():
-            configured_path = PROJECT_ROOT / configured_path
+            configured_path = self.dataDirectoryPath / configured_path
         return configured_path.resolve(strict=False)
 
 

@@ -64,3 +64,22 @@ def test_task_manager_cancels_running_operation_cooperatively() -> None:
         assert cancelled.error is None
     finally:
         manager.shutdown(wait=True)
+
+
+def test_task_manager_shutdown_cancels_running_operations() -> None:
+    manager = LocalTaskManager(worker_count=1)
+    started = Event()
+
+    def operation(context):
+        started.set()
+        while not context.isCancelled:
+            sleep(0.01)
+        context.raiseIfCancelled()
+
+    task = manager.submit("download", operation)
+    assert started.wait(timeout=1)
+
+    manager.shutdown(wait=False)
+    cancelled = waitForTerminalTask(manager, task.id)
+
+    assert cancelled.status is TaskStatus.CANCELLED
